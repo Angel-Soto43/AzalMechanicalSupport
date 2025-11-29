@@ -17,7 +17,8 @@ import {
   FolderOpen,
   Plus,
   ArrowRight,
-  Activity
+  Activity,
+  ClipboardList
 } from "lucide-react";
 import { File, AuditLog, User } from "@shared/schema";
 import { FileIcon, formatFileSize, getFileTypeName } from "@/components/file-icon";
