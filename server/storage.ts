@@ -24,6 +24,7 @@ export interface IStorage {
   getFilesByUser(userId: number): Promise<File[]>;
   getAllFiles(): Promise<File[]>;
   getRecentFiles(limit?: number): Promise<File[]>;
+  getSharedFiles(excludeUserId: number): Promise<File[]>;
   createFile(file: InsertFile): Promise<File>;
   updateFile(id: number, data: Partial<File>): Promise<File | undefined>;
   deleteFile(id: number, deletedBy: number): Promise<void>;
@@ -163,6 +164,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(files)
       .where(and(...conditions))
+      .orderBy(desc(files.uploadedAt));
+  }
+
+  async getSharedFiles(excludeUserId: number): Promise<File[]> {
+    return db
+      .select()
+      .from(files)
+      .where(and(eq(files.isDeleted, false)))
       .orderBy(desc(files.uploadedAt));
   }
 

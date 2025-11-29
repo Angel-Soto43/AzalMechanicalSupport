@@ -111,8 +111,8 @@ export default function AuthPage() {
                       <FormItem>
                         <FormLabel>Contraseña</FormLabel>
                         <FormControl>
-                          <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <div className="relative flex items-center">
+                            <Lock className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
                             <Input
                               {...field}
                               type={showPassword ? "text" : "password"}
@@ -125,7 +125,7 @@ export default function AuthPage() {
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                              className="absolute right-0 h-full px-3 hover:bg-transparent"
                               onClick={() => setShowPassword(!showPassword)}
                               data-testid="button-toggle-password"
                             >

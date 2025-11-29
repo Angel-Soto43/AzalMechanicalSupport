@@ -139,6 +139,20 @@ export async function registerRoutes(
     }
   });
 
+  // Get shared files (files from other users)
+  app.get("/api/files/shared", requireAuth, async (req, res) => {
+    try {
+      const allFiles = await storage.getAllFiles();
+      // Filter out files uploaded by the current user
+      const sharedFiles = allFiles.filter(f => f.uploadedBy !== req.user!.id);
+      const enrichedFiles = await enrichFilesWithUploader(sharedFiles);
+      res.json(enrichedFiles);
+    } catch (error) {
+      console.error("Error fetching shared files:", error);
+      res.status(500).send("Error al obtener archivos compartidos");
+    }
+  });
+
   // Upload file
   app.post("/api/files/upload", requireAuth, upload.single("file"), async (req, res) => {
     try {

@@ -19,6 +19,7 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import DashboardPage from "@/pages/dashboard-page";
 import MyFilesPage from "@/pages/my-files-page";
+import SharedFilesPage from "@/pages/shared-files-page";
 import AllFilesPage from "@/pages/all-files-page";
 import UsersPage from "@/pages/users-page";
 import AuditLogsPage from "@/pages/audit-logs-page";
@@ -73,6 +74,11 @@ function Router() {
       <ProtectedRoute path="/my-files" component={() => (
         <AppLayout>
           <MyFilesPage />
+        </AppLayout>
+      )} />
+      <ProtectedRoute path="/shared-files" component={() => (
+        <AppLayout>
+          <SharedFilesPage />
         </AppLayout>
       )} />
       <AdminRoute path="/all-files" component={() => (

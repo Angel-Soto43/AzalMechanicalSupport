@@ -25,6 +25,7 @@ import {
   LogOut,
   Shield,
   Lock,
+  Share2,
 } from "lucide-react";
 
 const mainNavItems = [
@@ -38,6 +39,12 @@ const mainNavItems = [
     title: "Mis Archivos",
     url: "/my-files",
     icon: FolderOpen,
+    adminOnly: false,
+  },
+  {
+    title: "Archivos Compartidos",
+    url: "/shared-files",
+    icon: Share2,
     adminOnly: false,
   },
 ];
@@ -136,7 +143,7 @@ export function AppSidebar() {
                     >
                       <Link href={item.url} data-testid={`nav-${item.url.replace("/", "")}`}>
                         <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
+                        <span className="truncate">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
