@@ -114,10 +114,11 @@ export function AppSidebar() {
                     asChild
                     isActive={location === item.url}
                     tooltip={item.title}
+                    className="overflow-hidden"
                   >
                     <Link href={item.url} data-testid={`nav-${item.url.replace("/", "") || "dashboard"}`}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -140,9 +141,10 @@ export function AppSidebar() {
                       asChild
                       isActive={location === item.url}
                       tooltip={item.title}
+                      className="overflow-hidden"
                     >
                       <Link href={item.url} data-testid={`nav-${item.url.replace("/", "")}`}>
-                        <item.icon className="h-4 w-4" />
+                        <item.icon className="h-4 w-4 shrink-0" />
                         <span className="truncate">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>

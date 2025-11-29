@@ -173,34 +173,34 @@ function FileCard({ file, onPreview, onDownload, onUpdateVersion }: {
   return (
     <Card className="hover-elevate group">
       <CardContent className="p-4">
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted">
             <FileIcon mimeType={file.mimeType} className="h-6 w-6" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium truncate" data-testid={`text-filename-${file.id}`}>
+            <p className="font-medium truncate text-sm" data-testid={`text-filename-${file.id}`}>
               {file.originalName}
             </p>
-            <div className="flex flex-wrap items-center gap-2 mt-1">
-              <Badge variant="outline" className="text-xs font-mono">
+            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+              <Badge variant="outline" className="text-xs font-mono truncate hidden sm:inline-flex max-w-[120px]">
                 {file.contractId}
               </Badge>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground shrink-0">
                 {formatFileSize(file.size)}
               </span>
               {file.version > 1 && (
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-xs shrink-0">
                   v{file.version}
                 </Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="text-xs text-muted-foreground mt-2 truncate">
               {file.uploaderName} • {formatDistanceToNow(new Date(file.uploadedAt), { addSuffix: true, locale: es })}
             </p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" data-testid={`button-file-menu-${file.id}`}>
+              <Button variant="ghost" size="icon" className="shrink-0" data-testid={`button-file-menu-${file.id}`}>
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -594,7 +594,7 @@ export default function MyFilesPage() {
                 </div>
               ) : filteredFiles && filteredFiles.length > 0 ? (
                 viewMode === "grid" ? (
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     {filteredFiles.map((file) => (
                       <FileCard
                         key={file.id}

@@ -310,7 +310,7 @@ export default function SharedFilesPage() {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium truncate max-w-[200px]">
+                          <p className="font-medium truncate max-w-xs text-sm">
                             {file.originalName}
                           </p>
                           {file.version > 1 && (

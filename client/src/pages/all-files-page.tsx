@@ -354,7 +354,7 @@ export default function AllFilesPage() {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium truncate max-w-[200px]" data-testid={`text-filename-${file.id}`}>
+                          <p className="font-medium truncate max-w-xs text-sm" data-testid={`text-filename-${file.id}`}>
                             {file.originalName}
                           </p>
                           {file.version > 1 && (
