@@ -56,11 +56,15 @@ function FileUploadZone({
   isUploading,
   contractId,
   onContractIdChange,
+  supplier,
+  onSupplierChange,
 }: {
   onFilesSelected: (files: FileList) => void;
   isUploading: boolean;
   contractId: string;
   onContractIdChange: (value: string) => void;
+  supplier: string;
+  onSupplierChange: (value: string) => void;
 }) {
   const [isDragging, setIsDragging] = useState(false);
 
@@ -115,6 +119,17 @@ function FileUploadZone({
             onChange={(e) => onContractIdChange(e.target.value)}
             className="mt-1.5 font-mono"
             data-testid="input-contract-id"
+          />
+        </div>
+        <div>
+          <Label htmlFor="supplier">Proveedor (obligatorio)</Label>
+          <Input
+            id="supplier"
+            placeholder="Ej: Empresa XYZ S.A."
+            value={supplier}
+            onChange={(e) => onSupplierChange(e.target.value)}
+            className="mt-1.5"
+            data-testid="input-supplier"
           />
         </div>
 
@@ -372,6 +387,7 @@ export default function MyFilesPage() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [contractId, setContractId] = useState("");
+  const [supplier, setSupplier] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [previewFile, setPreviewFile] = useState<FileWithUploader | null>(null);
   const [updateVersionFile, setUpdateVersionFile] = useState<FileWithUploader | null>(null);
@@ -381,10 +397,11 @@ export default function MyFilesPage() {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: async ({ file, contractId }: { file: File; contractId: string }) => {
+    mutationFn: async ({ file, contractId, supplier }: { file: File; contractId: string; supplier: string }) => {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("contractId", contractId);
+      formData.append("supplier", supplier);
 
       const response = await fetch("/api/files/upload", {
         method: "POST",
@@ -404,6 +421,7 @@ export default function MyFilesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/files/recent"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       setContractId("");
+      setSupplier("");
       toast({
         title: "Archivo subido",
         description: "El archivo se ha subido correctamente",
@@ -464,11 +482,20 @@ export default function MyFilesPage() {
         return;
       }
 
+      if (!supplier.trim()) {
+        toast({
+          title: "Proveedor requerido",
+          description: "Por favor, ingresa el proveedor antes de subir archivos",
+          variant: "destructive",
+        });
+        return;
+      }
+
       Array.from(fileList).forEach((file) => {
-        uploadMutation.mutate({ file, contractId: contractId.trim() });
+        uploadMutation.mutate({ file, contractId: contractId.trim(), supplier: supplier.trim() });
       });
     },
-    [contractId, uploadMutation, toast]
+    [contractId, supplier, uploadMutation, toast]
   );
 
   const handleDownload = useCallback((file: FileWithUploader) => {
@@ -560,6 +587,8 @@ export default function MyFilesPage() {
             isUploading={uploadMutation.isPending}
             contractId={contractId}
             onContractIdChange={setContractId}
+            supplier={supplier}
+            onSupplierChange={setSupplier}
           />
         </div>
 

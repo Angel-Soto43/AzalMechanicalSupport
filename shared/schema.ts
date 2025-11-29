@@ -22,6 +22,7 @@ export const users = pgTable("users", {
 export const files = pgTable("files", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   contractId: text("contract_id").notNull(),
+  supplier: text("supplier").notNull().default(""),
   filename: text("filename").notNull(),
   originalName: text("original_name").notNull(),
   mimeType: text("mime_type").notNull(),

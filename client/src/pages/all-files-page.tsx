@@ -357,6 +357,9 @@ export default function AllFilesPage() {
                           <p className="font-medium truncate max-w-xs text-sm" data-testid={`text-filename-${file.id}`}>
                             {file.originalName}
                           </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {file.supplier}
+                          </p>
                           {file.version > 1 && (
                             <Badge variant="secondary" className="text-xs mt-1">
                               v{file.version}

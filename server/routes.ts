@@ -160,15 +160,20 @@ export async function registerRoutes(
         return res.status(400).send("No se proporcionó ningún archivo");
       }
 
-      const { contractId } = req.body;
+      const { contractId, supplier } = req.body;
       if (!contractId) {
-        // Delete the uploaded file
         fs.unlinkSync(req.file.path);
         return res.status(400).send("El ID de contrato es requerido");
       }
 
+      if (!supplier) {
+        fs.unlinkSync(req.file.path);
+        return res.status(400).send("El proveedor es requerido");
+      }
+
       const file = await storage.createFile({
         contractId,
+        supplier,
         filename: req.file.filename,
         originalName: req.file.originalname,
         mimeType: req.file.mimetype,
@@ -183,7 +188,7 @@ export async function registerRoutes(
         action: "upload",
         resourceType: "file",
         resourceId: file.id,
-        details: `Archivo subido: ${file.originalName} (Contrato: ${contractId})`,
+        details: `Archivo subido: ${file.originalName} (Contrato: ${contractId}, Proveedor: ${supplier})`,
         ipAddress: req.ip || req.socket.remoteAddress || "unknown",
         userAgent: req.get("User-Agent") || "unknown",
       });
