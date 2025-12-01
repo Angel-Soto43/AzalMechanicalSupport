@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentación - Sistema de Gestión de Archivos Azal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 40px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #1a5490;
+            border-bottom: 4px solid #1a5490;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        h2 {
+            color: #2874a6;
+            margin-top: 40px;
+            margin-bottom: 15px;
+            border-left: 4px solid #2874a6;
+            padding-left: 15px;
+            font-size: 1.8em;
+        }
+        
+        h3 {
+            color: #5a9bc3;
+            margin-top: 25px;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+        
+        h4 {
+            color: #7ab5d3;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+        
+        p {
+            margin-bottom: 12px;
+            text-align: justify;
+        }
+        
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 12px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+        
+        .code-block {
+            background-color: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .highlight {
+            background-color: #fff3cd;
+            padding: 2px 6px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #2874a6;
+            color: white;
+            font-weight: bold;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .box {
+            background-color: #e8f4f8;
+            border-left: 4px solid #2874a6;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .box-success {
+            background-color: #d4edda;
+            border-left-color: #28a745;
+        }
+        
+        .box-warning {
+            background-color: #fff3cd;
+            border-left-color: #ffc107;
+        }
+        
+        .box-danger {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        
+        .toc {
+            background-color: #f9f9f9;
+            border: 2px solid #2874a6;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+        
+        .toc h3 {
+            margin-top: 0;
+            color: #2874a6;
+        }
+        
+        .toc ol {
+            margin-bottom: 0;
+        }
+        
+        .toc a {
+            color: #2874a6;
+            text-decoration: none;
+        }
+        
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid #ddd;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .feature-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .feature-item {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #2874a6;
+        }
+        
+        .feature-item strong {
+            color: #2874a6;
+        }
+        
+        .diagram {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-family: monospace;
+            white-space: pre;
+            overflow-x: auto;
+        }
+        
+        @media print {
+            body {
+                background-color: white;
+            }
+            .container {
+                box-shadow: none;
+                padding: 0;
+            }
+            h1 {
+                page-break-after: avoid;
+            }
+            h2 {
+                page-break-after: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 DOCUMENTACIÓN COMPLETA DEL PROYECTO</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            <strong>Sistema de Gestión de Archivos en la Nube - Azal Mechanical Supports</strong><br>
+            Versión 1.0 | Noviembre 2024
+        </p>
+        
+        <div class="toc">
+            <h3>📑 Tabla de Contenidos</h3>
+            <ol>
+                <li>Resumen Ejecutivo</li>
+                <li>Arquitectura General del Sistema</li>
+                <li>Frontend (Interfaz de Usuario)</li>
+                <li>Backend (Servidor)</li>
+                <li>Base de Datos</li>
+                <li>Seguridad y Autenticación</li>
+                <li>Funcionalidades Principales</li>
+                <li>Guía de Uso para Usuarios</li>
+                <li>Guía de Administración</li>
+                <li>Instalación y Configuración</li>
+                <li>Preguntas Frecuentes</li>
+            </ol>
+        </div>
+        
+        <!-- SECCIÓN 1 -->
+        <h2>1. RESUMEN EJECUTIVO</h2>
+        
+        <h3>¿Qué es este proyecto?</h3>
+        <p>Es un <strong>sistema en la nube para guardar y organizar archivos</strong> de empresa, similar a Google Drive pero personalizado para Azal Mechanical Supports.</p>
+        
+        <div class="box">
+            <strong>Objetivo Principal:</strong> Permitir que los empleados de Azal suban, compartan y administren documentos de forma segura, con registro completo de quién hizo qué y cuándo.
+        </div>
+        
+        <h3>Características Principales</h3>
+        <ul>
+            <li>✅ Autenticación con usuario y contraseña (sin Google o Facebook)</li>
+            <li>✅ Subir archivos con ID de contrato y proveedor</li>
+            <li>✅ Compartir archivos entre usuarios</li>
+            <li>✅ Control de versiones (guardar versiones antiguas)</li>
+            <li>✅ Registro de auditoría (quién hizo qué, cuándo y dónde)</li>
+            <li>✅ Panel de administrador para gestionar usuarios</li>
+            <li>✅ Interfaz responsiva (funciona en móvil, tablet y PC)</li>
+        </ul>
+        
+        <!-- SECCIÓN 2 -->
+        <h2>2. ARQUITECTURA GENERAL DEL SISTEMA</h2>
+        
+        <h3>Estructura General</h3>
+        <p>El sistema está dividido en 3 capas:</p>
+        
+        <div class="diagram">
+┌─────────────────────────────────────────────────┐
+│  CAPA 1: FRONTEND (Lo que ves en pantalla)      │
+│  • React.js + TypeScript                         │
+│  • Interfaz bonita (HTML/CSS)                    │
+│  • Interactividad rápida                         │
+└───────────────┬─────────────────────────────────┘
+                │ (Comunicación por Internet)
+                ↓
+┌─────────────────────────────────────────────────┐
+│  CAPA 2: BACKEND (El cerebro)                   │
+│  • Express.js + Node.js                         │
+│  • Procesa solicitudes                          │
+│  • Valida seguridad                             │
+│  • Guarda archivos                              │
+└───────────────┬─────────────────────────────────┘
+                │ (Comunicación por Internet)
+                ↓
+┌─────────────────────────────────────────────────┐
+│  CAPA 3: BASE DE DATOS (La memoria)             │
+│  • PostgreSQL en Neon (nube)                    │
+│  • Guarda información de usuarios               │
+│  • Metadatos de archivos                        │
+│  • Registro de auditoría                        │
+└─────────────────────────────────────────────────┘
+        </div>
+        
+        <!-- SECCIÓN 3 -->
+        <h2>3. FRONTEND (Interfaz de Usuario)</h2>
+        
+        <h3>¿Qué es el Frontend?</h3>
+        <p>Es lo que <strong>VES en la pantalla</strong>. Todo lo que haces con el ratón o teclado (botones, formularios, etc.)</p>
+        
+        <h3>Tecnología Utilizada</h3>
+        <table>
+            <tr>
+                <th>Tecnología</th>
+                <th>¿Qué hace?</th>
+                <th>¿Por qué?</th>
+            </tr>
+            <tr>
+                <td><strong>React.js</strong></td>
+                <td>Crea la interfaz interactiva</td>
+                <td>Rápida, moderna, componentes reutilizables</td>
+            </tr>
+            <tr>
+                <td><strong>TypeScript</strong></td>
+                <td>Versión "segura" de JavaScript</td>
+                <td>Atrapa errores antes de que ocurran</td>
+            </tr>
+            <tr>
+                <td><strong>Tailwind CSS</strong></td>
+                <td>Sistema de estilos (colores, espacios)</td>
+                <td>Desarrollo rápido, diseño consistente</td>
+            </tr>
+            <tr>
+                <td><strong>Wouter</strong></td>
+                <td>Navegación entre páginas</td>
+                <td>Sin recargar la página, más rápido</td>
+            </tr>
+            <tr>
+                <td><strong>React Query</strong></td>
+                <td>Comunica con el servidor</td>
+                <td>Gestiona datos, carga, errores automáticamente</td>
+            </tr>
+        </table>
+        
+        <h3>Páginas del Frontend</h3>
+        <div class="feature-list">
+            <div class="feature-item">
+                <strong>📄 Página de Login</strong><br>
+                Donde inicias sesión con usuario y contraseña
+            </div>
+            <div class="feature-item">
+                <strong>📊 Dashboard</strong><br>
+                Panel principal con estadísticas y archivos recientes
+            </div>
+            <div class="feature-item">
+                <strong>📁 Mis Archivos</strong><br>
+                Tus archivos subidos, con opción de subir nuevos
+            </div>
+            <div class="feature-item">
+                <strong>📤 Archivos Compartidos</strong><br>
+                Archivos que otros usuarios compartieron contigo
+            </div>
+            <div class="feature-item">
+                <strong>📑 Todos los Archivos (Admin)</strong><br>
+                Solo admin: ve todos los archivos del sistema
+            </div>
+            <div class="feature-item">
+                <strong>👥 Gestionar Usuarios (Admin)</strong><br>
+                Solo admin: crea, edita y elimina usuarios
+            </div>
+            <div class="feature-item">
+                <strong>📋 Registro de Auditoría (Admin)</strong><br>
+                Solo admin: ve todo lo que pasó en el sistema
+            </div>
+            <div class="feature-item">
+                <strong>🌙 Tema Claro/Oscuro</strong><br>
+                Cambia entre modo claro y oscuro
+            </div>
+        </div>
+        
+        <!-- SECCIÓN 4 -->
+        <h2>4. BACKEND (Servidor)</h2>
+        
+        <h3>¿Qué es el Backend?</h3>
+        <p>Es el <strong>"cerebro" invisible</strong> del sistema. Recibe solicitudes del frontend, las procesa, y devuelve resultados.</p>
+        
+        <h3>Tecnología Utilizada</h3>
+        <table>
+            <tr>
+                <th>Tecnología</th>
+                <th>¿Qué hace?</th>
+            </tr>
+            <tr>
+                <td><strong>Express.js</strong></td>
+                <td>Framework que recibe solicitudes HTTP</td>
+            </tr>
+            <tr>
+                <td><strong>Node.js</strong></td>
+                <td>Entorno para ejecutar JavaScript en servidor</td>
+            </tr>
+            <tr>
+                <td><strong>Multer</strong></td>
+                <td>Procesa archivos subidos</td>
+            </tr>
+            <tr>
+                <td><strong>Passport.js</strong></td>
+                <td>Autentica usuarios (verifica contraseña)</td>
+            </tr>
+            <tr>
+                <td><strong>Drizzle ORM</strong></td>
+                <td>Comunica con la base de datos</td>
+            </tr>
+        </table>
+        
+        <h3>Rutas API (Endpoints)</h3>
+        <p>Son como "puntos de entrada" donde el frontend pide información:</p>
+        
+        <h4>🔐 Autenticación</h4>
+        <ul>
+            <li><code>POST /api/login</code> - Inicia sesión</li>
+            <li><code>POST /api/logout</code> - Cierra sesión</li>
+            <li><code>GET /api/user</code> - Obtiene usuario actual</li>
+        </ul>
+        
+        <h4>📁 Archivos</h4>
+        <ul>
+            <li><code>POST /api/files/upload</code> - Sube archivo</li>
+            <li><code>GET /api/files/my</code> - Obtiene tus archivos</li>
+            <li><code>GET /api/files/shared</code> - Obtiene archivos compartidos</li>
+            <li><code>GET /api/files/all</code> - Todos los archivos (admin)</li>
+            <li><code>GET /api/files/:id/download</code> - Descarga archivo</li>
+            <li><code>GET /api/files/:id/preview</code> - Previsualiza archivo</li>
+            <li><code>DELETE /api/files/:id</code> - Elimina archivo (admin)</li>
+            <li><code>POST /api/files/:id/version</code> - Crea nueva versión</li>
+        </ul>
+        
+        <h4>👥 Usuarios (Admin)</h4>
+        <ul>
+            <li><code>GET /api/users</code> - Lista todos los usuarios</li>
+            <li><code>POST /api/users</code> - Crea nuevo usuario</li>
+            <li><code>PATCH /api/users/:id</code> - Edita usuario</li>
+            <li><code>DELETE /api/users/:id</code> - Elimina usuario</li>
+        </ul>
+        
+        <h4>📊 Auditoría (Admin)</h4>
+        <ul>
+            <li><code>GET /api/audit-logs</code> - Ver registro de auditoría</li>
+            <li><code>GET /api/audit-logs/recent</code> - Actividad reciente</li>
+            <li><code>GET /api/stats</code> - Estadísticas del sistema</li>
+        </ul>
+        
+        <!-- SECCIÓN 5 -->
+        <h2>5. BASE DE DATOS</h2>
+        
+        <h3>¿Qué es una Base de Datos?</h3>
+        <p>Es como un <strong>enorme archivo Excel en la nube</strong> que guarda toda la información del sistema de forma organizada.</p>
+        
+        <h3>¿Dónde está? PostgreSQL en Neon</h3>
+        <div class="box">
+            <strong>PostgreSQL:</strong> Es el software de base de datos<br>
+            <strong>Neon:</strong> Es el servicio en la nube que lo aloja<br>
+            <strong>Ubicación:</strong> En servidores de Neon (en Internet)
+        </div>
+        
+        <h3>Tablas de la Base de Datos</h3>
+        
+        <h4>📊 Tabla: USERS (Usuarios)</h4>
+        <p>Guarda información de los usuarios del sistema:</p>
+        <table>
+            <tr>
+                <th>Campo</th>
+                <th>Tipo</th>
+                <th>Descripción</th>
+            </tr>
+            <tr>
+                <td>id</td>
+                <td>Número</td>
+                <td>Identificador único (1, 2, 3...)</td>
+            </tr>
+            <tr>
+                <td>username</td>
+                <td>Texto</td>
+                <td>Nombre de usuario para login (ej: "victor")</td>
+            </tr>
+            <tr>
+                <td>password</td>
+                <td>Texto</td>
+                <td>Contraseña (encriptada, nadie ve la real)</td>
+            </tr>
+            <tr>
+                <td>fullName</td>
+                <td>Texto</td>
+                <td>Nombre completo (ej: "Víctor Hernández")</td>
+            </tr>
+            <tr>
+                <td>isAdmin</td>
+                <td>Sí/No</td>
+                <td>¿Es administrador? (true/false)</td>
+            </tr>
+            <tr>
+                <td>isActive</td>
+                <td>Sí/No</td>
+                <td>¿Usuario activo? (true/false)</td>
+            </tr>
+            <tr>
+                <td>failedLoginAttempts</td>
+                <td>Número</td>
+                <td>Intentos fallidos de login</td>
+            </tr>
+            <tr>
+                <td>lockedUntil</td>
+                <td>Fecha/Hora</td>
+                <td>Bloqueado hasta esta hora (si pasó límite)</td>
+            </tr>
+            <tr>
+                <td>lastLogin</td>
+                <td>Fecha/Hora</td>
+                <td>Último acceso del usuario</td>
+            </tr>
+            <tr>
+                <td>createdAt</td>
+                <td>Fecha/Hora</td>
+                <td>Cuándo se creó el usuario</td>
+            </tr>
+        </table>
+        
+        <h4>📄 Tabla: FILES (Archivos)</h4>
+        <p>Guarda información sobre cada archivo subido:</p>
+        <table>
+            <tr>
+                <th>Campo</th>
+                <th>Tipo</th>
+                <th>Descripción</th>
+            </tr>
+            <tr>
+                <td>id</td>
+                <td>Número</td>
+                <td>ID único del archivo</td>
+            </tr>
+            <tr>
+                <td>contractId</td>
+                <td>Texto</td>
+                <td>ID del contrato (ej: "CONT-2024-001")</td>
+            </tr>
+            <tr>
+                <td>supplier</td>
+                <td>Texto</td>
+                <td>Nombre del proveedor (ej: "Empresa XYZ")</td>
+            </tr>
+            <tr>
+                <td>filename</td>
+                <td>Texto</td>
+                <td>Nombre guardado en servidor</td>
+            </tr>
+            <tr>
+                <td>originalName</td>
+                <td>Texto</td>
+                <td>Nombre original (lo que subiste)</td>
+            </tr>
+            <tr>
+                <td>mimeType</td>
+                <td>Texto</td>
+                <td>Tipo (ej: "application/pdf")</td>
+            </tr>
+            <tr>
+                <td>size</td>
+                <td>Número</td>
+                <td>Tamaño en bytes</td>
+            </tr>
+            <tr>
+                <td>uploadedBy</td>
+                <td>Número</td>
+                <td>ID del usuario que subió</td>
+            </tr>
+            <tr>
+                <td>uploadedAt</td>
+                <td>Fecha/Hora</td>
+                <td>Cuándo se subió</td>
+            </tr>
+            <tr>
+                <td>version</td>
+                <td>Número</td>
+                <td>Número de versión (1, 2, 3...)</td>
+            </tr>
+            <tr>
+                <td>previousVersionId</td>
+                <td>Número</td>
+                <td>ID de versión anterior (si hay)</td>
+            </tr>
+            <tr>
+                <td>isDeleted</td>
+                <td>Sí/No</td>
+                <td>¿Está eliminado?</td>
+            </tr>
+            <tr>
+                <td>deletedAt</td>
+                <td>Fecha/Hora</td>
+                <td>Cuándo se eliminó</td>
+            </tr>
+            <tr>
+                <td>deletedBy</td>
+                <td>Número</td>
+                <td>ID del admin que eliminó</td>
+            </tr>
+        </table>
+        
+        <h4>📋 Tabla: AUDIT_LOGS (Registro de Auditoría)</h4>
+        <p>Guarda un registro de TODAS las acciones en el sistema:</p>
+        <table>
+            <tr>
+                <th>Campo</th>
+                <th>Tipo</th>
+                <th>Descripción</th>
+            </tr>
+            <tr>
+                <td>id</td>
+                <td>Número</td>
+                <td>ID único del log</td>
+            </tr>
+            <tr>
+                <td>userId</td>
+                <td>Número</td>
+                <td>ID del usuario que hizo la acción</td>
+            </tr>
+            <tr>
+                <td>action</td>
+                <td>Texto</td>
+                <td>Tipo de acción: login, logout, upload, download, delete, etc.</td>
+            </tr>
+            <tr>
+                <td>resourceType</td>
+                <td>Texto</td>
+                <td>¿Qué afectó? file, user, session</td>
+            </tr>
+            <tr>
+                <td>resourceId</td>
+                <td>Número</td>
+                <td>ID del archivo o usuario afectado</td>
+            </tr>
+            <tr>
+                <td>details</td>
+                <td>Texto</td>
+                <td>Descripción detallada</td>
+            </tr>
+            <tr>
+                <td>ipAddress</td>
+                <td>Texto</td>
+                <td>IP de quién hizo la acción</td>
+            </tr>
+            <tr>
+                <td>userAgent</td>
+                <td>Texto</td>
+                <td>Navegador y sistema operativo usado</td>
+            </tr>
+            <tr>
+                <td>createdAt</td>
+                <td>Fecha/Hora</td>
+                <td>Cuándo ocurrió la acción</td>
+            </tr>
+        </table>
+        
+        <!-- SECCIÓN 6 -->
+        <h2>6. SEGURIDAD Y AUTENTICACIÓN</h2>
+        
+        <h3>¿Cómo funciona el login?</h3>
+        <ol>
+            <li>Escribes usuario y contraseña</li>
+            <li>Se envía al servidor (cifrado por HTTPS)</li>
+            <li>Servidor verifica en la BD que exista ese usuario</li>
+            <li>Compara la contraseña (usando algoritmo seguro)</li>
+            <li>Si es correcto, crea una "sesión" (cookie)</li>
+            <li>Esa cookie se guarda en tu navegador</li>
+            <li>En cada solicitud, se envía la cookie</li>
+            <li>Servidor verifica que la sesión sea válida</li>
+        </ol>
+        
+        <h3>Medidas de Seguridad</h3>
+        <div class="feature-list">
+            <div class="feature-item">
+                <strong>🔐 Contraseñas Encriptadas</strong><br>
+                Nadie (ni siquiera nosotros) vemos las contraseñas
+            </div>
+            <div class="feature-item">
+                <strong>🔒 Sesiones Protegidas</strong><br>
+                Expiran después de 30 minutos sin actividad
+            </div>
+            <div class="feature-item">
+                <strong>❌ Bloqueo por Intentos Fallidos</strong><br>
+                Después de 5 intentos fallidos, bloquea 15 minutos
+            </div>
+            <div class="feature-item">
+                <strong>📝 Auditoría Completa</strong><br>
+                Cada acción se registra (quién, cuándo, desde dónde)
+            </div>
+            <div class="feature-item">
+                <strong>👤 Roles de Usuario</strong><br>
+                Admin (todo) vs Usuario Normal (solo sus archivos)
+            </div>
+            <div class="feature-item">
+                <strong>🗑️ Eliminación Suave</strong><br>
+                Archivos marcados como eliminados, no se borran de verdad
+            </div>
+        </div>
+        
+        <div class="box-warning">
+            <strong>⚠️ IMPORTANTE:</strong> Siempre usa HTTPS en producción (no HTTP). Esto cifra toda la comunicación.
+        </div>
+        
+        <!-- SECCIÓN 7 -->
+        <h2>7. FUNCIONALIDADES PRINCIPALES</h2>
+        
+        <h3>1️⃣ Subir Archivos</h3>
+        <p><strong>¿Cómo?</strong> En la página "Mis Archivos"</p>
+        <ul>
+            <li>Ingresa ID de Contrato (ej: CONT-2024-001)</li>
+            <li>Ingresa Proveedor (ej: Empresa XYZ)</li>
+            <li>Arrastra archivo o haz clic para seleccionar</li>
+            <li>Se sube automáticamente (máx 50MB)</li>
+            <li>Se guarda metadatos en BD</li>
+        </ul>
+        
+        <h3>2️⃣ Ver y Descargar Archivos</h3>
+        <p><strong>¿Cómo?</strong> Desde "Mis Archivos" o "Archivos Compartidos"</p>
+        <ul>
+            <li>Haz clic en el menú (⋮) del archivo</li>
+            <li>Selecciona "Descargar"</li>
+            <li>Se guarda en tu computadora</li>
+            <li>Se registra en auditoría</li>
+        </ul>
+        
+        <h3>3️⃣ Previsualizar Archivos</h3>
+        <p><strong>¿Cómo?</strong> En el menú del archivo</p>
+        <ul>
+            <li>Selecciona "Previsualizar"</li>
+            <li>Abre en ventana modal (no se descarga)</li>
+            <li>Funciona con: PDF, imágenes</li>
+            <li>Otros formatos: descarga para ver</li>
+        </ul>
+        
+        <h3>4️⃣ Versiones de Archivo</h3>
+        <p><strong>¿Por qué?</strong> Para guardar cambios sin perder versiones anteriores</p>
+        <ul>
+            <li>Al subir un archivo con el mismo nombre</li>
+            <li>Se crea una nueva versión automáticamente</li>
+            <li>Las antiguas se guardan (con referencia)</li>
+            <li>Se muestra "v2", "v3", etc. en interfaz</li>
+        </ul>
+        
+        <h3>5️⃣ Compartir Archivos</h3>
+        <p><strong>¿Cómo?</strong> Automáticamente en la página "Archivos Compartidos"</p>
+        <ul>
+            <li>Todos los usuarios ven archivos de otros</li>
+            <li>Pero en modo "solo lectura" (no pueden editar)</li>
+            <li>Pueden descargar y previsualizar</li>
+            <li>El admin ve todo desde "Todos los Archivos"</li>
+        </ul>
+        
+        <h3>6️⃣ Eliminar Archivos (Admin)</h3>
+        <p><strong>¿Quién?</strong> Solo administrador</p>
+        <ul>
+            <li>Desde página "Todos los Archivos"</li>
+            <li>Haz clic en menú (⋮)</li>
+            <li>Selecciona "Eliminar"</li>
+            <li>Confirma eliminación</li>
+            <li>Se marca como eliminado en BD (auditoría)</li>
+        </ul>
+        
+        <h3>7️⃣ Gestionar Usuarios (Admin)</h3>
+        <p><strong>¿Dónde?</strong> Página "Gestionar Usuarios"</p>
+        <ul>
+            <li>Crear nuevo usuario (nombre, usuario, contraseña)</li>
+            <li>Hacer admin a un usuario</li>
+            <li>Desactivar usuario (no puede entrar)</li>
+            <li>Cambiar contraseña</li>
+        </ul>
+        
+        <h3>8️⃣ Registro de Auditoría</h3>
+        <p><strong>¿Dónde?</strong> Página "Registro de Auditoría" (admin)</p>
+        <ul>
+            <li>Ve todas las acciones: logins, uploads, descargas, eliminaciones</li>
+            <li>Información: quién, qué, cuándo, desde dónde</li>
+            <li>Filtrar por fecha, usuario, tipo de acción</li>
+        </ul>
+        
+        <!-- SECCIÓN 8 -->
+        <h2>8. GUÍA DE USO PARA USUARIOS NORMALES</h2>
+        
+        <h3>Primer acceso</h3>
+        <ol>
+            <li>Abre la aplicación en navegador</li>
+            <li>Ve la pantalla de login</li>
+            <li>Escribe usuario y contraseña (que te dio el admin)</li>
+            <li>Haz clic en "Iniciar Sesión"</li>
+            <li>¡Entra al Dashboard!</li>
+        </ol>
+        
+        <h3>Pantalla Principal (Dashboard)</h3>
+        <p>Ves:</p>
+        <ul>
+            <li>📊 Estadísticas: Total de archivos, tamaño total</li>
+            <li>📤 Archivos recientes que subiste</li>
+            <li>📋 Actividad: Últimas acciones en el sistema</li>
+        </ul>
+        
+        <h3>Subir un archivo</h3>
+        <ol>
+            <li>Ve a "Mis Archivos"</li>
+            <li>En el formulario izquierdo, ingresa:</li>
+            <li style="margin-left: 40px;">ID de Contrato: CONT-2024-001</li>
+            <li style="margin-left: 40px;">Proveedor: Mi Proveedor S.A.</li>
+            <li>Arrastra archivo al área punteada o haz clic</li>
+            <li>Selecciona el archivo de tu computadora</li>
+            <li>Se sube automáticamente</li>
+            <li>Aparece en tu lista de archivos</li>
+        </ol>
+        
+        <h3>Ver mis archivos</h3>
+        <ul>
+            <li>Ve a "Mis Archivos"</li>
+            <li>Ves todos TUS archivos en lista o cuadrícula</li>
+            <li>Puedes buscar por nombre o contrato</li>
+        </ul>
+        
+        <h3>Ver archivos compartidos por otros</h3>
+        <ul>
+            <li>Ve a "Archivos Compartidos"</li>
+            <li>Ves archivos subidos por otros usuarios</li>
+            <li>Puedes descargar y ver, pero no editar</li>
+        </ul>
+        
+        <h3>Descargar archivo</h3>
+        <ol>
+            <li>Busca el archivo en tu lista</li>
+            <li>Haz clic en el menú (⋮) de la derecha</li>
+            <li>Selecciona "Descargar"</li>
+            <li>Se descarga a tu carpeta "Descargas"</li>
+        </ol>
+        
+        <h3>Cerrar sesión</h3>
+        <ol>
+            <li>Haz clic en tu nombre (arriba a la derecha)</li>
+            <li>Selecciona "Cerrar Sesión"</li>
+            <li>Vuelves a pantalla de login</li>
+        </ol>
+        
+        <!-- SECCIÓN 9 -->
+        <h2>9. GUÍA DE ADMINISTRACIÓN</h2>
+        
+        <h3>Acceso de Admin</h3>
+        <p>Como admin, ves menú extra en sidebar:</p>
+        <ul>
+            <li>👥 Gestionar Usuarios</li>
+            <li>📑 Todos los Archivos</li>
+            <li>📋 Registro de Auditoría</li>
+        </ul>
+        
+        <h3>Crear Nuevo Usuario</h3>
+        <ol>
+            <li>Ve a "Gestionar Usuarios"</li>
+            <li>Haz clic en botón "Crear Usuario"</li>
+            <li>Llena formulario:</li>
+            <li style="margin-left: 40px;">Nombre Completo</li>
+            <li style="margin-left: 40px;">Usuario (para login)</li>
+            <li style="margin-left: 40px;">Contraseña (mínimo 8 caracteres)</li>
+            <li style="margin-left: 40px;">¿Es Admin? (sí/no)</li>
+            <li>Haz clic "Crear"</li>
+            <li>El usuario recibe datos para login</li>
+        </ol>
+        
+        <h3>Editar Usuario</h3>
+        <ol>
+            <li>En lista de usuarios, haz clic en el usuario</li>
+            <li>Puedes cambiar:</li>
+            <li style="margin-left: 40px;">Nombre completo</li>
+            <li style="margin-left: 40px;">Contraseña</li>
+            <li style="margin-left: 40px;">Rol (Admin sí/no)</li>
+            <li style="margin-left: 40px;">Activo (sí/no)</li>
+            <li>Guarda cambios</li>
+        </ol>
+        
+        <h3>Ver Todos los Archivos</h3>
+        <ol>
+            <li>Ve a "Todos los Archivos"</li>
+            <li>Ves lista completa de TODOS los archivos del sistema</li>
+            <li>Puedes:</li>
+            <li style="margin-left: 40px;">Filtrar por usuario</li>
+            <li style="margin-left: 40px;">Filtrar por fecha</li>
+            <li style="margin-left: 40px;">Buscar por nombre</li>
+            <li style="margin-left: 40px;">Descargar</li>
+            <li style="margin-left: 40px;">Previsualizar</li>
+            <li style="margin-left: 40px;">Eliminar</li>
+        </ol>
+        
+        <h3>Eliminar Archivo</h3>
+        <ol>
+            <li>En "Todos los Archivos", encuentra el archivo</li>
+            <li>Haz clic en menú (⋮)</li>
+            <li>Selecciona "Eliminar"</li>
+            <li>Confirma: "¿Estás seguro?"</li>
+            <li>Se marca como eliminado</li>
+            <li>Se registra en auditoría (quién eliminó, cuándo)</li>
+        </ol>
+        
+        <h3>Ver Registro de Auditoría</h3>
+        <ol>
+            <li>Ve a "Registro de Auditoría"</li>
+            <li>Ves todas las acciones del sistema ordenadas por fecha</li>
+            <li>Información: Usuario, Acción, Detalles, Fecha/Hora, IP, Navegador</li>
+            <li>Puedes filtrar por tipo de acción</li>
+        </ol>
+        
+        <h3>Estadísticas</h3>
+        <p>En el Dashboard ves:</p>
+        <ul>
+            <li>Total de archivos en el sistema</li>
+            <li>Tamaño total de todos los archivos</li>
+            <li>Archivos subidos recientemente</li>
+            <li>Usuarios activos</li>
+        </ul>
+        
+        <!-- SECCIÓN 10 -->
+        <h2>10. INSTALACIÓN Y CONFIGURACIÓN</h2>
+        
+        <h3>Requisitos Previos</h3>
+        <ul>
+            <li>Node.js 16+ instalado en tu computadora</li>
+            <li>Un editor de código (Visual Studio Code recomendado)</li>
+            <li>Acceso a Internet</li>
+        </ul>
+        
+        <h3>Pasos para Instalar Localmente</h3>
+        
+        <h4>1. Descargar el Proyecto</h4>
+        <ul>
+            <li>Descarga la carpeta del proyecto (ZIP)</li>
+            <li>Descomprime en tu computadora</li>
+        </ul>
+        
+        <h4>2. Abrir en Visual Studio Code</h4>
+        <ul>
+            <li>Abre VS Code</li>
+            <li>File → Open Folder</li>
+            <li>Selecciona la carpeta del proyecto</li>
+        </ul>
+        
+        <h4>3. Abrir Terminal</h4>
+        <ul>
+            <li>Presiona Ctrl + Ñ (o Cmd + Ñ en Mac)</li>
+            <li>O ve a View → Terminal</li>
+        </ul>
+        
+        <h4>4. Instalar Dependencias</h4>
+        <div class="code-block">npm install</div>
+        <p>Espera a que termine (varios minutos)</p>
+        
+        <h4>5. Configurar Base de Datos</h4>
+        <p>Opción A: Usar BD en Neon (recomendado)</p>
+        <ul>
+            <li>Copia la URL de conexión desde Replit</li>
+            <li>Crea archivo <code>.env</code> en raíz</li>
+            <li>Añade: <code>DATABASE_URL=tu_url_aqui</code></li>
+        </ul>
+        
+        <p>Opción B: Usar BD local (necesita PostgreSQL instalado)</p>
+        <ul>
+            <li>Instala PostgreSQL en tu máquina</li>
+            <li>Crea BD local</li>
+            <li>Copia URL de conexión a <code>.env</code></li>
+        </ul>
+        
+        <h4>6. Crear Tablas en BD</h4>
+        <div class="code-block">npm run db:push</div>
+        
+        <h4>7. Iniciar Servidor</h4>
+        <div class="code-block">npm run dev</div>
+        
+        <h4>8. Abrir en Navegador</h4>
+        <p>Ve a: <code>http://localhost:5000</code></p>
+        
+        <h3>Variables de Entorno (.env)</h3>
+        <p>Archivo necesario en raíz del proyecto:</p>
+        <div class="code-block">DATABASE_URL=postgresql://usuario:contraseña@host:puerto/base_datos
+SESSION_SECRET=tu_secret_aleatorio_aqui
+NODE_ENV=development</div>
+        
+        <!-- SECCIÓN 11 -->
+        <h2>11. PREGUNTAS FRECUENTES</h2>
+        
+        <h3>❓ ¿Qué formatos de archivo se pueden subir?</h3>
+        <p>✅ Permitidos:</p>
+        <ul>
+            <li>Documentos: PDF, Word (.doc, .docx), Excel (.xls, .xlsx), PowerPoint (.ppt, .pptx)</li>
+            <li>Imágenes: PNG, JPG, JPEG, GIF, WebP</li>
+            <li>Comprimidos: ZIP, RAR, TAR, GZ</li>
+        </ul>
+        <p>❌ No permitidos: .exe, .bat, .sh (archivos ejecutables por seguridad)</p>
+        
+        <h3>❓ ¿Cuál es el tamaño máximo de archivo?</h3>
+        <p>50 MB por archivo. Si tu archivo es más grande, comprimelo en ZIP.</p>
+        
+        <h3>❓ ¿Qué pasa si subo un archivo dos veces?</h3>
+        <p>Se crea una nueva versión automáticamente. Las antiguas se guardan.</p>
+        
+        <h3>❓ ¿Puedo ver la contraseña?</h3>
+        <p>No, está encriptada. Si la olvidas, el admin debe crear una nueva.</p>
+        
+        <h3>❓ ¿Cuánto tiempo tarda en login si hay "Sesión expirada"?</h3>
+        <p>30 minutos sin actividad. Luego, la sesión se cierra automáticamente.</p>
+        
+        <h3>❓ ¿Quién puede ver mis archivos?</h3>
+        <ul>
+            <li>Tú: siempre ves tus archivos</li>
+            <li>Admin: ve todos los archivos</li>
+            <li>Otros usuarios: ven tus archivos en "Archivos Compartidos"</li>
+        </ul>
+        
+        <h3>❓ ¿Se pueden recuperar archivos eliminados?</h3>
+        <p>El admin que eliminó puede ver el registro. La BD marca como "eliminado" pero guarda el dato. Contacta con admin.</p>
+        
+        <h3>❓ ¿Dónde se guardan los archivos realmente?</h3>
+        <p>En la carpeta <code>uploads/</code> del servidor y metadatos en PostgreSQL.</p>
+        
+        <h3>❓ ¿Qué pasa si me intentan hackear?</h3>
+        <p>El sistema:</p>
+        <ul>
+            <li>Bloquea la cuenta después de 5 intentos fallidos (15 minutos)</li>
+            <li>Registra cada intento en auditoría</li>
+            <li>El admin ve IP y navegador de cada intento</li>
+        </ul>
+        
+        <h3>❓ ¿Puedo cambiar mi contraseña?</h3>
+        <p>No (actualmente). El admin puede cambiarla por ti.</p>
+        
+        <h3>❓ ¿Es seguro usar esto por Internet?</h3>
+        <p>Sí, pero SIEMPRE usa HTTPS (no HTTP). En Replit es automático.</p>
+        
+        <h3>❓ ¿Qué pasa si el servidor se cae?</h3>
+        <p>Los datos en BD se guardan. Al reiniciar, todo sigue ahí.</p>
+        
+        <h3>❓ ¿Puedo exportar todos mis datos?</h3>
+        <p>Sí, desde el navegador: descargas tus archivos uno a uno.</p>
+        
+        <!-- FOOTER -->
+        <div class="footer">
+            <p><strong>Sistema de Gestión de Archivos - Azal Mechanical Supports</strong></p>
+            <p>Documentación v1.0 | Noviembre 2024</p>
+            <p>Para soporte técnico, contacta al administrador</p>
+        </div>
+    </div>
+</body>
+</html>
