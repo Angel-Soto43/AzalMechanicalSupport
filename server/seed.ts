@@ -1,5 +1,5 @@
-import { storage } from "./storage";
-import { hashPassword } from "./auth";
+import { storage } from "./storage.ts";
+import { hashPassword } from "./auth.ts";
 
 async function seed() {
   console.log("Checking for existing admin user...");
@@ -28,7 +28,7 @@ async function seed() {
   console.log(`Password: admin123`);
   console.log(`Full Name: ${admin.fullName}`);
 
-  // Create audit log for initial setup
+  
   await storage.createAuditLog({
     userId: admin.id,
     action: "user_created",

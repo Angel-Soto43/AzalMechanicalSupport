@@ -6,6 +6,11 @@ import { createUserSchema, updateUserSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { db } from "./db";
+import { folders } from "@shared/schema";
+import { eq } from "drizzle-orm";
+
+
 
 // Ensure uploads directory exists
 const UPLOADS_DIR = path.join(process.cwd(), "uploads");
@@ -95,6 +100,121 @@ export async function registerRoutes(
     }
   });
 
+  // ============ Folder Routes ============
+  // Obtener archivos de una carpeta
+  app.get("/api/folders/:id/files", requireAuth, async (req, res) => {
+    try {
+      const folderId = Number(req.params.id);
+
+      if (isNaN(folderId)) {
+        return res.status(400).send("ID de carpeta inválido");
+      }
+
+      const files = await storage.getFilesByFolder(folderId);
+      res.json(files);
+    } catch (error) {
+      console.error("Error fetching files by folder:", error);
+      res.status(500).send("Error al obtener archivos de la carpeta");
+    }
+  });
+  // Obtener contenido completo de una carpeta (subcarpetas + archivos)
+app.get("/api/folders/:id/content", requireAuth, async (req, res) => {
+  try {
+    const folderId = Number(req.params.id);
+
+    if (isNaN(folderId)) {
+      return res.status(400).send("ID de carpeta inválido");
+    }
+
+    const folder = await storage.getFolderById(folderId);
+    if (!folder) {
+      return res.status(404).send("Carpeta no encontrada");
+    }
+
+    const folders = await storage.getFoldersByParent(folderId);
+    const files = await storage.getFilesByFolder(folderId);
+    const path = await storage.getFolderPath(folderId);
+    res.json({
+      folder,
+      path,
+      folders,
+      files,
+    });
+
+  } catch (error) {
+    console.error("Error fetching folder content:", error);
+    res.status(500).send("Error al obtener contenido de la carpeta");
+  }
+});
+
+  // Obtener carpetas raíz (nivel superior)
+  app.get("/api/folders/root", requireAuth, async (req, res) => {
+    try {
+      const folders = await storage.getRootFolders();
+      res.json(folders);
+    } catch (error) {
+      console.error("Error fetching root folders:", error);
+      res.status(500).send("Error al obtener carpetas raíz");
+    }
+  });
+
+  // Obtener subcarpetas por parentId
+  app.get("/api/folders/:parentId", requireAuth, async (req, res) => {
+    try {
+      const parentId = Number(req.params.parentId);
+      const folders = await storage.getFoldersByParent(parentId);
+      res.json(folders);
+    } catch (error) {
+      console.error("Error fetching child folders:", error);
+      res.status(500).send("Error al obtener subcarpetas");
+    }
+  });
+
+  // Crear carpeta
+  app.post("/api/folders", requireAdmin, async (req, res) => {
+    try {
+      const { name, parentId } = req.body;
+
+      if (!name) {
+        return res.status(400).send("El nombre de la carpeta es obligatorio");
+      }
+
+    const folder = await storage.createFolder({
+      name,
+      parentId: parentId ?? null,
+      userId: req.user!.id,
+    });
+
+    // Log
+    await storage.createAuditLog({
+      userId: req.user!.id,
+      action: "folder_created",
+      resourceType: "folder",
+      resourceId: folder.id,
+      details: `Carpeta creada: ${folder.name}`,
+      ipAddress: req.ip || "unknown",
+      userAgent: req.get("User-Agent") || "unknown",
+    });
+
+    res.status(201).json(folder);
+  } catch (error) {
+    console.error("Error creating folder:", error);
+    res.status(500).send("Error al crear carpeta");
+  }
+});
+
+// Eliminar carpeta (admin)
+app.delete("/api/folders/:id", requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    await storage.deleteFolder(id);
+    res.sendStatus(204);
+  } catch (error) {
+    console.error("Error deleting folder:", error);
+    res.status(500).send("Error al eliminar carpeta");
+  }
+});
+
   // ============ File Routes ============
 
   // Get current user's files
@@ -160,7 +280,7 @@ export async function registerRoutes(
         return res.status(400).send("No se proporcionó ningún archivo");
       }
 
-      const { contractId, supplier } = req.body;
+      const { contractId, supplier, folderId } = req.body;
       if (!contractId) {
         fs.unlinkSync(req.file.path);
         return res.status(400).send("El ID de contrato es requerido");
@@ -174,6 +294,7 @@ export async function registerRoutes(
       const file = await storage.createFile({
         contractId,
         supplier,
+        folderId: folderId ? Number(folderId) : null,
         filename: req.file.filename,
         originalName: req.file.originalname,
         mimeType: req.file.mimetype,
@@ -206,66 +327,93 @@ export async function registerRoutes(
 
   // Update file version
   app.post("/api/files/:id/version", requireAuth, upload.single("file"), async (req, res) => {
-    try {
-      const fileId = parseInt(req.params.id);
-      const existingFile = await storage.getFile(fileId);
+  try {
+    const fileId = Number(req.params.id);
+    const existingFile = await storage.getFile(fileId);
 
-      if (!existingFile) {
-        if (req.file) fs.unlinkSync(req.file.path);
-        return res.status(404).send("Archivo no encontrado");
-      }
-
-      // Check if user owns the file
-      if (existingFile.uploadedBy !== req.user!.id && !req.user!.isAdmin) {
-        if (req.file) fs.unlinkSync(req.file.path);
-        return res.status(403).send("No tienes permiso para actualizar este archivo");
-      }
-
-      if (!req.file) {
-        return res.status(400).send("No se proporcionó ningún archivo");
-      }
-
-      // Create new version
-      const newFile = await storage.createFile({
-        contractId: existingFile.contractId,
-        filename: req.file.filename,
-        originalName: req.file.originalname,
-        mimeType: req.file.mimetype,
-        size: req.file.size,
-        uploadedBy: req.user!.id,
-        previousVersionId: existingFile.id,
-      });
-
-      // Update version number
-      await storage.updateFile(newFile.id, { version: existingFile.version + 1 });
-
-      // Mark old file as deleted (soft delete previous version)
-      await storage.deleteFile(existingFile.id, req.user!.id);
-
-      // Log action
-      await storage.createAuditLog({
-        userId: req.user!.id,
-        action: "upload",
-        resourceType: "file",
-        resourceId: newFile.id,
-        details: `Nueva versión subida: ${newFile.originalName} (v${existingFile.version + 1})`,
-        ipAddress: req.ip || req.socket.remoteAddress || "unknown",
-        userAgent: req.get("User-Agent") || "unknown",
-      });
-
-      const updatedFile = await storage.getFile(newFile.id);
-      const enrichedFiles = await enrichFilesWithUploader([updatedFile!]);
-      res.status(201).json(enrichedFiles[0]);
-    } catch (error) {
-      console.error("Error updating file version:", error);
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-      res.status(500).send("Error al actualizar versión");
+    if (!existingFile) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(404).send("Archivo no encontrado");
     }
-  });
 
-  // Download file
+    // Permisos: dueño o admin
+    if (existingFile.uploadedBy !== req.user!.id && !req.user!.isAdmin) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(403).send("No tienes permiso para actualizar este archivo");
+    }
+
+    if (!req.file) {
+      return res.status(400).send("No se proporcionó ningún archivo");
+    }
+
+    
+    const newFile = await storage.createFile({
+      contractId: existingFile.contractId,
+      supplier: existingFile.supplier,
+      folderId: existingFile.folderId,
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype,
+      size: req.file.size,
+      uploadedBy: req.user!.id,
+      previousVersionId: existingFile.id, 
+    });
+
+    // Log
+    await storage.createAuditLog({
+      userId: req.user!.id,
+      action: "upload_version",
+      resourceType: "file",
+      resourceId: newFile.id,
+      details: `Nueva versión de ${existingFile.originalName}`,
+      ipAddress: req.ip || "unknown",
+      userAgent: req.get("User-Agent") || "unknown",
+    });
+
+    res.status(201).json(newFile);
+  } catch (error) {
+    console.error("Error updating file version:", error);
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    res.status(500).send("Error al actualizar versión");
+  }
+});
+// Obtener historial de versiones de un archivo
+app.get("/api/files/:id/versions", requireAuth, async (req, res) => {
+  try {
+    console.log("➡️ GET /api/files/:id/versions");
+    console.log("📥 req.params.id =", req.params.id);
+
+    const fileId = Number(req.params.id);
+    console.log("🔢 fileId convertido =", fileId);
+
+    if (isNaN(fileId)) {
+      console.log("❌ fileId NO es un número");
+      return res.status(400).send("ID de archivo inválido");
+    }
+
+    console.log("🔍 Buscando archivo principal con id =", fileId);
+    const file = await storage.getFile(fileId);
+    console.log("📄 Archivo encontrado =", file);
+
+    if (!file) {
+      console.log("❌ No existe archivo con ese ID");
+      return res.status(404).send("Archivo no encontrado");
+    }
+
+    console.log("🧬 Buscando versiones del archivo id =", fileId);
+    const versions = await storage.getFileVersions(fileId);
+    console.log("📚 Versiones encontradas =", versions);
+
+    res.json(versions);
+  } catch (error) {
+    console.error("🔥 Error obteniendo versiones:", error);
+    res.status(500).send("Error al obtener versiones del archivo");
+  }
+});
+
+ 
   app.get("/api/files/:id/download", requireAuth, async (req, res) => {
     try {
       const fileId = parseInt(req.params.id);
@@ -280,7 +428,7 @@ export async function registerRoutes(
         return res.status(404).send("Archivo no encontrado en el servidor");
       }
 
-      // Log download
+      
       await storage.createAuditLog({
         userId: req.user!.id,
         action: "download",
@@ -298,7 +446,7 @@ export async function registerRoutes(
     }
   });
 
-  // Preview file
+  
   app.get("/api/files/:id/preview", requireAuth, async (req, res) => {
     try {
       const fileId = parseInt(req.params.id);
@@ -321,8 +469,44 @@ export async function registerRoutes(
       res.status(500).send("Error al previsualizar archivo");
     }
   });
+  
+app.patch("/api/files/:id/move", requireAdmin, async (req, res) => {
+  try {
+    const fileId = Number(req.params.id);
+    const { folderId } = req.body;
 
-  // Delete file (admin only)
+    if (isNaN(fileId) || !folderId) {
+      return res.status(400).send("Datos inválidos");
+    }
+
+    const file = await storage.getFile(fileId);
+    if (!file) {
+      return res.status(404).send("Archivo no encontrado");
+    }
+
+    await storage.updateFile(fileId, {
+      folderId: Number(folderId),
+    });
+
+    
+    await storage.createAuditLog({
+      userId: req.user!.id,
+      action: "move",
+      resourceType: "file",
+      resourceId: fileId,
+      details: `Archivo movido: ${file.originalName} → carpeta ${folderId}`,
+      ipAddress: req.ip || "unknown",
+      userAgent: req.get("User-Agent") || "unknown",
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error moving file:", error);
+    res.status(500).send("Error al mover archivo");
+  }
+});
+
+  
   app.delete("/api/files/:id", requireAdmin, async (req, res) => {
     try {
       const fileId = parseInt(req.params.id);
@@ -334,7 +518,7 @@ export async function registerRoutes(
 
       await storage.deleteFile(fileId, req.user!.id);
 
-      // Log deletion
+      
       await storage.createAuditLog({
         userId: req.user!.id,
         action: "delete",
@@ -352,13 +536,11 @@ export async function registerRoutes(
     }
   });
 
-  // ============ User Routes (Admin only) ============
-
-  // Get all users
+  
   app.get("/api/users", requireAdmin, async (req, res) => {
     try {
       const allUsers = await storage.getAllUsers();
-      // Remove passwords from response
+      
       const usersWithoutPasswords = allUsers.map(({ password, ...user }) => user);
       res.json(usersWithoutPasswords);
     } catch (error) {
@@ -367,7 +549,7 @@ export async function registerRoutes(
     }
   });
 
-  // Create user
+  
   app.post("/api/users", requireAdmin, async (req, res) => {
     try {
       const validation = createUserSchema.safeParse(req.body);
@@ -377,7 +559,7 @@ export async function registerRoutes(
 
       const { username, password, fullName, isAdmin, isActive } = validation.data;
 
-      // Check if username already exists
+      
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
         return res.status(400).send("El nombre de usuario ya existe");
@@ -392,7 +574,7 @@ export async function registerRoutes(
         isActive: isActive ?? true,
       });
 
-      // Log user creation
+      
       await storage.createAuditLog({
         userId: req.user!.id,
         action: "user_created",
@@ -411,7 +593,7 @@ export async function registerRoutes(
     }
   });
 
-  // Update user
+  
   app.patch("/api/users/:id", requireAdmin, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
@@ -442,7 +624,7 @@ export async function registerRoutes(
 
       const updatedUser = await storage.updateUser(userId, updateData);
 
-      // Log user update
+      
       await storage.createAuditLog({
         userId: req.user!.id,
         action: "user_updated",
@@ -465,9 +647,7 @@ export async function registerRoutes(
     }
   });
 
-  // ============ Audit Log Routes ============
-
-  // Get all audit logs
+  
   app.get("/api/audit-logs", requireAdmin, async (req, res) => {
     try {
       const logs = await storage.getAuditLogs();
@@ -479,7 +659,7 @@ export async function registerRoutes(
     }
   });
 
-  // Get recent audit logs
+  
   app.get("/api/audit-logs/recent", requireAuth, async (req, res) => {
     try {
       const logs = await storage.getRecentAuditLogs(10);

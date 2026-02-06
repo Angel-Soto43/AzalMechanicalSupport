@@ -1,0 +1,2 @@
+ALTER TABLE "files" ADD COLUMN "folder_id" integer;--> statement-breakpoint
+ALTER TABLE "files" ADD CONSTRAINT "files_folder_id_folders_id_fk" FOREIGN KEY ("folder_id") REFERENCES "public"."folders"("id") ON DELETE no action ON UPDATE no action;

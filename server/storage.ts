@@ -1,8 +1,16 @@
-import { 
-  users, files, auditLogs,
-  type User, type InsertUser, 
-  type File, type InsertFile,
-  type AuditLog, type InsertAuditLog 
+import {
+  users,
+  files,
+  folders,
+  auditLogs,
+  type User,
+  type InsertUser,
+  type File,
+  type InsertFile,
+  type Folder,
+  type InsertFolder,
+  type AuditLog,
+  type InsertAuditLog,
 } from "@shared/schema";
 import { db, pool } from "./db";
 import { eq, desc, and, gte, lte, like, isNull, sql } from "drizzle-orm";
@@ -21,7 +29,9 @@ export interface IStorage {
   
   // Files
   getFile(id: number): Promise<File | undefined>;
+  getFileVersions(fileId: number): Promise<File[]>;
   getFilesByUser(userId: number): Promise<File[]>;
+  getFilesByFolder(folderId: number): Promise<File[]>;
   getAllFiles(): Promise<File[]>;
   getRecentFiles(limit?: number): Promise<File[]>;
   getSharedFiles(excludeUserId: number): Promise<File[]>;
@@ -30,6 +40,14 @@ export interface IStorage {
   deleteFile(id: number, deletedBy: number): Promise<void>;
   searchFiles(params: { contractId?: string; uploaderId?: number; startDate?: Date; endDate?: Date }): Promise<File[]>;
   
+  // Folders
+  getFolderById(id: number): Promise<Folder | undefined>;
+  getFolderPath(folderId: number): Promise<Folder[]>;
+  getRootFolders(): Promise<Folder[]>;
+  getFoldersByParent(parentId: number): Promise<Folder[]>;
+  createFolder(data: InsertFolder): Promise<Folder>;
+  deleteFolder(id: number): Promise<void>;
+
   // Audit Logs
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
   getAuditLogs(limit?: number): Promise<AuditLog[]>;
@@ -48,6 +66,22 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
+  async getFolderPath(folderId: number): Promise<Folder[]> {
+  const path: Folder[] = [];
+
+  let current = await this.getFolderById(folderId);
+
+  while (current) {
+    path.unshift(current);
+
+    if (current.parentId === null) break;
+
+    current = await this.getFolderById(current.parentId);
+  }
+
+  return path;
+}
+
 
   constructor() {
     this.sessionStore = new PostgresSessionStore({ 
@@ -92,6 +126,35 @@ export class DatabaseStorage implements IStorage {
     );
     return file;
   }
+  async getFileIncludingDeleted(id: number): Promise<File | undefined> {
+  const [file] = await db
+    .select()
+    .from(files)
+    .where(eq(files.id, id));
+
+  return file;
+}
+  async getFileVersions(fileId: number): Promise<File[]> {
+  const file = await this.getFileIncludingDeleted(fileId);
+  if (!file) return [];
+
+  const versions: File[] = [file];
+
+  let current = file;
+  while (current.previousVersionId) {
+    const prev = await this.getFileIncludingDeleted(
+      current.previousVersionId
+    );
+    if (!prev) break;
+
+    versions.push(prev);
+    current = prev;
+  }
+
+  return versions.sort((a, b) => a.version - b.version);
+}
+
+
 
   async getFilesByUser(userId: number): Promise<File[]> {
     return db
@@ -108,6 +171,20 @@ export class DatabaseStorage implements IStorage {
       .where(eq(files.isDeleted, false))
       .orderBy(desc(files.uploadedAt));
   }
+  // FILES BY FOLDER
+  async getFilesByFolder(folderId: number) {
+    return db
+      .select()
+      .from(files)
+      .where(
+        and(
+          eq(files.folderId, folderId),
+          eq(files.isDeleted, false)
+        )
+      )
+      .orderBy(desc(files.uploadedAt));
+  }
+
 
   async getRecentFiles(limit: number = 10): Promise<File[]> {
     return db
@@ -119,9 +196,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createFile(insertFile: InsertFile): Promise<File> {
-    const [file] = await db.insert(files).values(insertFile).returning();
-    return file;
+  let version = 1;
+
+  if (insertFile.previousVersionId) {
+    const previousFile = await this.getFile(insertFile.previousVersionId);
+
+    if (previousFile) {
+      version = previousFile.version + 1;
+    }
   }
+
+  const [file] = await db
+    .insert(files)
+    .values({
+      ...insertFile,
+      version,
+    })
+    .returning();
+
+  return file;
+}
 
   async updateFile(id: number, data: Partial<File>): Promise<File | undefined> {
     const [file] = await db
@@ -174,8 +268,46 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(files.isDeleted, false)))
       .orderBy(desc(files.uploadedAt));
   }
+  
+  
+  async getFolderById(id: number) {
+  const [folder] = await db
+    .select()
+    .from(folders)
+    .where(eq(folders.id, id));
 
-  // Audit Logs
+  return folder;
+}
+
+  async getRootFolders() {
+    return db
+      .select()
+      .from(folders)
+      .where(isNull(folders.parentId))
+      .orderBy(folders.name);
+  }
+
+  async getFoldersByParent(parentId: number) {
+    return db
+      .select()
+      .from(folders)
+      .where(eq(folders.parentId, parentId))
+      .orderBy(folders.name);
+  }
+
+  async createFolder(insertFolder: InsertFolder) {
+    const [folder] = await db
+      .insert(folders)
+      .values(insertFolder)
+      .returning();
+    return folder;
+  }
+
+  async deleteFolder(id: number) {
+    await db.delete(folders).where(eq(folders.id, id));
+  }
+
+  
   async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
     const [auditLog] = await db.insert(auditLogs).values(log).returning();
     return auditLog;
@@ -197,7 +329,7 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
-  // Stats
+  
   async getStats(): Promise<{
     totalFiles: number;
     totalSize: number;

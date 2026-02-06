@@ -28,15 +28,15 @@ export async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
-// Session timeout: 30 minutes of inactivity
+
 const SESSION_MAX_AGE = 30 * 60 * 1000;
 
-// Failed login tracking
+
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION = 15 * 60 * 1000; // 15 minutes
 
 export function setupAuth(app: Express) {
-  // Ensure SESSION_SECRET is configured
+  
   if (!process.env.SESSION_SECRET) {
     throw new Error("SESSION_SECRET must be set for secure session management");
   }
@@ -52,7 +52,7 @@ export function setupAuth(app: Express) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
     },
-    rolling: true, // Reset expiry on activity
+    rolling: true, 
   };
 
   app.set("trust proxy", 1);
@@ -69,12 +69,12 @@ export function setupAuth(app: Express) {
           return done(null, false, { message: "Usuario no encontrado" });
         }
 
-        // Check if account is locked
+        
         if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
           return done(null, false, { message: "Cuenta bloqueada temporalmente" });
         }
 
-        // Check if account is active
+        
         if (!user.isActive) {
           return done(null, false, { message: "Cuenta desactivada" });
         }
@@ -96,7 +96,7 @@ export function setupAuth(app: Express) {
           return done(null, false, { message: "Contraseña incorrecta" });
         }
 
-        // Reset failed attempts on successful login
+        
         await storage.updateUser(user.id, {
           failedLoginAttempts: 0,
           lockedUntil: null,
@@ -120,7 +120,7 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Login endpoint
+  
   app.post("/api/login", (req: Request, res: Response, next: NextFunction) => {
     const ip = req.ip || req.socket.remoteAddress || "unknown";
     const userAgent = req.get("User-Agent") || "unknown";
@@ -131,7 +131,7 @@ export function setupAuth(app: Express) {
       }
       
       if (!user) {
-        // Log failed attempt
+        
         await storage.createAuditLog({
           userId: null,
           action: "login_failed",
@@ -141,7 +141,7 @@ export function setupAuth(app: Express) {
           userAgent,
         });
 
-        // Check if user exists and is locked
+        
         const existingUser = await storage.getUserByUsername(req.body.username);
         if (existingUser?.lockedUntil && new Date(existingUser.lockedUntil) > new Date()) {
           return res.status(423).send("Cuenta bloqueada temporalmente por múltiples intentos fallidos");
@@ -155,7 +155,7 @@ export function setupAuth(app: Express) {
           return next(loginErr);
         }
 
-        // Log successful login
+        
         await storage.createAuditLog({
           userId: user.id,
           action: "login",
@@ -165,14 +165,14 @@ export function setupAuth(app: Express) {
           userAgent,
         });
 
-        // Remove password from response
+        
         const { password, ...userWithoutPassword } = user;
         res.status(200).json(userWithoutPassword);
       });
     })(req, res, next);
   });
 
-  // Logout endpoint
+  
   app.post("/api/logout", async (req, res, next) => {
     const userId = req.user?.id;
     const ip = req.ip || req.socket.remoteAddress || "unknown";
@@ -198,7 +198,7 @@ export function setupAuth(app: Express) {
     });
   });
 
-  // Get current user
+  
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
@@ -208,7 +208,7 @@ export function setupAuth(app: Express) {
   });
 }
 
-// Middleware to check if user is authenticated
+
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).send("No autenticado");
@@ -216,7 +216,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-// Middleware to check if user is admin
+
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).send("No autenticado");

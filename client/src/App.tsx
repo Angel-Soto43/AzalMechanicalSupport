@@ -23,6 +23,7 @@ import SharedFilesPage from "@/pages/shared-files-page";
 import AllFilesPage from "@/pages/all-files-page";
 import UsersPage from "@/pages/users-page";
 import AuditLogsPage from "@/pages/audit-logs-page";
+import FolderPage from "@/pages/folder-page";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -71,6 +72,12 @@ function Router() {
           <DashboardPage />
         </AppLayout>
       )} />
+      <ProtectedRoute path="/folders/:id" component={() => (
+        <AppLayout>
+          <FolderPage />
+        </AppLayout>
+      )} />
+
       <ProtectedRoute path="/my-files" component={() => (
         <AppLayout>
           <MyFilesPage />

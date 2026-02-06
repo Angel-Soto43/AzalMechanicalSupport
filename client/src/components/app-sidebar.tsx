@@ -47,6 +47,12 @@ const mainNavItems = [
     icon: Share2,
     adminOnly: false,
   },
+  {
+    title: "Carpetas",
+    url: "/folders/1",
+    icon: FolderOpen,
+    adminOnly: false,
+  },
 ];
 
 const adminNavItems = [

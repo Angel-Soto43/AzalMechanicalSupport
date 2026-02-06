@@ -21,6 +21,7 @@ export const users = pgTable("users", {
 // Files table - stores file metadata
 export const files = pgTable("files", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  folderId: integer("folder_id").references(() => folders.id),
   contractId: text("contract_id").notNull(),
   supplier: text("supplier").notNull().default(""),
   filename: text("filename").notNull(),
@@ -35,6 +36,16 @@ export const files = pgTable("files", {
   deletedAt: timestamp("deleted_at"),
   deletedBy: integer("deleted_by"),
 });
+
+// Folders table - stores folder hierarchy
+export const folders = pgTable("folders", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  name: text("name").notNull(),
+  parentId: integer("parent_id").references(() => folders.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 
 // Audit logs table - tracks all system actions
 export const auditLogs = pgTable("audit_logs", {
@@ -64,6 +75,11 @@ export const filesRelations = relations(files, ({ one }) => ({
     fields: [files.previousVersionId],
     references: [files.id],
   }),
+  folder: one(folders, {
+  fields: [files.folderId],
+  references: [folders.id],
+}),
+
 }));
 
 export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
@@ -72,6 +88,19 @@ export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const foldersRelations = relations(folders, ({ one, many }) => ({
+  parent: one(folders, {
+    fields: [folders.parentId],
+    references: [folders.id],
+  }),
+  children: many(folders),
+  owner: one(users, {
+    fields: [folders.userId],
+    references: [users.id],
+  }),
+}));
+
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -103,6 +132,9 @@ export type File = typeof files.$inferSelect;
 export type InsertFile = z.infer<typeof insertFileSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type Folder = typeof folders.$inferSelect;
+export type InsertFolder = typeof folders.$inferInsert;
+
 
 // Additional schemas for API validation
 export const loginSchema = z.object({
@@ -134,3 +166,5 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type FileSearchInput = z.infer<typeof fileSearchSchema>;
+
+

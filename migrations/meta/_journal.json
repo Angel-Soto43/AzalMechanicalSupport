@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1765749804605,
+      "tag": "0000_same_layla_miller",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1766778444067,
+      "tag": "0001_flippant_wildside",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766878310658,
+      "tag": "0002_lumpy_sugar_man",
+      "breakpoints": true
+    }
+  ]
+}
