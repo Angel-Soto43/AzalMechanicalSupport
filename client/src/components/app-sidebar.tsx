@@ -20,12 +20,14 @@ import {
   FolderOpen,
   Grid3X3,
   Users,
+  UserCheck,
   ClipboardList,
-  Settings,
   LogOut,
   Shield,
   Lock,
   Share2,
+  Database,
+  Navigation,
 } from "lucide-react";
 
 const mainNavItems = [
@@ -49,7 +51,7 @@ const mainNavItems = [
   },
   {
     title: "Carpetas",
-    url: "/folders/1",
+    url: "/folders",
     icon: FolderOpen,
     adminOnly: false,
   },
@@ -65,13 +67,19 @@ const adminNavItems = [
   {
     title: "Gestión de Usuarios",
     url: "/users",
-    icon: Users,
+    icon: UserCheck,
     adminOnly: true,
   },
   {
     title: "Registro de Auditoría",
     url: "/audit-logs",
     icon: ClipboardList,
+    adminOnly: true,
+  },
+  {
+    title: "Respaldar",
+    url: "/backup",
+    icon: Database,
     adminOnly: true,
   },
 ];
@@ -97,8 +105,8 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Shield className="h-5 w-5" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
+            <Shield className="h-6 w-6" />
           </div>
           <div className="flex flex-col">
             <span className="font-semibold text-sm leading-tight">Azal Mechanical</span>
@@ -111,7 +119,10 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navegación</SidebarGroupLabel>
+          <SidebarGroupLabel className="flex items-center gap-2">
+            <Navigation className="h-3 w-3" />
+            Navegación
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainNavItems.map((item) => (
@@ -123,7 +134,7 @@ export function AppSidebar() {
                     className="overflow-hidden"
                   >
                     <Link href={item.url} data-testid={`nav-${item.url.replace("/", "") || "dashboard"}`}>
-                      <item.icon className="h-4 w-4 shrink-0" />
+                      <item.icon className="h-5 w-5 shrink-0 text-black" />
                       <span className="truncate">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -136,8 +147,8 @@ export function AppSidebar() {
         {user?.isAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel className="flex items-center gap-2">
-              <Lock className="h-3 w-3" />
-              Administración
+              <Shield className="h-3 w-3" />
+              Panel de Administración
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -150,7 +161,7 @@ export function AppSidebar() {
                       className="overflow-hidden"
                     >
                       <Link href={item.url} data-testid={`nav-${item.url.replace("/", "")}`}>
-                        <item.icon className="h-4 w-4 shrink-0" />
+                        <item.icon className="h-5 w-5 shrink-0 text-black" />
                         <span className="truncate">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
@@ -167,7 +178,7 @@ export function AppSidebar() {
       <SidebarFooter className="p-4">
         <div className="flex items-center gap-3 mb-3">
           <Avatar className="h-9 w-9">
-            <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+            <AvatarFallback className="bg-muted text-foreground text-sm font-medium">
               {user ? getInitials(user.fullName) : "??"}
             </AvatarFallback>
           </Avatar>

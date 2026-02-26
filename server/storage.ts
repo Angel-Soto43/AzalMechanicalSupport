@@ -35,6 +35,7 @@ export interface IStorage {
   getAllFiles(): Promise<File[]>;
   getRecentFiles(limit?: number): Promise<File[]>;
   getSharedFiles(excludeUserId: number): Promise<File[]>;
+  getFileByContractId(contractId: string): Promise<File | undefined>;
   createFile(file: InsertFile): Promise<File>;
   updateFile(id: number, data: Partial<File>): Promise<File | undefined>;
   deleteFile(id: number, deletedBy: number): Promise<void>;
@@ -46,7 +47,8 @@ export interface IStorage {
   getRootFolders(): Promise<Folder[]>;
   getFoldersByParent(parentId: number): Promise<Folder[]>;
   createFolder(data: InsertFolder): Promise<Folder>;
-  deleteFolder(id: number): Promise<void>;
+  updateFolder(id: number, data: Partial<Folder>): Promise<Folder | undefined>;
+  deleteFolder(id: number, deletedBy?: number): Promise<void>;
 
   // Audit Logs
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
@@ -67,20 +69,17 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
   async getFolderPath(folderId: number): Promise<Folder[]> {
-  const path: Folder[] = [];
+    const pathArray: Folder[] = [];
+    let current = await this.getFolderById(folderId);
 
-  let current = await this.getFolderById(folderId);
+    while (current) {
+      pathArray.unshift(current);
+      if (current.parentId === null) break;
+      current = await this.getFolderById(current.parentId);
+    }
 
-  while (current) {
-    path.unshift(current);
-
-    if (current.parentId === null) break;
-
-    current = await this.getFolderById(current.parentId);
+    return pathArray;
   }
-
-  return path;
-}
 
 
   constructor() {
@@ -233,6 +232,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(files.id, id));
   }
 
+  // Permanently remove a file record from database
+  async removeFilePermanently(id: number): Promise<void> {
+    const file = await this.getFileIncludingDeleted(id);
+    if (!file) return;
+
+    // File data is stored in the database (BYTEA column), no need to clean up disk files
+    await db.delete(files).where(eq(files.id, id));
+  }
+
   async searchFiles(params: { 
     contractId?: string; 
     uploaderId?: number; 
@@ -267,6 +275,30 @@ export class DatabaseStorage implements IStorage {
       .from(files)
       .where(and(eq(files.isDeleted, false)))
       .orderBy(desc(files.uploadedAt));
+  }
+
+  // Check if contractId already exists (for unique validation)
+  async getFileByContractId(contractId: string): Promise<File | undefined> {
+    const [file] = await db
+      .select()
+      .from(files)
+      .where(and(eq(files.contractId, contractId), eq(files.isDeleted, false)))
+      .limit(1);
+    return file;
+  }
+
+  async getFilesByDateRange(startDate: Date, endDate: Date): Promise<File[]> {
+    return db
+      .select()
+      .from(files)
+      .where(
+        and(
+          eq(files.isDeleted, false),
+          gte(files.uploadedAt, startDate),
+          lte(files.uploadedAt, endDate)
+        )
+      )
+      .orderBy(files.uploadedAt);
   }
   
   
@@ -303,8 +335,44 @@ export class DatabaseStorage implements IStorage {
     return folder;
   }
 
-  async deleteFolder(id: number) {
-    await db.delete(folders).where(eq(folders.id, id));
+  async updateFolder(id: number, data: Partial<Folder>): Promise<Folder | undefined> {
+    const [folder] = await db
+      .update(folders)
+      .set(data)
+      .where(eq(folders.id, id))
+      .returning();
+    return folder;
+  }
+
+  async deleteFolder(id: number, deletedBy?: number) {
+    const folder = await this.getFolderById(id);
+    if (!folder) return;
+
+    const userId = deletedBy ?? 0;
+
+    try {
+      // 1. Permanently remove all files in this folder (including soft-deleted)
+      const allFolderFiles = await db
+        .select()
+        .from(files)
+        .where(eq(files.folderId, id));
+
+      for (const f of allFolderFiles) {
+        await this.removeFilePermanently(f.id);
+      }
+
+      // 2. Recursively delete child folders first (before deleting parent)
+      const children = await this.getFoldersByParent(id);
+      for (const child of children) {
+        await this.deleteFolder(child.id, userId);
+      }
+
+      // 3. Finally, delete the folder row
+      await db.delete(folders).where(eq(folders.id, id));
+    } catch (error) {
+      console.error(`Error deleting folder ${id}:`, error);
+      throw error;
+    }
   }
 
   

@@ -26,13 +26,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Upload,
-  Search,
   MoreVertical,
   Download,
   Eye,
   RefreshCw,
   FileText,
-  X,
+  
   CloudUpload,
   Loader2,
   FolderOpen,
@@ -51,130 +50,7 @@ interface FileWithUploader extends File {
 
 type ViewMode = "grid" | "list";
 
-function FileUploadZone({
-  onFilesSelected,
-  isUploading,
-  contractId,
-  onContractIdChange,
-  supplier,
-  onSupplierChange,
-}: {
-  onFilesSelected: (files: FileList) => void;
-  isUploading: boolean;
-  contractId: string;
-  onContractIdChange: (value: string) => void;
-  supplier: string;
-  onSupplierChange: (value: string) => void;
-}) {
-  const [isDragging, setIsDragging] = useState(false);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setIsDragging(false);
-      if (e.dataTransfer.files.length > 0) {
-        onFilesSelected(e.dataTransfer.files);
-      }
-    },
-    [onFilesSelected]
-  );
-
-  const handleFileInput = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files && e.target.files.length > 0) {
-        onFilesSelected(e.target.files);
-      }
-    },
-    [onFilesSelected]
-  );
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Upload className="h-5 w-5" />
-          Subir Archivo
-        </CardTitle>
-        <CardDescription>
-          Arrastra y suelta archivos o haz clic para seleccionar
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <Label htmlFor="contractId">ID de Contrato (obligatorio)</Label>
-          <Input
-            id="contractId"
-            placeholder="Ej: CONT-2024-001"
-            value={contractId}
-            onChange={(e) => onContractIdChange(e.target.value)}
-            className="mt-1.5 font-mono"
-            data-testid="input-contract-id"
-          />
-        </div>
-        <div>
-          <Label htmlFor="supplier">Proveedor (obligatorio)</Label>
-          <Input
-            id="supplier"
-            placeholder="Ej: Empresa XYZ S.A."
-            value={supplier}
-            onChange={(e) => onSupplierChange(e.target.value)}
-            className="mt-1.5"
-            data-testid="input-supplier"
-          />
-        </div>
-
-        <div
-          className={`
-            relative border-2 border-dashed rounded-lg p-8 text-center transition-colors
-            ${isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25"}
-            ${isUploading ? "pointer-events-none opacity-50" : "cursor-pointer hover:border-primary/50"}
-          `}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={() => document.getElementById("file-input")?.click()}
-          data-testid="dropzone-upload"
-        >
-          <input
-            id="file-input"
-            type="file"
-            className="hidden"
-            onChange={handleFileInput}
-            multiple
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.zip,.rar,.tar,.gz"
-          />
-
-          {isUploading ? (
-            <div className="flex flex-col items-center gap-3">
-              <Loader2 className="h-10 w-10 text-primary animate-spin" />
-              <p className="text-sm text-muted-foreground">Subiendo archivo...</p>
-            </div>
-          ) : (
-            <>
-              <CloudUpload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm font-medium mb-1">
-                Arrastra archivos aquí o haz clic para seleccionar
-              </p>
-              <p className="text-xs text-muted-foreground">
-                PDF, Word, Excel, PowerPoint, Imágenes, ZIP (máx. 50MB)
-              </p>
-            </>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+// Upload UI removed: uploads now handled from Carpeta (folders). This area intentionally left out.
 
 function FileCard({ file, onPreview, onDownload, onUpdateVersion }: {
   file: FileWithUploader;
@@ -196,6 +72,11 @@ function FileCard({ file, onPreview, onDownload, onUpdateVersion }: {
             <p className="font-medium truncate text-sm" data-testid={`text-filename-${file.id}`}>
               {file.originalName}
             </p>
+            {(file as any).folderPath && (
+              <p className="text-xs text-muted-foreground truncate mt-1">
+                {(file as any).folderPath}
+              </p>
+            )}
             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
               <Badge variant="outline" className="text-xs font-mono truncate hidden sm:inline-flex max-w-[120px]">
                 {file.contractId}
@@ -263,6 +144,11 @@ function FileListItem({ file, onPreview, onDownload, onUpdateVersion }: {
         <p className="font-medium truncate" data-testid={`text-filename-${file.id}`}>
           {file.originalName}
         </p>
+        {(file as any).folderPath && (
+          <p className="text-xs text-muted-foreground truncate">
+            {(file as any).folderPath}
+          </p>
+        )}
         <p className="text-xs text-muted-foreground truncate">
           {file.uploaderName}
         </p>
@@ -456,6 +342,8 @@ export default function MyFilesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/files/my"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/files/recent"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       setUpdateVersionFile(null);
       toast({
         title: "Versión actualizada",
@@ -484,8 +372,8 @@ export default function MyFilesPage() {
 
       if (!supplier.trim()) {
         toast({
-          title: "Proveedor requerido",
-          description: "Por favor, ingresa el proveedor antes de subir archivos",
+          title: "Cliente requerido",
+          description: "Por favor, ingresa el cliente antes de subir archivos",
           variant: "destructive",
         });
         return;
@@ -538,25 +426,14 @@ export default function MyFilesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div>
             <Input
               placeholder="Buscar archivos..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="w-64 border border-gray-300"
               data-testid="input-search-files"
             />
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full"
-                onClick={() => setSearchQuery("")}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
           </div>
           <div className="flex border rounded-md">
             <Button
@@ -579,21 +456,9 @@ export default function MyFilesPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Upload Zone */}
-        <div className="lg:col-span-1">
-          <FileUploadZone
-            onFilesSelected={handleFilesSelected}
-            isUploading={uploadMutation.isPending}
-            contractId={contractId}
-            onContractIdChange={setContractId}
-            supplier={supplier}
-            onSupplierChange={setSupplier}
-          />
-        </div>
-
+      <div className="grid gap-6">
         {/* Files List */}
-        <div className="lg:col-span-2">
+        <div>
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between gap-4">

@@ -57,10 +57,25 @@ export default function AuthPage() {
   ];
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen flex bg-background login-page-theme">
       {/* Left Panel - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12">
-        <div className="w-full max-w-md">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 relative overflow-hidden">
+        {/* Watermark Background - Clearly Visible */}
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: `url('/images/watermark-seal.svg')`,
+            backgroundPosition: 'center 40%',
+            backgroundSize: '500px 500px',
+            backgroundRepeat: 'no-repeat',
+            opacity: 0.05,
+          }}
+        />
+        
+        {/* Light overlay for readability - more transparent to show watermark */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-white/55 to-white/65 pointer-events-none" />
+
+        <div className="w-full max-w-md relative z-10">
           {/* Mobile Logo */}
           <div className="flex lg:hidden items-center justify-center gap-3 mb-8">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
@@ -72,14 +87,14 @@ export default function AuthPage() {
             </div>
           </div>
 
-          <Card className="border-0 shadow-none lg:border lg:shadow-sm">
-            <CardHeader className="space-y-1 pb-6">
-              <CardTitle className="text-2xl font-bold">Iniciar Sesión</CardTitle>
-              <CardDescription>
+          <Card className="border border-[#E2E8F0] shadow-lg bg-white/98 backdrop-blur-sm rounded-lg">
+            <CardHeader className="space-y-1 pb-6 border-b border-[#E2E8F0]">
+              <CardTitle className="text-2xl font-bold text-black">Iniciar Sesión</CardTitle>
+              <CardDescription className="text-black">
                 Ingresa tus credenciales para acceder al sistema
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <FormField
@@ -87,14 +102,14 @@ export default function AuthPage() {
                     name="username"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Usuario</FormLabel>
+                        <FormLabel className="text-black">Usuario</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#64748B]" />
                             <Input
                               {...field}
                               placeholder="Nombre de usuario"
-                              className="pl-10"
+                              className="pl-10 border border-[#E2E8F0] rounded-lg focus:border-[#1E40AF] focus:ring-[#1E40AF]/20 bg-white text-black placeholder-[#94A3B8] transition-all duration-300"
                               data-testid="input-username"
                               autoComplete="username"
                             />
@@ -109,15 +124,15 @@ export default function AuthPage() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Contraseña</FormLabel>
+                        <FormLabel className="text-black">Contraseña</FormLabel>
                         <FormControl>
                           <div className="relative flex items-center">
-                            <Lock className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+                            <Lock className="absolute left-3 h-4 w-4 text-[#64748B] pointer-events-none" />
                             <Input
                               {...field}
                               type={showPassword ? "text" : "password"}
                               placeholder="Contraseña"
-                              className="pl-10 pr-10"
+                              className="pl-10 pr-10 border border-[#E2E8F0] rounded-lg focus:border-[#1E40AF] focus:ring-[#1E40AF]/20 bg-white text-black placeholder-[#94A3B8] transition-all duration-300"
                               data-testid="input-password"
                               autoComplete="current-password"
                             />
@@ -125,14 +140,14 @@ export default function AuthPage() {
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="absolute right-0 h-full px-3 hover:bg-transparent"
+                              className="absolute right-0 h-full px-3 hover:bg-transparent hover:text-primary"
                               onClick={() => setShowPassword(!showPassword)}
                               data-testid="button-toggle-password"
                             >
                               {showPassword ? (
-                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                <EyeOff className="h-4 w-4 text-black" />
                               ) : (
-                                <Eye className="h-4 w-4 text-muted-foreground" />
+                                <Eye className="h-4 w-4 text-black" />
                               )}
                             </Button>
                           </div>
@@ -144,7 +159,7 @@ export default function AuthPage() {
 
                   <Button
                     type="submit"
-                    className="w-full"
+                    className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white border border-[#2563EB] shadow-md hover:shadow-lg transition-all"
                     disabled={loginMutation.isPending}
                     data-testid="button-login"
                   >
@@ -163,14 +178,14 @@ export default function AuthPage() {
                 </form>
               </Form>
 
-              <div className="mt-6 pt-6 border-t">
-                <p className="text-xs text-muted-foreground text-center">
+              <div className="mt-6 pt-6 border-t border-[#E2E8F0]">
+                <p className="text-xs text-[#64748B] text-center">
                   Las credenciales son proporcionadas únicamente por el Administrador del sistema.
                   No está permitido el registro de usuarios externos.
                 </p>
               </div>
 
-              <div className="mt-4 flex items-center justify-center gap-4 text-xs text-muted-foreground">
+              <div className="mt-4 flex items-center justify-center gap-4 text-xs text-[#64748B]">
                 <div className="flex items-center gap-1">
                   <Lock className="h-3 w-3" />
                   <span>TLS 1.2+</span>
@@ -187,15 +202,11 @@ export default function AuthPage() {
 
       {/* Right Panel - Hero Section */}
       <div className="hidden lg:flex w-1/2 bg-primary relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-primary/80" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#2563EB] via-[#1e40af] to-[#1d4ed8]" />
         
-        {/* Abstract Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-10 left-10 w-64 h-64 border-2 border-white rounded-full" />
-          <div className="absolute top-32 left-32 w-48 h-48 border-2 border-white rounded-full" />
-          <div className="absolute bottom-20 right-10 w-72 h-72 border-2 border-white rounded-full" />
-          <div className="absolute bottom-40 right-40 w-56 h-56 border-2 border-white rounded-full" />
-          <div className="absolute top-1/2 left-1/4 w-32 h-32 border-2 border-white transform -translate-y-1/2 rotate-45" />
+        {/* Large Watermark Background - Main Focus */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-5">
+          <img src="/images/watermark-seal.svg" alt="" className="w-full h-full object-contain" style={{maxWidth: '800px', maxHeight: '800px'}} />
         </div>
 
         <div className="relative z-10 flex flex-col justify-center p-12 text-primary-foreground">

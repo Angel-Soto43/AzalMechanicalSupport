@@ -17,28 +17,28 @@ interface FileIconProps {
 export function FileIcon({ mimeType, className = "h-8 w-8" }: FileIconProps) {
   const getIconAndColor = (type: string) => {
     if (type.includes("pdf")) {
-      return { Icon: FileText, color: "text-red-500" };
+      return { Icon: FileText, color: "text-[#DC2626]" };
     }
     if (type.includes("word") || type.includes("document")) {
-      return { Icon: FileText, color: "text-blue-500" };
+      return { Icon: FileText, color: "text-[#2563EB]" };
     }
     if (type.includes("excel") || type.includes("spreadsheet") || type.includes("csv")) {
-      return { Icon: FileSpreadsheet, color: "text-green-500" };
+      return { Icon: FileSpreadsheet, color: "text-[#16A34A]" };
     }
     if (type.includes("powerpoint") || type.includes("presentation")) {
-      return { Icon: Presentation, color: "text-orange-500" };
+      return { Icon: Presentation, color: "text-[#F59E0B]" };
     }
     if (type.includes("image")) {
-      return { Icon: FileImage, color: "text-purple-500" };
+      return { Icon: FileImage, color: "text-[#8B5CF6]" };
     }
     if (type.includes("zip") || type.includes("rar") || type.includes("tar") || type.includes("compressed")) {
-      return { Icon: FileArchive, color: "text-yellow-600" };
+      return { Icon: FileArchive, color: "text-[#F59E0B]" };
     }
     if (type.includes("video")) {
-      return { Icon: FileVideo, color: "text-pink-500" };
+      return { Icon: FileVideo, color: "text-[#DC2626]" };
     }
     if (type.includes("audio")) {
-      return { Icon: FileAudio, color: "text-indigo-500" };
+      return { Icon: FileAudio, color: "text-[#2563EB]" };
     }
     return { Icon: File, color: "text-muted-foreground" };
   };

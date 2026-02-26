@@ -1,4 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +21,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -36,7 +40,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Search,
   MoreVertical,
   Download,
   Eye,
@@ -46,7 +49,9 @@ import {
   Share2,
   X,
   FileText,
+  RefreshCw,
 } from "lucide-react";
+import { ShareDialog } from "@/components/share-dialog";
 import { File, User as UserType } from "@shared/schema";
 import { FileIcon, formatFileSize, getFileTypeName } from "@/components/file-icon";
 import { format } from "date-fns";
@@ -122,9 +127,14 @@ function FilePreviewDialog({ file, open, onOpenChange }: {
 
 export default function SharedFilesPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const [replaceFileTarget, setReplaceFileTarget] = useState<FileWithUploader | null>(null);
   const [filterUploader, setFilterUploader] = useState<string>("all");
   const [filterDate, setFilterDate] = useState<string>("");
   const [previewFile, setPreviewFile] = useState<FileWithUploader | null>(null);
+  const [shareFile, setShareFile] = useState<FileWithUploader | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
   const { data: files, isLoading } = useQuery<FileWithUploader[]>({
@@ -138,6 +148,47 @@ export default function SharedFilesPage() {
   const handleDownload = useCallback((file: FileWithUploader) => {
     window.open(`/api/files/${file.id}/download`, "_blank");
   }, []);
+
+  const handleReplaceFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !replaceFileTarget) return;
+    const f = e.target.files[0];
+    try {
+      const form = new FormData();
+      form.append("file", f);
+      const res = await fetch(`/api/files/${replaceFileTarget.id}/version`, {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      queryClient.invalidateQueries({ queryKey: ["/api/files/shared"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/files/recent"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      toast({ title: "Archivo reemplazado", description: "La nueva versión se subió correctamente" });
+      setReplaceFileTarget(null);
+    } catch (err: any) {
+      toast({ title: "Error al reemplazar", description: err?.message || "Error", variant: "destructive" });
+    } finally {
+      if (replaceInputRef.current) replaceInputRef.current.value = "";
+    }
+  }, [replaceFileTarget, toast]);
+
+  const handleDeleteFile = useCallback(async (file: FileWithUploader) => {
+    if (!user?.isAdmin) return;
+    try {
+      const res = await fetch(`/api/files/${file.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      queryClient.invalidateQueries({ queryKey: ["/api/files/shared"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/files/recent"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      toast({ title: "Archivo eliminado", description: `"${file.originalName}" fue eliminado` });
+    } catch (err: any) {
+      toast({ title: "Error al eliminar", description: err?.message || "Error", variant: "destructive" });
+    }
+  }, [user, toast]);
 
   const filteredFiles = files?.filter((file) => {
     let matches = true;
@@ -185,25 +236,14 @@ export default function SharedFilesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative flex-1 md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div>
             <Input
               placeholder="Buscar por nombre, contrato o usuario..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="w-64 border border-gray-300"
               data-testid="input-search-shared-files"
             />
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full"
-                onClick={() => setSearchQuery("")}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
           </div>
           <Button
             variant={showFilters ? "secondary" : "outline"}
@@ -314,7 +354,7 @@ export default function SharedFilesPage() {
                             {file.originalName}
                           </p>
                           <p className="text-xs text-muted-foreground truncate">
-                            {file.supplier}
+                            Cliente: {file.supplier}
                           </p>
                           {file.version > 1 && (
                             <Badge variant="secondary" className="text-xs mt-1">
@@ -361,6 +401,29 @@ export default function SharedFilesPage() {
                               <Download className="mr-2 h-4 w-4" />
                               Descargar
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setShareFile(file)}>
+                              <Share2 className="mr-2 h-4 w-4" />
+                              Compartir
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setReplaceFileTarget(file);
+                                setTimeout(() => replaceInputRef.current?.click(), 100);
+                              }}
+                            >
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              Reemplazar
+                            </DropdownMenuItem>
+                            {user?.isAdmin && (
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => handleDeleteFile(file)}
+                              >
+                                <FileText className="mr-2 h-4 w-4" />
+                                Eliminar
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -390,6 +453,7 @@ export default function SharedFilesPage() {
             </div>
           )}
         </CardContent>
+        <input ref={replaceInputRef} type="file" hidden onChange={handleReplaceFileSelected} />
       </Card>
 
       {/* Preview Dialog */}
@@ -397,6 +461,37 @@ export default function SharedFilesPage() {
         file={previewFile}
         open={!!previewFile}
         onOpenChange={(open) => !open && setPreviewFile(null)}
+      />
+
+      {/* Share Dialog */}
+      <ShareDialog
+        open={!!shareFile}
+        onOpenChange={(open) => !open && setShareFile(null)}
+        title={shareFile?.originalName || "Archivo"}
+        isFile={!!shareFile}
+        onDownloadFile={
+          shareFile
+            ? () => {
+                const a = document.createElement("a");
+                a.href = `/api/files/${shareFile.id}/download`;
+                a.download = shareFile.originalName;
+                a.click();
+
+                // Log share action
+                fetch("/api/share/log", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    type: "file",
+                    resourceType: "file",
+                    resourceId: shareFile.id,
+                    resourceName: shareFile.originalName,
+                  }),
+                }).catch(() => {});
+              }
+            : undefined
+        }
       />
     </div>
   );

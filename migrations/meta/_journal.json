@@ -22,6 +22,20 @@
       "when": 1766878310658,
       "tag": "0002_lumpy_sugar_man",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1766968200000,
+      "tag": "0003_ancient_flash",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1771869614592,
+      "tag": "0004_warm_triathlon",
+      "breakpoints": true
     }
   ]
 }

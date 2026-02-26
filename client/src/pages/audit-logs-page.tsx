@@ -22,7 +22,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Search,
   ClipboardList,
   Filter,
   Calendar,
@@ -37,6 +36,11 @@ import {
   Shield,
   AlertTriangle,
   Activity,
+  Eye,
+  RefreshCw,
+  FolderX,
+  Archive,
+  Share2,
 } from "lucide-react";
 import { AuditLog, User } from "@shared/schema";
 import { format } from "date-fns";
@@ -46,66 +50,112 @@ interface AuditLogWithUser extends AuditLog {
   userName: string;
 }
 
+// Centralized color and style mapping for audit actions
+const ACTION_CONFIG: Record<string, { icon: (props: any) => JSX.Element; label: string; badgeClass: string }> = {
+  // Authentication
+  login: {
+    icon: (props) => <LogIn {...props} className="h-4 w-4" />,
+    label: "Inicio de sesión",
+    badgeClass: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+  },
+  login_failed: {
+    icon: (props) => <AlertTriangle {...props} className="h-4 w-4" />,
+    label: "Intento fallido",
+    badgeClass: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+  },
+  logout: {
+    icon: (props) => <LogOut {...props} className="h-4 w-4" />,
+    label: "Cierre de sesión",
+    badgeClass: "bg-[#E2E8F0] text-[#64748B] dark:bg-[#1e293b]/30 dark:text-[#CBD5E1]",
+  },
+  // File operations
+  upload: {
+    icon: (props) => <Upload {...props} className="h-4 w-4" />,
+    label: "Subida de archivo",
+    badgeClass: "bg-[#dcfce7] text-[#16A34A] dark:bg-[#16a34a]/20 dark:text-[#16A34A]",
+  },
+  upload_version: {
+    icon: (props) => <RefreshCw {...props} className="h-4 w-4" />,
+    label: "Reemplazo de archivo",
+    badgeClass: "bg-[#dcfce7] text-[#16A34A] dark:bg-[#16a34a]/20 dark:text-[#16A34A]",
+  },
+  download: {
+    icon: (props) => <Download {...props} className="h-4 w-4" />,
+    label: "Descarga de archivo",
+    badgeClass: "bg-[#eff6ff] text-[#2563EB] dark:bg-[#2563eb]/20 dark:text-[#2563EB]",
+  },
+  preview: {
+    icon: (props) => <Eye {...props} className="h-4 w-4" />,
+    label: "Vista previa",
+    badgeClass: "bg-[#eff6ff] text-[#2563EB] dark:bg-[#2563eb]/20 dark:text-[#2563EB]",
+  },
+  delete: {
+    icon: (props) => <Trash2 {...props} className="h-4 w-4" />,
+    label: "Eliminación de archivo",
+    badgeClass: "bg-[#fee2e2] text-[#DC2626] dark:bg-[#dc2626]/20 dark:text-[#DC2626]",
+  },
+  // Folder operations
+  folder_deleted: {
+    icon: (props) => <FolderX {...props} className="h-4 w-4" />,
+    label: "Eliminación de carpeta",
+    badgeClass: "bg-[#fee2e2] text-[#DC2626] dark:bg-[#dc2626]/20 dark:text-[#DC2626]",
+  },
+  folder_created: {
+    icon: (props) => <Activity {...props} className="h-4 w-4" />,
+    label: "Carpeta creada",
+    badgeClass: "bg-[#dcfce7] text-[#16A34A] dark:bg-[#16a34a]/20 dark:text-[#16A34A]",
+  },
+  // Sharing
+  file_shared: {
+    icon: (props) => <Share2 {...props} className="h-4 w-4" />,
+    label: "Archivo compartido",
+    badgeClass: "bg-[#eff6ff] text-[#2563EB] dark:bg-[#2563eb]/20 dark:text-[#2563EB]",
+  },
+  folder_shared: {
+    icon: (props) => <Share2 {...props} className="h-4 w-4" />,
+    label: "Carpeta compartida",
+    badgeClass: "bg-[#eff6ff] text-[#2563EB] dark:bg-[#2563eb]/20 dark:text-[#2563EB]",
+  },
+  // Backup
+  backup_executed: {
+    icon: (props) => <Archive {...props} className="h-4 w-4" />,
+    label: "Backup ejecutado",
+    badgeClass: "bg-[#fed7aa] text-[#F59E0B] dark:bg-[#f59e0b]/20 dark:text-[#F59E0B]",
+  },
+  // User management
+  user_created: {
+    icon: (props) => <UserPlus {...props} className="h-4 w-4" />,
+    label: "Usuario creado",
+    badgeClass: "bg-[#dcfce7] text-[#16A34A] dark:bg-[#16a34a]/20 dark:text-[#16A34A]",
+  },
+  user_updated: {
+    icon: (props) => <UserCog {...props} className="h-4 w-4" />,
+    label: "Usuario actualizado",
+    badgeClass: "bg-[#fef3c7] text-[#F59E0B] dark:bg-[#f59e0b]/20 dark:text-[#F59E0B]",
+  },
+};
+
+function getActionConfig(action: string) {
+  return ACTION_CONFIG[action] || {
+    icon: (props: any) => <Activity {...props} className="h-4 w-4" />,
+    label: action,
+    badgeClass: "bg-[#E2E8F0] text-[#64748B] dark:bg-[#1e293b]/30 dark:text-[#CBD5E1]",
+  };
+}
+
 function getActionIcon(action: string) {
-  switch (action) {
-    case "login":
-      return <LogIn className="h-4 w-4 text-green-500" />;
-    case "login_failed":
-      return <AlertTriangle className="h-4 w-4 text-red-500" />;
-    case "logout":
-      return <LogOut className="h-4 w-4 text-muted-foreground" />;
-    case "upload":
-      return <Upload className="h-4 w-4 text-blue-500" />;
-    case "download":
-      return <Download className="h-4 w-4 text-purple-500" />;
-    case "delete":
-      return <Trash2 className="h-4 w-4 text-red-500" />;
-    case "user_created":
-      return <UserPlus className="h-4 w-4 text-green-500" />;
-    case "user_updated":
-      return <UserCog className="h-4 w-4 text-orange-500" />;
-    default:
-      return <Activity className="h-4 w-4 text-muted-foreground" />;
-  }
+  const config = getActionConfig(action);
+  return config.icon({});
 }
 
 function getActionLabel(action: string) {
-  switch (action) {
-    case "login":
-      return "Inicio de sesión";
-    case "login_failed":
-      return "Intento fallido";
-    case "logout":
-      return "Cierre de sesión";
-    case "upload":
-      return "Subida de archivo";
-    case "download":
-      return "Descarga de archivo";
-    case "delete":
-      return "Eliminación de archivo";
-    case "user_created":
-      return "Usuario creado";
-    case "user_updated":
-      return "Usuario actualizado";
-    default:
-      return action;
-  }
+  const config = getActionConfig(action);
+  return config.label;
 }
 
-function getActionBadgeVariant(action: string): "default" | "secondary" | "destructive" | "outline" {
-  switch (action) {
-    case "login":
-    case "user_created":
-      return "default";
-    case "login_failed":
-    case "delete":
-      return "destructive";
-    case "upload":
-    case "download":
-      return "secondary";
-    default:
-      return "outline";
-  }
+function getActionBadgeClass(action: string) {
+  const config = getActionConfig(action);
+  return config.badgeClass;
 }
 
 export default function AuditLogsPage() {
@@ -127,8 +177,15 @@ export default function AuditLogsPage() {
     { value: "login_failed", label: "Intento fallido" },
     { value: "logout", label: "Cierre de sesión" },
     { value: "upload", label: "Subida de archivo" },
+    { value: "upload_version", label: "Reemplazo de archivo" },
     { value: "download", label: "Descarga de archivo" },
-    { value: "delete", label: "Eliminación" },
+    { value: "preview", label: "Vista previa" },
+    { value: "delete", label: "Eliminación de archivo" },
+    { value: "folder_created", label: "Carpeta creada" },
+    { value: "folder_deleted", label: "Eliminación de carpeta" },
+    { value: "file_shared", label: "Archivo compartido" },
+    { value: "folder_shared", label: "Carpeta compartida" },
+    { value: "backup_executed", label: "Backup ejecutado" },
     { value: "user_created", label: "Usuario creado" },
     { value: "user_updated", label: "Usuario actualizado" },
   ];
@@ -194,25 +251,14 @@ export default function AuditLogsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative flex-1 md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div>
             <Input
               placeholder="Buscar en registros..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="w-64 border border-gray-300"
               data-testid="input-search-logs"
             />
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full"
-                onClick={() => setSearchQuery("")}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
           </div>
           <Button
             variant={showFilters ? "secondary" : "outline"}
@@ -248,8 +294,8 @@ export default function AuditLogsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
-                <LogIn className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#dcfce7] dark:bg-[#16a34a]/20">
+                <LogIn className="h-5 w-5 text-[#16A34A] dark:text-[#16A34A]" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{successLogins}</p>
@@ -261,8 +307,8 @@ export default function AuditLogsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
-                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#fee2e2] dark:bg-[#dc2626]/20">
+                <AlertTriangle className="h-5 w-5 text-[#DC2626] dark:text-[#DC2626]" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{failedLogins}</p>
@@ -274,8 +320,8 @@ export default function AuditLogsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                <Upload className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#eff6ff] dark:bg-[#2563eb]/20">
+                <Upload className="h-5 w-5 text-[#2563EB] dark:text-[#2563EB]" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{fileOperations}</p>
@@ -379,9 +425,9 @@ export default function AuditLogsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getActionBadgeVariant(log.action)}>
+                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getActionBadgeClass(log.action)}`}>
                           {getActionLabel(log.action)}
-                        </Badge>
+                        </span>
                       </TableCell>
                       <TableCell>
                         <span className="font-medium">{log.userName || "Sistema"}</span>
