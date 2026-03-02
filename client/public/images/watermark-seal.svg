@@ -1,0 +1,128 @@
+<svg viewBox="0 0 300 320" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .eagle-fill { fill: #1a1a1a; opacity: 0.02; }
+      .text-arc { fill: #1a1a1a; font-family: 'Georgia', serif; font-weight: bold; opacity: 0.02; font-size: 15px; letter-spacing: 2px; }
+    </style>
+    <path id="topArc" d="M 60,150 A 90,90 0 0,1 240,150" fill="none"/>
+    <path id="bottomArc" d="M 240,170 A 90,90 0 0,1 60,170" fill="none"/>
+  </defs>
+  
+  <!-- Outer circle border -->
+  <circle cx="150" cy="150" r="145" class="eagle-fill" fill="none" stroke-width="2"/>
+  
+  <!-- Top text arc - "ESTADOS UNIDOS MEXICANOS" -->
+  <text class="text-arc">
+    <textPath href="#topArc" startOffset="50%" text-anchor="middle">
+      ESTADOS UNIDOS MEXICANOS
+    </textPath>
+  </text>
+  
+  <!-- Main Eagle - Head -->
+  <g class="eagle-fill">
+    <ellipse cx="150" cy="95" rx="20" ry="26"/>
+    <!-- Eagle profile beak -->
+    <path d="M 166 92 L 182 88 L 174 100" stroke="none" stroke-width="1.5"/>
+    <!-- Eye -->
+    <circle cx="162" cy="90" r="2.5"/>
+  </g>
+  
+  <!-- Eagle body and chest -->
+  <g class="eagle-fill">
+    <ellipse cx="150" cy="135" rx="24" ry="30"/>
+    <!-- Chest detail -->
+    <ellipse cx="150" cy="128" rx="16" ry="12" opacity="0.6"/>
+  </g>
+  
+  <!-- Left Wing -->
+  <g class="eagle-fill">
+    <path d="M 130 125 Q 100 110 75 120" stroke="none" stroke-width="2" fill="none"/>
+    <!-- Wing feathers detail -->
+    <path d="M 75 120 L 65 130 M 85 115 L 78 128 M 100 113 L 98 128 M 115 118 L 120 132" stroke="none" stroke-width="1.5"/>
+    <!-- Wing top curve -->
+    <path d="M 130 115 Q 110 105 90 110" stroke="none" stroke-width="1.5"/>
+  </g>
+  
+  <!-- Right Wing -->
+  <g class="eagle-fill">
+    <path d="M 170 125 Q 200 110 225 120" stroke="none" stroke-width="2" fill="none"/>
+    <!-- Wing feathers detail -->
+    <path d="M 225 120 L 235 130 M 215 115 L 222 128 M 200 113 L 202 128 M 185 118 L 180 132" stroke="none" stroke-width="1.5"/>
+    <!-- Wing top curve -->
+    <path d="M 170 115 Q 190 105 210 110" stroke="none" stroke-width="1.5"/>
+  </g>
+  
+  <!-- Tail feathers -->
+  <g class="eagle-fill">
+    <path d="M 140 160 L 130 180 M 150 165 L 150 185 M 160 160 L 170 180" stroke="none" stroke-width="2"/>
+  </g>
+  
+  <!-- Left Serpent -->
+  <g class="eagle-fill">
+    <path d="M 100 150 Q 85 155 80 175 Q 78 190 88 200" stroke="none" stroke-width="2.5" fill="none"/>
+    <!-- Serpent head -->
+    <ellipse cx="88" cy="200" rx="4" ry="6"/>
+    <path d="M 86 204 L 82 208" stroke="none" stroke-width="1"/>
+  </g>
+  
+  <!-- Right Serpent -->
+  <g class="eagle-fill">
+    <path d="M 200 150 Q 215 155 220 175 Q 222 190 212 200" stroke="none" stroke-width="2.5" fill="none"/>
+    <!-- Serpent head -->
+    <ellipse cx="212" cy="200" rx="4" ry="6"/>
+    <path d="M 214 204 L 218 208" stroke="none" stroke-width="1"/>
+  </g>
+  
+  <!-- Nopal (Cactus) base -->
+  <g class="eagle-fill">
+    <!-- Main pad -->
+    <ellipse cx="150" cy="180" rx="32" ry="40"/>
+    <!-- Left pad -->
+    <ellipse cx="125" cy="160" rx="14" ry="22"/>
+    <!-- Right pad -->
+    <ellipse cx="175" cy="160" rx="14" ry="22"/>
+    <!-- Cactus spines -->
+    <circle cx="118" cy="170" r="1.5"/>
+    <circle cx="128" cy="165" r="1.5"/>
+    <circle cx="135" cy="175" r="1.5"/>
+    <circle cx="165" cy="175" r="1.5"/>
+    <circle cx="172" cy="165" r="1.5"/>
+    <circle cx="182" cy="170" r="1.5"/>
+    <circle cx="150" cy="155" r="1.5"/>
+    <circle cx="145" cy="210" r="1.5"/>
+    <circle cx="155" cy="210" r="1.5"/>
+    <circle cx="150" cy="218" r="1.5"/>
+  </g>
+  
+  <!-- Laurel wreath - Left side -->
+  <g class="eagle-fill">
+    <path d="M 95 200 Q 80 215 85 235" stroke="none" stroke-width="2" fill="none"/>
+    <ellipse cx="92" cy="205" rx="3" ry="4"/>
+    <ellipse cx="87" cy="217" rx="3" ry="4"/>
+    <ellipse cx="88" cy="230" rx="3" ry="4"/>
+  </g>
+  
+  <!-- Laurel wreath - Right side -->
+  <g class="eagle-fill">
+    <path d="M 205 200 Q 220 215 215 235" stroke="none" stroke-width="2" fill="none"/>
+    <ellipse cx="208" cy="205" rx="3" ry="4"/>
+    <ellipse cx="213" cy="217" rx="3" ry="4"/>
+    <ellipse cx="212" cy="230" rx="3" ry="4"/>
+  </g>
+  
+  <!-- Oak wreath elements at bottom -->
+  <g class="eagle-fill">
+    <path d="M 120 240 Q 105 255 115 270" stroke="none" stroke-width="2" fill="none"/>
+    <circle cx="118" cy="245" r="1.5"/>
+    <circle cx="112" cy="258" r="1.5"/>
+    <path d="M 180 240 Q 195 255 185 270" stroke="none" stroke-width="2" fill="none"/>
+    <circle cx="182" cy="245" r="1.5"/>
+    <circle cx="188" cy="258" r="1.5"/>
+  </g>
+  
+  <!-- Bottom decorative ribbon -->
+  <path d="M 110 265 Q 150 280 190 265" class="eagle-fill" stroke-width="2" fill="none"/>
+  
+  <!-- Inner circle border -->
+  <circle cx="150" cy="150" r="135" class="eagle-fill" fill="none" stroke-width="1"/>
+</svg>

@@ -49,7 +49,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Search,
   MoreVertical,
   Download,
   Eye,
@@ -223,25 +222,14 @@ export default function AllFilesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative flex-1 md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div>
             <Input
               placeholder="Buscar por nombre, contrato o usuario..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="w-64 border border-gray-300"
               data-testid="input-search-all-files"
             />
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full"
-                onClick={() => setSearchQuery("")}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
           </div>
           <Button
             variant={showFilters ? "secondary" : "outline"}

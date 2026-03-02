@@ -23,7 +23,9 @@ import SharedFilesPage from "@/pages/shared-files-page";
 import AllFilesPage from "@/pages/all-files-page";
 import UsersPage from "@/pages/users-page";
 import AuditLogsPage from "@/pages/audit-logs-page";
+import BackupPage from "@/pages/backup-page";
 import FolderPage from "@/pages/folder-page";
+import FoldersListPage from "@/pages/folders-list-page";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -72,6 +74,11 @@ function Router() {
           <DashboardPage />
         </AppLayout>
       )} />
+      <ProtectedRoute path="/folders" component={() => (
+        <AppLayout>
+          <FoldersListPage />
+        </AppLayout>
+      )} />
       <ProtectedRoute path="/folders/:id" component={() => (
         <AppLayout>
           <FolderPage />
@@ -101,6 +108,11 @@ function Router() {
       <AdminRoute path="/audit-logs" component={() => (
         <AppLayout>
           <AuditLogsPage />
+        </AppLayout>
+      )} />
+      <AdminRoute path="/backup" component={() => (
+        <AppLayout>
+          <BackupPage />
         </AppLayout>
       )} />
       <Route component={NotFound} />

@@ -49,7 +49,6 @@ import {
 import {
   Users,
   Plus,
-  Search,
   MoreVertical,
   Edit2,
   Shield,
@@ -57,7 +56,7 @@ import {
   UserCheck,
   Key,
   Loader2,
-  X,
+  
   Eye,
   EyeOff,
 } from "lucide-react";
@@ -85,8 +84,8 @@ function UserCard({ user, onEdit, onToggleStatus, onResetPassword }: {
       <CardContent className="p-4">
         <div className="flex items-start gap-4">
           <Avatar className="h-12 w-12">
-            <AvatarFallback className={`text-sm font-medium ${user.isAdmin ? "bg-primary/10 text-primary" : "bg-muted"}`}>
-              {getInitials(user.fullName)}
+            <AvatarFallback className="text-sm font-medium bg-muted">
+              {getInitials(user.fullName) || "AD"}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
@@ -561,27 +560,16 @@ export default function UsersPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div>
             <Input
               placeholder="Buscar usuarios..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="w-64 border border-gray-300"
               data-testid="input-search-users"
             />
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full"
-                onClick={() => setSearchQuery("")}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
           </div>
-          <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-user">
+          <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-user" className="bg-blue-600 text-white hover:bg-blue-700">
             <Plus className="mr-2 h-4 w-4" />
             Crear Usuario
           </Button>

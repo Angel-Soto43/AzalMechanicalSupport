@@ -1,0 +1,43 @@
+<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150">
+  <defs>
+    <style>
+      .seal-fill { fill: #1e293b; opacity: 0.15; }
+    </style>
+  </defs>
+  
+  <!-- Outer Circle -->
+  <circle cx="75" cy="75" r="72" class="seal-fill" stroke="none"/>
+  
+  <!-- Inner Circle -->
+  <circle cx="75" cy="75" r="65" class="seal-fill" stroke="none"/>
+  
+  <!-- Eagle Shield -->
+  <g class="seal-fill">
+    <!-- Shield outline -->
+    <path d="M 75 30 L 95 45 L 100 65 L 100 95 Q 75 115 75 115 Q 75 115 50 95 L 50 65 L 55 45 Z" stroke="none"/>
+    
+    <!-- Eagle head -->
+    <circle cx="75" cy="65" r="12" stroke="none"/>
+    <path d="M 83 60 L 88 55 L 85 62" stroke="none"/>
+    
+    <!-- Wings simplified -->
+    <path d="M 65 65 Q 55 60 50 70" stroke="none" stroke-width="2" fill="none"/>
+    <path d="M 85 65 Q 95 60 100 70" stroke="none" stroke-width="2" fill="none"/>
+  </g>
+  
+  <!-- Decorative elements at base -->
+  <g class="seal-fill">
+    <path d="M 60 100 L 55 115" stroke="none" stroke-width="1"/>
+    <path d="M 90 100 L 95 115" stroke="none" stroke-width="1"/>
+    <path d="M 75 115 L 75 120" stroke="none" stroke-width="1"/>
+  </g>
+  
+  <!-- Text wrapped around (simplified) -->
+  <g class="seal-fill" font-size="8" text-anchor="middle" font-weight="bold">
+    <!-- Top text -->
+    <text x="75" y="18" class="seal-fill" font-size="7">ESTADOS UNIDOS MEXICANOS</text>
+    
+    <!-- Bottom text -->
+    <text x="75" y="135" class="seal-fill" font-size="6">SEGURIDAD • CONFIANZA</text>
+  </g>
+</svg>

@@ -1,8 +1,23 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, boolean, integer, timestamp, bigint } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, boolean, integer, timestamp, bigint, customType } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
+
+// Custom bytea type for storing binary data
+const bytea = customType<{ data: Buffer | null }>({
+  dataType() {
+    return "bytea";
+  },
+  toDriver: (value: Buffer | null | undefined) => {
+    if (!value) return null;
+    return value;
+  },
+  fromDriver: (value: Buffer | null) => {
+    if (!value) return null;
+    return value instanceof Buffer ? value : Buffer.from(value);
+  },
+});
 
 // Users table - includes admin flag and account status
 export const users = pgTable("users", {
@@ -28,6 +43,7 @@ export const files = pgTable("files", {
   originalName: text("original_name").notNull(),
   mimeType: text("mime_type").notNull(),
   size: bigint("size", { mode: "number" }).notNull(),
+  archivo: bytea("archivo"),
   uploadedBy: integer("uploaded_by").notNull().references(() => users.id),
   uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
   version: integer("version").notNull().default(1),
@@ -58,6 +74,13 @@ export const auditLogs = pgTable("audit_logs", {
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Session table - created by connect-pg-simple for Express session management
+export const session = pgTable("session", {
+  sid: varchar("sid").primaryKey(),
+  sess: text("sess").notNull(), // JSON stringified session data
+  expire: timestamp("expire").notNull(),
 });
 
 // Relations
@@ -146,6 +169,8 @@ export const createUserSchema = insertUserSchema.extend({
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
   username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres"),
   fullName: z.string().min(2, "El nombre completo es requerido"),
+  isAdmin: z.boolean().optional().default(false),
+  isActive: z.boolean().optional().default(true),
 });
 
 export const updateUserSchema = z.object({

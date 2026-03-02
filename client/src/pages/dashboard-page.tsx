@@ -18,7 +18,9 @@ import {
   Plus,
   ArrowRight,
   Activity,
-  ClipboardList
+  ClipboardList,
+  UserCheck,
+  Grid3X3
 } from "lucide-react";
 import { File, AuditLog, User } from "@shared/schema";
 import { FileIcon, formatFileSize, getFileTypeName } from "@/components/file-icon";
@@ -98,8 +100,8 @@ function StatCard({
 
 function RecentFileCard({ file }: { file: RecentFile }) {
   return (
-    <div className="flex items-center gap-4 p-3 rounded-lg hover-elevate">
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+    <div className="flex items-center gap-4 p-4 rounded-lg border border-[#E2E8F0] bg-white dark:bg-slate-900 hover:shadow-md transition-shadow duration-300">
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
         <FileIcon mimeType={file.mimeType} className="h-5 w-5" />
       </div>
       <div className="flex-1 min-w-0">
@@ -158,8 +160,8 @@ function ActivityItem({ activity }: { activity: RecentActivity }) {
   };
 
   return (
-    <div className="flex items-start gap-3 py-3">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
+    <div className="flex items-start gap-3 py-3 px-2 rounded-lg hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors duration-200">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
         {getActivityIcon(activity.action)}
       </div>
       <div className="flex-1 min-w-0">
@@ -222,8 +224,8 @@ export default function DashboardPage() {
               Mis Archivos
             </Link>
           </Button>
-          <Button asChild>
-            <Link href="/my-files" data-testid="link-upload-file">
+          <Button asChild className="bg-blue-600 text-white hover:bg-blue-700">
+            <Link href="/folders" data-testid="link-upload-file">
               <Plus className="mr-2 h-4 w-4" />
               Subir Archivo
             </Link>
@@ -320,7 +322,7 @@ export default function DashboardPage() {
                   Comienza subiendo tu primer documento
                 </p>
                 <Button asChild>
-                  <Link href="/my-files">
+                  <Link href="/folders">
                     <Plus className="mr-2 h-4 w-4" />
                     Subir Archivo
                   </Link>
@@ -379,8 +381,8 @@ export default function DashboardPage() {
               <Button variant="outline" className="h-auto py-4 justify-start" asChild>
                 <Link href="/users">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                      <Users className="h-5 w-5 text-primary" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                      <UserCheck className="h-5 w-5 text-blue-600" />
                     </div>
                     <div className="text-left">
                       <p className="font-medium">Gestionar Usuarios</p>
@@ -392,8 +394,8 @@ export default function DashboardPage() {
               <Button variant="outline" className="h-auto py-4 justify-start" asChild>
                 <Link href="/all-files">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                      <FileText className="h-5 w-5 text-primary" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                      <Grid3X3 className="h-5 w-5 text-blue-600" />
                     </div>
                     <div className="text-left">
                       <p className="font-medium">Todos los Archivos</p>
@@ -405,8 +407,8 @@ export default function DashboardPage() {
               <Button variant="outline" className="h-auto py-4 justify-start" asChild>
                 <Link href="/audit-logs">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                      <ClipboardList className="h-5 w-5 text-primary" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                      <ClipboardList className="h-5 w-5 text-blue-600" />
                     </div>
                     <div className="text-left">
                       <p className="font-medium">Registro de Auditoría</p>
