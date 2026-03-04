@@ -1,45 +1,22 @@
-import { storage } from "./storage.ts";
-import { hashPassword } from "./auth.ts";
+import { storage } from "./storage";
 
 async function seed() {
-  console.log("Checking for existing admin user...");
+  console.log("Iniciando seeder...");
   
-  const existingAdmin = await storage.getUserByUsername("admin");
-  
-  if (existingAdmin) {
-    console.log("Admin user already exists, skipping seed.");
-    return;
-  }
+  console.log("Las tablas de usuarios y archivos de la versión anterior han sido depuradas.");
+  console.log("Esperando las nuevas entidades para inyectar datos de prueba...");
 
-  console.log("Creating admin user (Víctor Hernández)...");
-  
-  const hashedPassword = await hashPassword("admin123");
-  
-  const admin = await storage.createUser({
-    username: "admin",
-    password: hashedPassword,
-    fullName: "Víctor Hernández",
-    isAdmin: true,
-    isActive: true,
-  });
-
-  console.log(`Admin user created successfully!`);
-  console.log(`Username: admin`);
-  console.log(`Password: admin123`);
-  console.log(`Full Name: ${admin.fullName}`);
-
-  
+  // Probando que tu nueva tabla de auditoría (Día 4) funciona correctamente
   await storage.createAuditLog({
-    userId: admin.id,
-    action: "user_created",
-    resourceType: "user",
-    resourceId: admin.id,
-    details: "Configuración inicial del sistema - Usuario administrador creado",
-    ipAddress: "system",
-    userAgent: "system",
+    action: "system_init",
+    resourceType: "system",
+    details: "Base de datos depurada e inicializada para el nuevo módulo.",
+    correo: "sistema@toccel.com", 
+    userAgent: "system-seeder",
   });
 
-  console.log("Seed completed!");
+  console.log("Log de inicialización creado exitosamente en audit_logs.");
+  console.log("Seed completado sin errores!");
 }
 
 seed()
