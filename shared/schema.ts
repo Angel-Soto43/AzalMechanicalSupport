@@ -37,11 +37,7 @@ export const auditLogs = pgTable("audit_logs", {
 // SCHEMAS Y TIPOS
 // ==========================================
 
-export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
-  id: true,
-  createdAt: true,
-});
+export const insertAuditLogSchema = createInsertSchema(auditLogs);
 
 export type AuditLog = typeof auditLogs.$inferSelect;
-// Cambiamos esta línea para usar el tipo nativo de Drizzle:
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
