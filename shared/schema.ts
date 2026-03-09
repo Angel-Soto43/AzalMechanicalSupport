@@ -41,3 +41,19 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs);
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
+
+// ==========================================
+// MOCKS TEMPORALES PARA EL FRONTEND
+// (Eliminar cuando el Front termine de limpiar las vistas)
+// ==========================================
+
+export const loginSchema = z.any();
+export type LoginInput = any;
+
+export const createUserSchema = z.any();
+export type CreateUserInput = any;
+
+export const updateUserSchema = z.any();
+export type UpdateUserInput = any;
+
+export type User = any;
