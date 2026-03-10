@@ -3,6 +3,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
+import { Client } from "@microsoft/microsoft-graph-client";
+import "isomorphic-fetch";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -24,7 +26,7 @@ const msalConfig: Configuration = {
   app.get("/api/auth/microsoft", async (req, res) => {
     try {
       const authCodeUrlParameters = {
-        scopes: ["user.read"],
+        scopes: ["user.read", "Files.ReadWrite.All"], 
         redirectUri: process.env.MICROSOFT_REDIRECT_URI!,
       };
       const response = await msalClient.getAuthCodeUrl(authCodeUrlParameters);
@@ -40,18 +42,26 @@ const msalConfig: Configuration = {
     try {
       const tokenRequest = {
         code: req.query.code as string,
-        scopes: ["user.read"],
+        scopes: ["user.read", "Files.ReadWrite.All"], 
         redirectUri: process.env.MICROSOFT_REDIRECT_URI!,
       };
 
       // Intercambiamos el código por el token y los datos del usuario
       const response = await msalClient.acquireTokenByCode(tokenRequest);
       
-      // Guardamos el correo y nombre en la sesión de Express
+      /**
+       * @description Construcción del objeto de sesión del usuario.
+       * Se incluye el accessToken, el cual es estrictamente necesario para 
+       * autorizar las futuras llamadas a Microsoft Graph API.
+       */
       (req.session as any).user = {
-        email: response.account?.username || response.account?.name,
-        name: response.account?.name,
-        homeAccountId: response.account?.homeAccountId
+        id: 1, 
+        username: response.account?.username || "usuario",
+        fullName: response.account?.name || "Usuario Microsoft",
+        email: response.account?.username,
+        isAdmin: true,
+        isActive: true,
+        accessToken: response.accessToken // <- Nueva propiedad indispensable
       };
 
       // Guardamos la sesión y redirigimos al frontend
@@ -104,6 +114,63 @@ const msalConfig: Configuration = {
       res.status(500).send("Error al obtener registros recientes");
     }
   });
+
+  // ========================================================
+  // ZONA 2: INTEGRACIÓN CON ONEDRIVE (DÍA 7)
+  // ========================================================
+
+  /**
+   * @route GET /api/drive/structure
+   * @description Obtiene la estructura de carpetas y archivos en la raíz del OneDrive del usuario autenticado.
+   * @access Protegido (Requiere sesión activa y accessToken de Microsoft Graph)
+   */
+  app.get("/api/drive/structure", async (req, res) => {
+    try {
+      const user = (req.session as any).user;
+      
+      // 1. Validación de seguridad y autorización
+      if (!user || !user.accessToken) {
+        return res.status(401).json({ 
+          error: "No autorizado. Token de acceso faltante o sesión expirada." 
+        });
+      }
+
+      // 2. Inicialización del cliente de Microsoft Graph
+      const graphClient = Client.init({
+        authProvider: (done) => {
+          done(null, user.accessToken);
+        }
+      });
+
+      // 3. Petición a la API de Microsoft para obtener los elementos de la carpeta raíz
+      // El endpoint /me/drive/root/children lista los metadatos de los archivos.
+      const driveItems = await graphClient.api('/me/drive/root/children').get();
+
+      // 🧹 LIMPIEZA DE DATOS (DTO)
+      // Recorremos la respuesta de Microsoft y armamos nuestros propios objetos limpios
+      const cleanData = driveItems.value.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        isFolder: !!item.folder, // Si Microsoft nos manda la propiedad 'folder', esto da true
+        size: item.size, // Tamaño en bytes
+        lastModified: item.lastModifiedDateTime,
+        url: item.webUrl // Un link directo por si en el front quieren abrirlo en el navegador
+      }));
+
+      // 4. Respuesta limpia al cliente
+      res.json({
+        success: true,
+        count: cleanData.length,
+        data: cleanData
+      });
+
+    } catch (error: any) {
+      console.error("Error crítico al obtener la estructura de OneDrive:", error.message);
+      res.status(500).json({ 
+        error: "Fallo al conectar con los servicios de almacenamiento de Microsoft." 
+      });
+    }
+  }); 
 
   // ====================================================================
   // AQUI IRÁN TUS NUEVOS ENDPOINTS DEL MÓDULO DE LICITACIONES
