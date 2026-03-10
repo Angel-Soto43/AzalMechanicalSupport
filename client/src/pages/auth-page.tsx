@@ -58,7 +58,7 @@ export default function AuthPage() {
           </div>
 
           <Button
-            onClick={() => window.location.href = "/api/auth/azure"}
+            onClick={() => window.location.href = "/api/auth/microsoft"}
             className="w-full flex items-center justify-center gap-3 bg-[#2f2f2f] hover:bg-[#00a4ef] text-white py-8 text-lg font-bold rounded-xl shadow-2xl border border-gray-700 transition-all"
           >
             <svg className="h-6 w-6" viewBox="0 0 23 23">

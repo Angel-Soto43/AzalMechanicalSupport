@@ -86,10 +86,10 @@ export function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  app.get("/api/user", (req, res) => {
+  /*app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
-  });
+  });*/
 
   app.post("/api/logout", (req, res, next) => {
     req.logout((err) => {

@@ -35,34 +35,41 @@ const msalConfig: Configuration = {
     }
   });
 
-  // 2. Endpoint de Callback (Microsoft regresa aquí con los datos del usuario)
+  // 2. Endpoint de Callback (Microsoft regresa aquí)
   app.get("/api/auth/callback", async (req, res) => {
     try {
+      console.log("🔄 1. Microsoft regresó a nuestro servidor...");
       const tokenRequest = {
         code: req.query.code as string,
         scopes: ["user.read"],
         redirectUri: process.env.MICROSOFT_REDIRECT_URI!,
       };
 
-      // Intercambiamos el código por el token y los datos del usuario
       const response = await msalClient.acquireTokenByCode(tokenRequest);
+      console.log("✅ 2. Token de Microsoft obtenido para:", response.account?.username);
       
-      // Guardamos el correo y nombre en la sesión de Express
       (req.session as any).user = {
-        email: response.account?.username || response.account?.name,
-        name: response.account?.name,
-        homeAccountId: response.account?.homeAccountId
+        id: 1, 
+        username: response.account?.username || "usuario",
+        fullName: response.account?.name || "Usuario Microsoft",
+        email: response.account?.username,
+        isAdmin: true,
+        isActive: true
       };
 
-      // Guardamos la sesión y redirigimos al frontend
-      req.session.save(() => {
-        // Redirige a la raíz de tu frontend (ajusta si la ruta es diferente)
+      console.log("📦 3. Guardando sesión en la base de datos...");
+      req.session.save((err) => {
+        if (err) {
+          console.error("❌ ERROR AL GUARDAR SESIÓN:", err);
+          return res.status(500).send("Error de sesión");
+        }
+        console.log("💾 4. Sesión guardada. Redirigiendo al Frontend (/).");
         res.redirect("/"); 
       });
 
     } catch (error) {
-      console.error("Error en el callback de Microsoft:", error);
-      res.status(500).send("Error en la autenticación. Por favor, intenta de nuevo.");
+      console.error("❌ Error en el callback de Microsoft:", error);
+      res.status(500).send("Error en la autenticación.");
     }
   });
 
@@ -73,6 +80,20 @@ const msalConfig: Configuration = {
       res.json(user);
     } else {
       res.status(401).json({ error: "No autenticado" });
+    }
+  });
+  /// Endpoint de compatibilidad para el Frontend viejo
+  app.get("/api/user", (req, res) => {
+    console.log("👀 5. El Frontend preguntó: '¿Hay alguien logueado?'");
+    
+    const user = (req.session as any).user;
+    
+    if (user) {
+      console.log("🟢 6. ¡Sí! Dejando pasar a:", user.username);
+      res.json(user);
+    } else {
+      console.log("🔴 6. ¡No hay nadie en la memoria! Pateando al login...");
+      res.status(401).send("No autenticado");
     }
   });
 
