@@ -88,13 +88,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // ============ Audit Logs Routes ============
+
   app.get("/api/audit-logs", async (req, res) => {
     const logs = await storage.getAuditLogs();
     res.json(logs);
   });
 
-  // ============ MÓDULO DE LICITACIONES (SPRINT 1) ============
+  // MÓDULO DE LICITACIONES
 
   // Obtener todas las licitaciones
   app.get("/api/licitaciones", async (req, res) => {
@@ -117,6 +117,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(newLicitacion);
     } catch (error) {
       res.status(500).send("Error al crear licitación");
+    }
+  });
+//MÓDULO DE CARPETAS (Para el Árbol Dinámico)
+
+  app.get("/api/folders", async (req, res) => {
+    try {
+      // 1. Llamamos a la función del storage que trae todas las carpetas
+      const folders = await storage.getFolders();
+
+      // 2. Las mandamos al Frontend como JSON
+      res.json(folders);
+    } catch (error) {
+      console.error("Error al obtener carpetas:", error);
+      res.status(500).send("Error al obtener carpetas");
     }
   });
 

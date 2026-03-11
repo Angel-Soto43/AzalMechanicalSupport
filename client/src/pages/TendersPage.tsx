@@ -13,7 +13,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
+// Agrega useQuery a tus imports de tanstack
+import { useMutation, useQuery } from "@tanstack/react-query";
+// Importa queryClient para las peticiones
+import { queryClient } from "@/lib/queryClient";
 
 const EMPRESAS = [
   { id: 1, nombre: "Empresa de Ingeniería A", rfc: "EIA010101ABC" },
@@ -24,20 +27,14 @@ const EMPRESAS = [
   { id: 6, nombre: "Logística y Soporte F", rfc: "LSF060606PQR" },
 ];
 
+
 export default function TendersPage() {
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(EMPRESAS[0]);
 
-  const mockFolders = [
-    {
-      name: "Bases de Licitación",
-      files: ["bases_tecnicas.pdf", "requerimientos_iso.docx"]
-    },
-    {
-      name: "Propuestas de Proveedores",
-      files: ["propuesta_economica_v1.pdf"]
-    }
-  ];
-
+  // --- NUEVO: Traer carpetas reales del backend ---
+  const { data: folders = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/folders"], // Este endpoint debe estar en tu backend
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -141,37 +138,46 @@ export default function TendersPage() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 rounded-[8px] border-slate-200 shadow-xl overflow-hidden">
-            <CardHeader className="bg-white border-b">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="text-[#1E40AF]" /> Control de Licitaciones
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader className="bg-slate-50">
-                  <TableRow>
-                    <TableHead>Folio</TableHead>
-                    <TableHead>Proyecto</TableHead>
-                    <TableHead>Presupuesto</TableHead>
-                    <TableHead>Estado</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow className="hover:bg-slate-50/50 transition-colors">
-                    <TableCell className="font-medium font-mono text-xs">AZAL-2026-001</TableCell>
-                    <TableCell className="text-sm">Suministro de Válvulas Industriales</TableCell>
-                    <TableCell className="text-sm font-medium">$450,000.00</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="bg-blue-100 text-[#1E40AF] border-none">
-                        En Proceso
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+
+            <Card className="rounded-[8px] border-slate-200 shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-md flex items-center gap-2 uppercase text-slate-500 tracking-wider">
+                  <Folder size={18} /> Explorador de Documentos
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isLoading ? (
+                  <div className="flex flex-col gap-2">
+                    <div className="h-4 w-full bg-slate-100 animate-pulse rounded" />
+                    <div className="h-4 w-3/4 bg-slate-100 animate-pulse rounded" />
+                  </div>
+                ) : folders.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic text-center py-4">
+                    No se encontraron carpetas vinculadas.
+                  </p>
+                ) : (
+                  folders.map((folder: any) => (
+                    <div key={folder.id} className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                        <ChevronRight size={14} className="text-slate-400" />
+                        <Folder size={16} className="text-blue-500 fill-blue-500/20" />
+                        {folder.name}
+                      </div>
+                      {/* Aquí renderizamos los archivos si existen en la DB */}
+                      <div className="ml-6 space-y-1">
+                        {folder.files?.map((file: any, j: number) => (
+                          <div key={j} className="flex items-center gap-2 text-xs text-slate-500 p-1 rounded hover:bg-blue-50 transition-colors cursor-pointer">
+                            <FileText size={14} className="text-slate-400" />
+                            {file.name || "Archivo sin nombre"}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
 
           <Card className="rounded-[8px] border-slate-200 shadow-xl">
             <CardHeader>
@@ -180,23 +186,31 @@ export default function TendersPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {mockFolders.map((folder, i) => (
-                <div key={i} className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    <ChevronRight size={14} className="text-slate-400" />
-                    <Folder size={16} className="text-blue-500 fill-blue-500/20" />
-                    {folder.name}
-                  </div>
-                  <div className="ml-6 space-y-1">
-                    {folder.files.map((file, j) => (
-                      <div key={j} className="flex items-center gap-2 text-xs text-slate-500 hover:text-blue-600 cursor-pointer p-1 rounded hover:bg-blue-50 transition-colors">
-                        <FileText size={14} className="text-slate-400" />
-                        {file}
+
+                {isLoading ? (
+                  <p className="text-xs text-slate-400 animate-pulse">Cargando carpetas reales...</p>
+                ) : folders.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic">No hay carpetas en la DB.</p>
+                ) : (
+                  // CAMBIAMOS mockFolders por folders
+                  folders.map((folder: any, i: number) => (
+                    <div key={folder.id || i} className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                        <ChevronRight size={14} className="text-slate-400" />
+                        <Folder size={16} className="text-blue-500 fill-blue-500/20" />
+                        {folder.name}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                      <div className="ml-6 space-y-1">
+                        {folder.files?.map((file: any, j: number) => (
+                          <div key={j} className="flex items-center gap-2 text-xs text-slate-500">
+                            <FileText size={14} className="text-slate-400" />
+                            {file.name || file}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
             </CardContent>
           </Card>
         </div>
