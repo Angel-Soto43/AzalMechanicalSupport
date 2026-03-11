@@ -172,6 +172,62 @@ const msalConfig: Configuration = {
     }
   }); 
 
+  /**
+   * @route GET /api/dashboard/stats
+   * @description Obtiene estadísticas de almacenamiento y archivos recientes para el Dashboard.
+   * @access Protegido (Requiere sesión activa y accessToken)
+   */
+  app.get("/api/dashboard/stats", async (req, res) => {
+    try {
+      const user = (req.session as any).user;
+      
+      if (!user || !user.accessToken) {
+        return res.status(401).json({ error: "No autorizado." });
+      }
+
+      const graphClient = Client.init({
+        authProvider: (done) => {
+          done(null, user.accessToken);
+        }
+      });
+
+      // 🚀 TRUCO NINJA: Peticiones en paralelo para mayor velocidad
+      const [driveInfo, recentItems] = await Promise.all([
+        graphClient.api('/me/drive').get(), // Trae la cuota de almacenamiento
+        graphClient.api('/me/drive/recent').top(5).get() // Trae los 5 archivos más recientes
+      ]);
+
+      // 🧹 DTO: Empaquetamos todo limpio para el Frontend
+      const stats = {
+        storage: {
+          totalBytes: driveInfo.quota?.total || 0,
+          usedBytes: driveInfo.quota?.used || 0,
+          remainingBytes: driveInfo.quota?.remaining || 0,
+          // Calculamos el porcentaje de uso directamente en el backend
+          usedPercentage: driveInfo.quota?.total 
+            ? Math.round((driveInfo.quota.used / driveInfo.quota.total) * 100) 
+            : 0
+        },
+        recentFiles: recentItems.value.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          lastModified: item.lastModifiedDateTime,
+          url: item.webUrl,
+          size: item.size
+        }))
+      };
+
+      res.json({
+        success: true,
+        data: stats
+      });
+
+    } catch (error: any) {
+      console.error("Error al obtener estadísticas del dashboard:", error.message);
+      res.status(500).json({ error: "Fallo al obtener las estadísticas." });
+    }
+  });
+
   // ====================================================================
   // AQUI IRÁN TUS NUEVOS ENDPOINTS DEL MÓDULO DE LICITACIONES
   // (GET /api/licitaciones, POST /api/propuestas, etc.)
