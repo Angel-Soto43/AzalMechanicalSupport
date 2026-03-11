@@ -27,9 +27,10 @@ import BackupPage from "@/pages/backup-page";
 import FolderPage from "@/pages/folder-page";
 import FoldersListPage from "@/pages/folders-list-page";
 
-function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+// CORRECCIÓN: Usamos el nombre real del archivo que tienes en tu carpeta
+import TendersPage from "@/pages/TendersPage";
 
+function AppLayout({ children }: { children: React.ReactNode }) {
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
@@ -40,7 +41,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <SidebarInset>
-          <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
+          <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b bg-background/95 backdrop-blur px-4">
             <div className="flex items-center gap-2">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
@@ -49,10 +50,6 @@ function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground mr-2">
-                <Shield className="h-3 w-3" />
-                <span>ISO 27001</span>
-              </div>
               <ThemeToggle />
             </div>
           </header>
@@ -69,52 +66,28 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
+
       <ProtectedRoute path="/" component={() => (
-        <AppLayout>
-          <DashboardPage />
-        </AppLayout>
-      )} />
-      <ProtectedRoute path="/folders" component={() => (
-        <AppLayout>
-          <FoldersListPage />
-        </AppLayout>
-      )} />
-      <ProtectedRoute path="/folders/:id" component={() => (
-        <AppLayout>
-          <FolderPage />
-        </AppLayout>
+        <AppLayout><DashboardPage /></AppLayout>
       )} />
 
-      <ProtectedRoute path="/my-files" component={() => (
-        <AppLayout>
-          <MyFilesPage />
-        </AppLayout>
+      {/* RUTA DE LICITACIONES USANDO TENDERSPAGE */}
+      <ProtectedRoute path="/licitaciones" component={() => (
+        <AppLayout><TendersPage /></AppLayout>
       )} />
-      <ProtectedRoute path="/shared-files" component={() => (
-        <AppLayout>
-          <SharedFilesPage />
-        </AppLayout>
+
+      <ProtectedRoute path="/folders" component={() => (
+        <AppLayout><FoldersListPage /></AppLayout>
       )} />
-      <AdminRoute path="/all-files" component={() => (
-        <AppLayout>
-          <AllFilesPage />
-        </AppLayout>
+
+      <ProtectedRoute path="/folders/:id" component={() => (
+        <AppLayout><FolderPage /></AppLayout>
       )} />
-      <AdminRoute path="/users" component={() => (
-        <AppLayout>
-          <UsersPage />
-        </AppLayout>
-      )} />
+
       <AdminRoute path="/audit-logs" component={() => (
-        <AppLayout>
-          <AuditLogsPage />
-        </AppLayout>
+        <AppLayout><AuditLogsPage /></AppLayout>
       )} />
-      <AdminRoute path="/backup" component={() => (
-        <AppLayout>
-          <BackupPage />
-        </AppLayout>
-      )} />
+
       <Route component={NotFound} />
     </Switch>
   );

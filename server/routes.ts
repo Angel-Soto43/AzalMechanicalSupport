@@ -3,15 +3,13 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
+import { insertLicitacionSchema } from "@shared/schema"; // Asegúrate de tener esto en tu schema.ts
 
-export async function registerRoutes(
-  httpServer: Server,
-  app: Express
-): Promise<Server> {
+export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication (Mantiene la configuración de sesión base)
   setupAuth(app);
 
-const msalConfig: Configuration = {
+  const msalConfig: Configuration = {
     auth: {
       clientId: process.env.MICROSOFT_CLIENT_ID!,
       authority: `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID}`,
@@ -47,11 +45,12 @@ const msalConfig: Configuration = {
 
       const response = await msalClient.acquireTokenByCode(tokenRequest);
       console.log("✅ 2. Token de Microsoft obtenido para:", response.account?.username);
-      
+
       (req.session as any).user = {
-        id: 1, 
+        id: 1,
         username: response.account?.username || "usuario",
         fullName: response.account?.name || "Usuario Microsoft",
+        displayName: response.account?.name,
         email: response.account?.username,
         isAdmin: true,
         isActive: true
@@ -64,7 +63,7 @@ const msalConfig: Configuration = {
           return res.status(500).send("Error de sesión");
         }
         console.log("💾 4. Sesión guardada. Redirigiendo al Frontend (/).");
-        res.redirect("/"); 
+        res.redirect("/");
       });
 
     } catch (error) {
@@ -73,31 +72,16 @@ const msalConfig: Configuration = {
     }
   });
 
-  // 3. Endpoint para que el Frontend sepa quién está conectado
-  app.get("/api/auth/me", (req, res) => {
-    const user = (req.session as any).user;
-    if (user) {
-      res.json(user);
-    } else {
-      res.status(401).json({ error: "No autenticado" });
-    }
-  });
-  /// Endpoint de compatibilidad para el Frontend viejo
+  // 3. Endpoints de usuario y sesión
   app.get("/api/user", (req, res) => {
-    console.log("👀 5. El Frontend preguntó: '¿Hay alguien logueado?'");
-    
     const user = (req.session as any).user;
-    
     if (user) {
-      console.log("🟢 6. ¡Sí! Dejando pasar a:", user.username);
       res.json(user);
     } else {
-      console.log("🔴 6. ¡No hay nadie en la memoria! Pateando al login...");
       res.status(401).send("No autenticado");
     }
   });
 
-  // 4. Endpoint de Logout
   app.post("/api/auth/logout", (req, res) => {
     req.session.destroy(() => {
       res.json({ success: true });
@@ -105,31 +89,37 @@ const msalConfig: Configuration = {
   });
 
   // ============ Audit Logs Routes ============
-  
   app.get("/api/audit-logs", async (req, res) => {
+    const logs = await storage.getAuditLogs();
+    res.json(logs);
+  });
+
+  // ============ MÓDULO DE LICITACIONES (SPRINT 1) ============
+
+  // Obtener todas las licitaciones
+  app.get("/api/licitaciones", async (req, res) => {
     try {
-      const logs = await storage.getAuditLogs();
-      res.json(logs);
+      const licitaciones = await storage.getLicitaciones();
+      res.json(licitaciones);
     } catch (error) {
-      console.error("Error fetching audit logs:", error);
-      res.status(500).send("Error al obtener registros de auditoría");
+      res.status(500).send("Error al obtener licitaciones");
     }
   });
 
-  app.get("/api/audit-logs/recent", async (req, res) => {
+  // Crear una nueva licitación
+  app.post("/api/licitaciones", async (req, res) => {
     try {
-      const logs = await storage.getRecentAuditLogs(10);
-      res.json(logs);
+      const parsed = insertLicitacionSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json(parsed.error);
+      }
+      const newLicitacion = await storage.createLicitacion(parsed.data);
+      res.status(201).json(newLicitacion);
     } catch (error) {
-      console.error("Error fetching recent audit logs:", error);
-      res.status(500).send("Error al obtener registros recientes");
+      res.status(500).send("Error al crear licitación");
     }
   });
 
-  // ====================================================================
-  // AQUI IRÁN TUS NUEVOS ENDPOINTS DEL MÓDULO DE LICITACIONES
-  // (GET /api/licitaciones, POST /api/propuestas, etc.)
-  // ====================================================================
-
+  const httpServer = createServer(app);
   return httpServer;
 }
