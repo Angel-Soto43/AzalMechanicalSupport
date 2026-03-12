@@ -105,13 +105,37 @@ const msalConfig: Configuration = {
     }
   });
 
-  app.get("/api/audit-logs/recent", async (req, res) => {
+ // ========================================================
+  // GUARDAR NUEVO REGISTRO DE AUDITORÍA
+  // ========================================================
+  app.post("/api/audit-logs", async (req, res) => {
     try {
-      const logs = await storage.getRecentAuditLogs(10);
-      res.json(logs);
+      // 1. Magia pura: Sacamos el correo directo de la sesión del servidor
+      const user = (req.session as any).user;
+      
+      if (!user || !user.email) {
+        return res.status(401).json({ error: "No autorizado para registrar auditoría." });
+      }
+
+      // 2. Recibimos qué fue lo que hizo el usuario (ej. "Subió un contrato")
+      const { action, details } = req.body;
+
+      if (!action) {
+        return res.status(400).json({ error: "La acción es requerida." });
+      }
+
+      // 3. Guardamos en la base de datos usando la columna exacta 'correo'
+      const newLog = await storage.createAuditLog({
+        correo: user.email, // <-- ¡Aquí está la magia corregida!
+        action: action,
+        details: details || "Sin detalles adicionales"
+        // Eliminamos 'timestamp' porque tu base de datos lo hace automáticamente
+      });
+
+      res.status(201).json({ success: true, data: newLog });
     } catch (error) {
-      console.error("Error fetching recent audit logs:", error);
-      res.status(500).send("Error al obtener registros recientes");
+      console.error("Error al guardar el registro de auditoría:", error);
+      res.status(500).send("Error interno al procesar la auditoría.");
     }
   });
 
