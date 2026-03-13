@@ -3,31 +3,24 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { ProtectedRoute, AdminRoute } from "@/lib/protected-route";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   SidebarProvider,
   SidebarTrigger,
   SidebarInset,
 } from "@/components/ui/sidebar";
-import { Lock, Shield } from "lucide-react";
+import { Lock } from "lucide-react";
 
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import DashboardPage from "@/pages/dashboard-page";
-import MyFilesPage from "@/pages/my-files-page";
-import SharedFilesPage from "@/pages/shared-files-page";
-import AllFilesPage from "@/pages/all-files-page";
 import UsersPage from "@/pages/users-page";
 import AuditLogsPage from "@/pages/audit-logs-page";
-import BackupPage from "@/pages/backup-page";
 import FolderPage from "@/pages/folder-page";
 import FoldersListPage from "@/pages/folders-list-page";
-
-// CORRECCIÓN: Usamos el nombre real del archivo que tienes en tu carpeta
 import TendersPage from "@/pages/TendersPage";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
@@ -46,7 +39,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
                 <Lock className="h-3 w-3" />
-                <span>Conexión segura</span>
+                <span>Conexión segura (Bypass Activo)</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -65,28 +58,41 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 function Router() {
   return (
     <Switch>
+      {/* Página de Auth por si la necesitas, pero ya no es obligatoria */}
       <Route path="/auth" component={AuthPage} />
 
-      <ProtectedRoute path="/" component={() => (
-        <AppLayout><DashboardPage /></AppLayout>
-      )} />
+      {/* 🔓 DASHBOARD: Ahora abierto para ver los cambios de Alan */}
+      <Route path="/">
+        <AppLayout>
+          <DashboardPage />
+        </AppLayout>
+      </Route>
 
-      {/* RUTA DE LICITACIONES USANDO TENDERSPAGE */}
-      <ProtectedRoute path="/licitaciones" component={() => (
-        <AppLayout><TendersPage /></AppLayout>
-      )} />
+      {/* 🔓 LICITACIONES: Tu módulo funcional */}
+      <Route path="/licitaciones">
+        <AppLayout>
+          <TendersPage />
+        </AppLayout>
+      </Route>
 
-      <ProtectedRoute path="/folders" component={() => (
-        <AppLayout><FoldersListPage /></AppLayout>
-      )} />
+      {/* 🔓 CARPETAS Y AUDITORÍA: Abiertos para pruebas */}
+      <Route path="/folders">
+        <AppLayout>
+          <FoldersListPage />
+        </AppLayout>
+      </Route>
 
-      <ProtectedRoute path="/folders/:id" component={() => (
-        <AppLayout><FolderPage /></AppLayout>
-      )} />
+      <Route path="/folders/:id">
+        <AppLayout>
+          <FolderPage />
+        </AppLayout>
+      </Route>
 
-      <AdminRoute path="/audit-logs" component={() => (
-        <AppLayout><AuditLogsPage /></AppLayout>
-      )} />
+      <Route path="/audit-logs">
+        <AppLayout>
+          <AuditLogsPage />
+        </AppLayout>
+      </Route>
 
       <Route component={NotFound} />
     </Switch>

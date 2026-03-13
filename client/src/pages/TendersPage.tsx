@@ -2,9 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Building2, FileText, Folder, ChevronRight } from "lucide-react";
+import { Building2, FileText, Folder, ChevronRight, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -13,10 +11,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-// Agrega useQuery a tus imports de tanstack
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { useMutation, useQuery } from "@tanstack/react-query";
-// Importa queryClient para las peticiones
 import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const EMPRESAS = [
   { id: 1, nombre: "Empresa de Ingeniería A", rfc: "EIA010101ABC" },
@@ -27,190 +27,150 @@ const EMPRESAS = [
   { id: 6, nombre: "Logística y Soporte F", rfc: "LSF060606PQR" },
 ];
 
-
 export default function TendersPage() {
+  const { toast } = useToast();
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(EMPRESAS[0]);
 
-  // --- NUEVO: Traer carpetas reales del backend ---
-  const { data: folders = [], isLoading } = useQuery<any[]>({
-    queryKey: ["/api/folders"], // Este endpoint debe estar en tu backend
+  const [folio, setFolio] = useState("");
+  const [titulo, setTitulo] = useState("");
+  const [presupuesto, setPresupuesto] = useState("");
+  const [fecha, setFecha] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // --- QUERIES ---
+  const { data: folders = [], isLoading: loadingFolders } = useQuery<any[]>({
+    queryKey: ["/api/folders"],
   });
+
+  const { data: listaLicitaciones = [], isLoading: loadingTenders } = useQuery<any[]>({
+    queryKey: ["/api/licitaciones"],
+  });
+
+  // --- MUTATION ---
+  const mutation = useMutation({
+    mutationFn: async (nuevaLicitacion: any) => {
+      const res = await fetch("/api/licitaciones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nuevaLicitacion),
+      });
+      if (!res.ok) throw new Error("Error en el servidor");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/licitaciones"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] }); // Para que el dashboard se entere
+      toast({ title: "Registro Exitoso", description: "La licitación ha sido guardada." });
+      setIsModalOpen(false);
+      setFolio(""); setTitulo(""); setPresupuesto(""); setFecha("");
+    },
+    onError: (error: any) => {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    }
+  });
+
+  const handleConfirmar = () => {
+    mutation.mutate({
+      titulo: titulo,
+      numeroLicitacion: folio,
+      cliente: empresaSeleccionada.nombre,
+      presupuesto: Number(presupuesto) || 0,
+      fechaCierre: fecha,
+      estado: "abierta"
+    });
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <header className="bg-white border-b p-6 shadow-sm">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 bg-[#1E40AF] rounded-lg flex items-center justify-center text-white">
+            <div className="h-12 w-12 bg-[#1E40AF] rounded-lg flex items-center justify-center text-white shadow-lg">
               <Building2 size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 uppercase">
-                {empresaSeleccionada.nombre}
-              </h1>
+              <h1 className="text-2xl font-bold text-slate-900 uppercase">{empresaSeleccionada.nombre}</h1>
               <p className="text-sm text-slate-500 font-mono">{empresaSeleccionada.rfc}</p>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-slate-600">Cambiar Empresa:</span>
-            <Select
-              onValueChange={(val) => setEmpresaSeleccionada(EMPRESAS.find(e => e.id === Number(val))!)}
-              defaultValue="1"
-            >
-              <SelectTrigger className="w-[250px] border-[#1E40AF]/20">
-                <SelectValue placeholder="Seleccionar empresa" />
-              </SelectTrigger>
-              <SelectContent>
-                {EMPRESAS.map((emp) => (
-                  <SelectItem key={emp.id} value={emp.id.toString()}>
-                    {emp.nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Select onValueChange={(v) => setEmpresaSeleccionada(EMPRESAS.find(e => e.id === Number(v))!)} defaultValue="1">
+            <SelectTrigger className="w-[250px] border-[#1E40AF]/20"><SelectValue /></SelectTrigger>
+            <SelectContent>{EMPRESAS.map(e => <SelectItem key={e.id} value={e.id.toString()}>{e.nombre}</SelectItem>)}</SelectContent>
+          </Select>
         </div>
       </header>
 
       <main className="flex-1 p-8 max-w-7xl mx-auto w-full space-y-6">
-        <div className="flex justify-end gap-4">
-          <Dialog>
+        <div className="flex justify-end">
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogTrigger asChild>
               <Button className="bg-[#1E40AF] hover:bg-[#1e3a8a] text-white shadow-md">
                 <Plus className="mr-2 h-4 w-4" /> Nueva Licitación
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] rounded-[8px]">
-              <DialogHeader>
-                <DialogTitle className="text-[#1E40AF] flex items-center gap-2 border-b pb-2">
-                  <FileText size={20} /> Registrar Nueva Licitación
-                </DialogTitle>
-              </DialogHeader>
-
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader><DialogTitle className="text-[#1E40AF] border-b pb-4">Registrar Nueva Licitación</DialogTitle></DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium">¿En qué empresa desea guardar?</label>
-                  <Select defaultValue={empresaSeleccionada.id.toString()}>
-                    <SelectTrigger className="border-slate-200">
-                      <SelectValue placeholder="Seleccionar empresa" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {EMPRESAS.map((emp) => (
-                        <SelectItem key={emp.id} value={emp.id.toString()}>
-                          {emp.nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium">Folio Interno</label>
-                  <Input placeholder="Ej: AZAL-2026-001" className="rounded-lg" />
-                </div>
-
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium">Título del Proyecto</label>
-                  <Input placeholder="Nombre de la licitación" className="rounded-lg" />
-                </div>
-
+                <Input label="Folio" value={folio} onChange={e => setFolio(e.target.value)} placeholder="AZAL-2026-XXX" />
+                <Input label="Proyecto" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Nombre del proyecto" />
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <label className="text-sm font-medium">Presupuesto Base</label>
-                    <Input type="number" placeholder="0.00" className="rounded-lg" />
-                  </div>
-                  <div className="grid gap-2">
-                    <label className="text-sm font-medium">Fecha Límite</label>
-                    <Input type="date" className="rounded-lg" />
-                  </div>
+                  <Input type="number" label="Presupuesto" value={presupuesto} onChange={e => setPresupuesto(e.target.value)} />
+                  <Input type="date" label="Fecha" value={fecha} onChange={e => setFecha(e.target.value)} />
                 </div>
               </div>
-
-              <div className="flex justify-end gap-3 mt-2">
-                <Button variant="outline" className="rounded-lg">Cancelar</Button>
-                <Button className="bg-[#1E40AF] text-white rounded-lg px-6 hover:bg-[#1e3a8a]">
-                  Confirmar Registro
+              <div className="flex justify-end gap-3"><Button variant="ghost" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
+                <Button onClick={handleConfirmar} disabled={mutation.isPending} className="bg-[#1E40AF] text-white">
+                  {mutation.isPending ? "Guardando..." : "Confirmar Registro"}
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
-
-            <Card className="rounded-[8px] border-slate-200 shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-md flex items-center gap-2 uppercase text-slate-500 tracking-wider">
-                  <Folder size={18} /> Explorador de Documentos
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isLoading ? (
-                  <div className="flex flex-col gap-2">
-                    <div className="h-4 w-full bg-slate-100 animate-pulse rounded" />
-                    <div className="h-4 w-3/4 bg-slate-100 animate-pulse rounded" />
-                  </div>
-                ) : folders.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic text-center py-4">
-                    No se encontraron carpetas vinculadas.
-                  </p>
-                ) : (
-                  folders.map((folder: any) => (
-                    <div key={folder.id} className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                        <ChevronRight size={14} className="text-slate-400" />
-                        <Folder size={16} className="text-blue-500 fill-blue-500/20" />
-                        {folder.name}
-                      </div>
-                      {/* Aquí renderizamos los archivos si existen en la DB */}
-                      <div className="ml-6 space-y-1">
-                        {folder.files?.map((file: any, j: number) => (
-                          <div key={j} className="flex items-center gap-2 text-xs text-slate-500 p-1 rounded hover:bg-blue-50 transition-colors cursor-pointer">
-                            <FileText size={14} className="text-slate-400" />
-                            {file.name || "Archivo sin nombre"}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-
-
-          <Card className="rounded-[8px] border-slate-200 shadow-xl">
-            <CardHeader>
-              <CardTitle className="text-md flex items-center gap-2 uppercase text-slate-500 tracking-wider">
-                <Folder size={18} /> Explorador de Documentos
+        <div className="grid lg:grid-cols-4 gap-6">
+          {/* EXPLORADOR - COLUMNA 1 */}
+          <Card className="rounded-xl border-slate-200 shadow-sm lg:col-span-1">
+            <CardHeader className="bg-slate-50 border-b p-4">
+              <CardTitle className="text-[10px] font-bold uppercase text-slate-500 tracking-widest flex items-center gap-2">
+                <Folder size={14} /> Explorador de Archivos
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-4">
+              {loadingFolders ? <Skeleton className="h-20 w-full" /> : folders.length === 0 ? <p className="text-xs text-slate-400 italic text-center">No hay carpetas.</p> :
+                folders.map(f => (
+                  <div key={f.id} className="flex items-center gap-2 text-sm text-slate-700 p-2 hover:bg-slate-100 rounded-md">
+                    <Folder size={16} className="text-blue-500 fill-blue-500/10" /> {f.name}
+                  </div>
+                ))}
+            </CardContent>
+          </Card>
 
-                {isLoading ? (
-                  <p className="text-xs text-slate-400 animate-pulse">Cargando carpetas reales...</p>
-                ) : folders.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic">No hay carpetas en la DB.</p>
-                ) : (
-                  // CAMBIAMOS mockFolders por folders
-                  folders.map((folder: any, i: number) => (
-                    <div key={folder.id || i} className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                        <ChevronRight size={14} className="text-slate-400" />
-                        <Folder size={16} className="text-blue-500 fill-blue-500/20" />
-                        {folder.name}
-                      </div>
-                      <div className="ml-6 space-y-1">
-                        {folder.files?.map((file: any, j: number) => (
-                          <div key={j} className="flex items-center gap-2 text-xs text-slate-500">
-                            <FileText size={14} className="text-slate-400" />
-                            {file.name || file}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                )}
+          {/* TABLA REAL - COLUMNAS 2, 3 Y 4 */}
+          <Card className="lg:col-span-3 rounded-xl border-slate-200 shadow-sm overflow-hidden">
+            <CardHeader className="border-b bg-white">
+              <CardTitle className="text-sm font-bold text-slate-600 uppercase">Gestión de Licitaciones</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader><TableRow className="bg-slate-50/50">
+                  <TableHead className="text-xs">Folio</TableHead>
+                  <TableHead className="text-xs">Proyecto</TableHead>
+                  <TableHead className="text-xs text-right">Presupuesto</TableHead>
+                  <TableHead className="text-xs">Estado</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {loadingTenders ? <TableRow><TableCell colSpan={4} className="text-center py-10">Cargando...</TableCell></TableRow> :
+                    listaLicitaciones.length === 0 ? <TableRow><TableCell colSpan={4} className="text-center py-10 text-slate-400">Sin registros.</TableCell></TableRow> :
+                    listaLicitaciones.map(l => (
+                      <TableRow key={l.id}>
+                        <TableCell className="font-mono text-xs font-bold text-blue-600">{l.numeroLicitacion}</TableCell>
+                        <TableCell className="text-sm font-medium">{l.titulo}</TableCell>
+                        <TableCell className="text-right text-sm">${Number(l.presupuesto).toLocaleString()}</TableCell>
+                        <TableCell><Badge className="bg-green-100 text-green-700 border-none text-[10px]">{l.estado}</Badge></TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </div>
