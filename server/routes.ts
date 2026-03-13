@@ -4,6 +4,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { insertLicitacionSchema } from "@shared/schema"; // Asegúrate de tener esto en tu schema.ts
+import { Client } from "@microsoft/microsoft-graph-client";
+import "isomorphic-fetch";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication (Mantiene la configuración de sesión base)
@@ -33,107 +35,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 2. Endpoint de Callback (Microsoft regresa aquí)
+  // 2. Endpoint de Callback (Microsoft regresa aquí con los datos del usuario)
   app.get("/api/auth/callback", async (req, res) => {
     try {
-      console.log("🔄 1. Microsoft regresó a nuestro servidor...");
       const tokenRequest = {
         code: req.query.code as string,
         scopes: ["user.read"],
         redirectUri: process.env.MICROSOFT_REDIRECT_URI!,
       };
 
+      // Intercambiamos el código por el token y los datos del usuario
       const response = await msalClient.acquireTokenByCode(tokenRequest);
-      console.log("✅ 2. Token de Microsoft obtenido para:", response.account?.username);
-
+      
+      // Guardamos el correo y nombre en la sesión de Express
       (req.session as any).user = {
-        id: 1,
-        username: response.account?.username || "usuario",
-        fullName: response.account?.name || "Usuario Microsoft",
-        displayName: response.account?.name,
-        email: response.account?.username,
-        isAdmin: true,
-        isActive: true
+        email: response.account?.username || response.account?.name,
+        name: response.account?.name,
+        homeAccountId: response.account?.homeAccountId
       };
 
-      console.log("📦 3. Guardando sesión en la base de datos...");
-      req.session.save((err) => {
-        if (err) {
-          console.error("❌ ERROR AL GUARDAR SESIÓN:", err);
-          return res.status(500).send("Error de sesión");
-        }
-        console.log("💾 4. Sesión guardada. Redirigiendo al Frontend (/).");
-        res.redirect("/");
+      // Guardamos la sesión y redirigimos al frontend
+      req.session.save(() => {
+        // Redirige a la raíz de tu frontend (ajusta si la ruta es diferente)
+        res.redirect("/"); 
       });
 
     } catch (error) {
-      console.error("❌ Error en el callback de Microsoft:", error);
-      res.status(500).send("Error en la autenticación.");
+      console.error("Error en el callback de Microsoft:", error);
+      res.status(500).send("Error en la autenticación. Por favor, intenta de nuevo.");
     }
   });
 
-  // 3. Endpoints de usuario y sesión
-  app.get("/api/user", (req, res) => {
+  // 3. Endpoint para que el Frontend sepa quién está conectado
+  app.get("/api/auth/me", (req, res) => {
     const user = (req.session as any).user;
     if (user) {
       res.json(user);
     } else {
-      res.status(401).send("No autenticado");
+      res.status(401).json({ error: "No autenticado" });
     }
   });
 
+  // 4. Endpoint de Logout
   app.post("/api/auth/logout", (req, res) => {
     req.session.destroy(() => {
       res.json({ success: true });
     });
   });
 
-
+  // ============ Audit Logs Routes ============
+  
   app.get("/api/audit-logs", async (req, res) => {
-    const logs = await storage.getAuditLogs();
-    res.json(logs);
-  });
-
-  // MÓDULO DE LICITACIONES
-
-  // Obtener todas las licitaciones
-  app.get("/api/licitaciones", async (req, res) => {
     try {
-      const licitaciones = await storage.getLicitaciones();
-      res.json(licitaciones);
+      const logs = await storage.getAuditLogs();
+      res.json(logs);
     } catch (error) {
-      res.status(500).send("Error al obtener licitaciones");
+      console.error("Error fetching audit logs:", error);
+      res.status(500).send("Error al obtener registros de auditoría");
     }
   });
 
-  // Crear una nueva licitación
-  app.post("/api/licitaciones", async (req, res) => {
+  app.get("/api/audit-logs/recent", async (req, res) => {
     try {
-      const parsed = insertLicitacionSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json(parsed.error);
-      }
-      const newLicitacion = await storage.createLicitacion(parsed.data);
-      res.status(201).json(newLicitacion);
+      const logs = await storage.getRecentAuditLogs(10);
+      res.json(logs);
     } catch (error) {
-      res.status(500).send("Error al crear licitación");
-    }
-  });
-//MÓDULO DE CARPETAS (Para el Árbol Dinámico)
-
-  app.get("/api/folders", async (req, res) => {
-    try {
-      // 1. Llamamos a la función del storage que trae todas las carpetas
-      const folders = await storage.getFolders();
-
-      // 2. Las mandamos al Frontend como JSON
-      res.json(folders);
-    } catch (error) {
-      console.error("Error al obtener carpetas:", error);
-      res.status(500).send("Error al obtener carpetas");
+      console.error("Error fetching recent audit logs:", error);
+      res.status(500).send("Error al obtener registros recientes");
     }
   });
 
-  const httpServer = createServer(app);
+  // ====================================================================
+  // AQUI IRÁN TUS NUEVOS ENDPOINTS DEL MÓDULO DE LICITACIONES
+  // (GET /api/licitaciones, POST /api/propuestas, etc.)
+  // ====================================================================
+
   return httpServer;
 }
