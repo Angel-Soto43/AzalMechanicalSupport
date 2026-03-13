@@ -22,6 +22,7 @@ import AuditLogsPage from "@/pages/audit-logs-page";
 import FolderPage from "@/pages/folder-page";
 import FoldersListPage from "@/pages/folders-list-page";
 import TendersPage from "@/pages/TendersPage";
+import AllFilesPage from "@/pages/all-files-page";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const style = {
@@ -34,7 +35,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <SidebarInset>
-          <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b bg-background/95 backdrop-blur px-4">
+          <header className="sticky top-0 z-40 flex h-14 items-center justify-blur px-4 flex h-14 items-center justify-between gap-4 border-b bg-background/95 backdrop-blur px-4">
             <div className="flex items-center gap-2">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
@@ -58,24 +59,27 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 function Router() {
   return (
     <Switch>
-      {/* Página de Auth por si la necesitas, pero ya no es obligatoria */}
       <Route path="/auth" component={AuthPage} />
 
-      {/* 🔓 DASHBOARD: Ahora abierto para ver los cambios de Alan */}
       <Route path="/">
         <AppLayout>
           <DashboardPage />
         </AppLayout>
       </Route>
 
-      {/* 🔓 LICITACIONES: Tu módulo funcional */}
       <Route path="/licitaciones">
         <AppLayout>
           <TendersPage />
         </AppLayout>
       </Route>
 
-      {/* 🔓 CARPETAS Y AUDITORÍA: Abiertos para pruebas */}
+      {/* ✅ RUTA DE TODOS LOS ARCHIVOS AGREGADA */}
+      <Route path="/all-files">
+        <AppLayout>
+          <AllFilesPage />
+        </AppLayout>
+      </Route>
+
       <Route path="/folders">
         <AppLayout>
           <FoldersListPage />

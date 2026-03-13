@@ -1,6 +1,10 @@
-import { auditLogs, type AuditLog, type InsertAuditLog, licitaciones, type Licitacion, type InsertLicitacion } from "@shared/schema";
+import {
+  auditLogs, type AuditLog, type InsertAuditLog,
+  licitaciones, type Licitacion, type InsertLicitacion,
+  users, files // 👈 Importamos las tablas de usuarios y archivos
+} from "@shared/schema";
 import { db, pool } from "./db";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 
@@ -11,6 +15,8 @@ export interface IStorage {
   getRecentAuditLogs(limit?: number): Promise<AuditLog[]>;
   getLicitaciones(): Promise<Licitacion[]>;
   createLicitacion(licitacion: InsertLicitacion): Promise<Licitacion>;
+  // --- NUEVOS MÉTODOS PARA ARCHIVOS ---
+  getAllFiles(): Promise<any[]>;
   sessionStore: session.Store;
 }
 
@@ -20,6 +26,7 @@ export class DatabaseStorage implements IStorage {
     this.sessionStore = new PostgresSessionStore({ pool, createTableIfMissing: true });
   }
 
+  // Licitaciones
   async getLicitaciones(): Promise<Licitacion[]> {
     return await db.select().from(licitaciones).orderBy(desc(licitaciones.id));
   }
@@ -29,6 +36,26 @@ export class DatabaseStorage implements IStorage {
     return licitacion;
   }
 
+
+ // En la clase DatabaseStorage de server/storage.ts
+ async getAllFiles(): Promise<any[]> {
+   return await db
+     .select({
+       id: files.id,
+       originalName: files.originalName,
+       size: files.size,
+       uploadedAt: files.uploadedAt,
+       mimeType: files.mimeType,
+       contractId: files.contractId,
+       // ✅ TAREA: Traemos el correo directamente del JOIN
+       correo: users.correo,
+     })
+     .from(files)
+     .leftJoin(users, eq(files.uploaderId, users.id))
+     .orderBy(desc(files.uploadedAt));
+ }
+
+  // Auditoría
   async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
     const [auditLog] = await db.insert(auditLogs).values(log).returning();
     return auditLog;

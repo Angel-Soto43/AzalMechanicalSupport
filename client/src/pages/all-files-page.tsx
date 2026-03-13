@@ -14,7 +14,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -23,23 +22,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -53,24 +35,22 @@ import {
   Download,
   Eye,
   Trash2,
-  FileText,
-  X,
   Filter,
-  Calendar,
-  User,
+  Mail,
   Grid3X3,
 } from "lucide-react";
-import { File, User as UserType } from "@shared/schema";
-import { FileIcon, formatFileSize, getFileTypeName } from "@/components/file-icon";
+import { File } from "@shared/schema";
+import { FileIcon, formatFileSize } from "@/components/file-icon";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
-interface FileWithUploader extends File {
-  uploaderName: string;
+// ✅ Definimos la interfaz que espera el correo del JOIN del backend
+interface FileWithEmail extends File {
+  correo: string;
 }
 
 function FilePreviewDialog({ file, open, onOpenChange }: {
-  file: FileWithUploader | null;
+  file: FileWithEmail | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -88,46 +68,24 @@ function FilePreviewDialog({ file, open, onOpenChange }: {
             {file.originalName}
           </DialogTitle>
           <DialogDescription>
-            <span className="font-mono">{file.contractId}</span> • {formatFileSize(file.size)} • 
-            Subido por {file.uploaderName}
+             Propietario: <span className="text-blue-600 font-semibold">{file.correo}</span>
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-1 min-h-[400px] bg-muted rounded-lg overflow-hidden">
+        <div className="flex-1 min-h-[400px] bg-muted rounded-lg overflow-hidden flex items-center justify-center">
           {isImage ? (
-            <img
-              src={`/api/files/${file.id}/preview`}
-              alt={file.originalName}
-              className="w-full h-full object-contain"
-            />
+            <img src={`/api/files/${file.id}/preview`} alt={file.originalName} className="w-full h-full object-contain" />
           ) : isPdf ? (
-            <iframe
-              src={`/api/files/${file.id}/preview`}
-              className="w-full h-[500px]"
-              title={file.originalName}
-            />
+            <iframe src={`/api/files/${file.id}/preview`} className="w-full h-[500px]" title={file.originalName} />
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8">
-              <FileIcon mimeType={file.mimeType} className="h-16 w-16 mb-4" />
-              <p className="text-lg font-medium mb-2">Vista previa no disponible</p>
-              <p className="text-sm text-muted-foreground mb-4">
-                Este tipo de archivo no puede ser previsualizado en el navegador
-              </p>
-              <Button onClick={() => window.open(`/api/files/${file.id}/download`, "_blank")}>
-                <Download className="mr-2 h-4 w-4" />
-                Descargar archivo
+            <div className="text-center p-8">
+              <FileIcon mimeType={file.mimeType} className="h-16 w-16 mb-4 mx-auto" />
+              <p>Vista previa no disponible</p>
+              <Button className="mt-4" onClick={() => window.open(`/api/files/${file.id}/download`, "_blank")}>
+                <Download className="mr-2 h-4 w-4" /> Descargar
               </Button>
             </div>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cerrar
-          </Button>
-          <Button onClick={() => window.open(`/api/files/${file.id}/download`, "_blank")}>
-            <Download className="mr-2 h-4 w-4" />
-            Descargar
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -136,18 +94,11 @@ function FilePreviewDialog({ file, open, onOpenChange }: {
 export default function AllFilesPage() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterUploader, setFilterUploader] = useState<string>("all");
-  const [filterDate, setFilterDate] = useState<string>("");
-  const [previewFile, setPreviewFile] = useState<FileWithUploader | null>(null);
-  const [deleteFile, setDeleteFile] = useState<FileWithUploader | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
+  const [previewFile, setPreviewFile] = useState<FileWithEmail | null>(null);
 
-  const { data: files, isLoading } = useQuery<FileWithUploader[]>({
-    queryKey: ["/api/files/all"],
-  });
-
-  const { data: users } = useQuery<UserType[]>({
-    queryKey: ["/api/users"],
+  // ✅ Llamamos al API de archivos
+  const { data: files, isLoading } = useQuery<FileWithEmail[]>({
+    queryKey: ["/api/files"],
   });
 
   const deleteMutation = useMutation({
@@ -155,320 +106,99 @@ export default function AllFilesPage() {
       await apiRequest("DELETE", `/api/files/${fileId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/files/all"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-      setDeleteFile(null);
-      toast({
-        title: "Archivo eliminado",
-        description: "El archivo se ha eliminado correctamente",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error al eliminar",
-        description: error.message,
-        variant: "destructive",
-      });
+      queryClient.invalidateQueries({ queryKey: ["/api/files"] });
+      toast({ title: "Eliminado", description: "Archivo borrado con éxito" });
     },
   });
-
-  const handleDownload = useCallback((file: FileWithUploader) => {
-    window.open(`/api/files/${file.id}/download`, "_blank");
-  }, []);
 
   const filteredFiles = files?.filter((file) => {
-    let matches = true;
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      matches = matches && (
-        file.originalName.toLowerCase().includes(query) ||
-        file.contractId.toLowerCase().includes(query) ||
-        file.uploaderName.toLowerCase().includes(query)
-      );
-    }
-
-    if (filterUploader && filterUploader !== "all") {
-      matches = matches && file.uploadedBy === parseInt(filterUploader);
-    }
-
-    if (filterDate) {
-      const fileDate = format(new Date(file.uploadedAt), "yyyy-MM-dd");
-      matches = matches && fileDate === filterDate;
-    }
-
-    return matches;
+    const query = searchQuery.toLowerCase();
+    return file.originalName.toLowerCase().includes(query) ||
+           (file.correo && file.correo.toLowerCase().includes(query));
   });
-
-  const clearFilters = () => {
-    setSearchQuery("");
-    setFilterUploader("all");
-    setFilterDate("");
-  };
-
-  const hasActiveFilters = searchQuery || (filterUploader && filterUploader !== "all") || filterDate;
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Grid3X3 className="h-6 w-6" />
+          <h1 className="text-2xl font-bold flex items-center gap-2 text-slate-800">
+            <Grid3X3 className="h-6 w-6 text-blue-600" />
             Todos los Archivos
           </h1>
-          <p className="text-muted-foreground">
-            Vista completa de todos los documentos del sistema
-          </p>
+          <p className="text-muted-foreground">Gestión de documentos por correo electrónico</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div>
-            <Input
-              placeholder="Buscar por nombre, contrato o usuario..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64 border border-gray-300"
-              data-testid="input-search-all-files"
-            />
-          </div>
-          <Button
-            variant={showFilters ? "secondary" : "outline"}
-            onClick={() => setShowFilters(!showFilters)}
-            data-testid="button-toggle-filters"
-          >
-            <Filter className="mr-2 h-4 w-4" />
-            Filtros
-            {hasActiveFilters && (
-              <Badge variant="default" className="ml-2">
-                Activos
-              </Badge>
-            )}
-          </Button>
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="Buscar por nombre o correo..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-72 shadow-sm"
+          />
         </div>
       </div>
 
-      {/* Filters Panel */}
-      {showFilters && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="filter-uploader" className="flex items-center gap-1">
-                  <User className="h-3 w-3" />
-                  Usuario
-                </Label>
-                <Select value={filterUploader} onValueChange={setFilterUploader}>
-                  <SelectTrigger id="filter-uploader" className="w-48" data-testid="select-filter-uploader">
-                    <SelectValue placeholder="Todos los usuarios" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos los usuarios</SelectItem>
-                    {users?.map((user) => (
-                      <SelectItem key={user.id} value={user.id.toString()}>
-                        {user.fullName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="filter-date" className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  Fecha
-                </Label>
-                <Input
-                  id="filter-date"
-                  type="date"
-                  value={filterDate}
-                  onChange={(e) => setFilterDate(e.target.value)}
-                  className="w-48"
-                  data-testid="input-filter-date"
-                />
-              </div>
-              {hasActiveFilters && (
-                <Button variant="ghost" onClick={clearFilters}>
-                  <X className="mr-2 h-4 w-4" />
-                  Limpiar filtros
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Files Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Archivos del Sistema</CardTitle>
-          <CardDescription>
-            {filteredFiles?.length ?? 0} archivo{(filteredFiles?.length ?? 0) !== 1 ? "s" : ""} encontrado{(filteredFiles?.length ?? 0) !== 1 ? "s" : ""}
-          </CardDescription>
+      <Card className="shadow-md border-slate-200">
+        <CardHeader className="bg-slate-50/50 border-b">
+          <CardTitle className="text-xs font-bold text-slate-500 uppercase tracking-widest">Registros del Sistema</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {isLoading ? (
-            <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <Skeleton className="h-10 w-10 rounded-lg" />
-                  <div className="flex-1">
-                    <Skeleton className="h-4 w-48 mb-2" />
-                    <Skeleton className="h-3 w-32" />
-                  </div>
-                  <Skeleton className="h-6 w-24" />
-                  <Skeleton className="h-6 w-16" />
-                </div>
-              ))}
-            </div>
-          ) : filteredFiles && filteredFiles.length > 0 ? (
-            <div className="rounded-lg border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[40px]"></TableHead>
-                    <TableHead>Nombre del Archivo</TableHead>
-                    <TableHead>ID Contrato</TableHead>
-                    <TableHead>Usuario</TableHead>
-                    <TableHead>Fecha/Hora</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead className="text-right">Tamaño</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredFiles.map((file) => (
-                    <TableRow key={file.id} className="hover-elevate">
-                      <TableCell>
-                        <FileIcon mimeType={file.mimeType} className="h-5 w-5" />
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium truncate max-w-xs text-sm" data-testid={`text-filename-${file.id}`}>
-                            {file.originalName}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {file.supplier}
-                          </p>
-                          {file.version > 1 && (
-                            <Badge variant="secondary" className="text-xs mt-1">
-                              v{file.version}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <code className="text-xs bg-muted px-2 py-1 rounded">
-                          {file.contractId}
-                        </code>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm">{file.uploaderName}</span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <p>{format(new Date(file.uploadedAt), "dd/MM/yyyy", { locale: es })}</p>
-                          <p className="text-xs text-muted-foreground font-mono">
-                            {format(new Date(file.uploadedAt), "HH:mm:ss", { locale: es })}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{getFileTypeName(file.mimeType)}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        {formatFileSize(file.size)}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" data-testid={`button-file-menu-${file.id}`}>
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setPreviewFile(file)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Previsualizar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDownload(file)}>
-                              <Download className="mr-2 h-4 w-4" />
-                              Descargar
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => setDeleteFile(file)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Eliminar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <div className="p-6 space-y-3">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
-                <FileText className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="font-medium mb-1">
-                {hasActiveFilters ? "No se encontraron archivos" : "No hay archivos"}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {hasActiveFilters
-                  ? "Intenta ajustar los filtros de búsqueda"
-                  : "No hay documentos en el sistema"}
-              </p>
-              {hasActiveFilters && (
-                <Button variant="outline" onClick={clearFilters} className="mt-4">
-                  Limpiar filtros
-                </Button>
-              )}
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-[50px]"></TableHead>
+                  <TableHead>Nombre del Archivo</TableHead>
+                  <TableHead>Correo del Propietario</TableHead> {/* ✅ Tarea Cumplida */}
+                  <TableHead>Fecha</TableHead>
+                  <TableHead className="text-right">Tamaño</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredFiles?.map((file) => (
+                  <TableRow key={file.id} className="group transition-colors">
+                    <TableCell>
+                      <FileIcon mimeType={file.mimeType} className="h-5 w-5 opacity-70 group-hover:opacity-100" />
+                    </TableCell>
+                    <TableCell className="font-medium text-slate-700">{file.originalName}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100 flex w-fit items-center gap-1.5 font-mono text-[10px]">
+                        <Mail className="h-3 w-3" /> {file.correo || "usuario@azal.com"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-500">
+                      {format(new Date(file.uploadedAt), "dd/MM/yyyy HH:mm", { locale: es })}
+                    </TableCell>
+                    <TableCell className="text-right text-xs font-mono text-slate-500">
+                      {formatFileSize(file.size)}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setPreviewFile(file)}><Eye className="mr-2 h-4 w-4" /> Ver</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => window.open(`/api/files/${file.id}/download`, "_blank")}><Download className="mr-2 h-4 w-4" /> Descargar</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => deleteMutation.mutate(file.id)} className="text-red-600 focus:text-red-600"><Trash2 className="mr-2 h-4 w-4" /> Borrar</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
 
-      {/* Preview Dialog */}
-      <FilePreviewDialog
-        file={previewFile}
-        open={!!previewFile}
-        onOpenChange={(open) => !open && setPreviewFile(null)}
-      />
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteFile} onOpenChange={(open) => !open && setDeleteFile(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Eliminación</AlertDialogTitle>
-            <AlertDialogDescription>
-              ¿Estás seguro de que deseas eliminar el archivo "{deleteFile?.originalName}"?
-              Esta acción no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
-            <FileIcon mimeType={deleteFile?.mimeType ?? ""} className="h-10 w-10" />
-            <div>
-              <p className="font-medium">{deleteFile?.originalName}</p>
-              <p className="text-sm text-muted-foreground">
-                {deleteFile?.contractId} • {deleteFile && formatFileSize(deleteFile.size)}
-              </p>
-            </div>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteFile && deleteMutation.mutate(deleteFile.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteMutation.isPending ? "Eliminando..." : "Eliminar"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <FilePreviewDialog file={previewFile} open={!!previewFile} onOpenChange={(o) => !o && setPreviewFile(null)} />
     </div>
   );
 }

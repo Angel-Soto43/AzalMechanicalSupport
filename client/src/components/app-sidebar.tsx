@@ -25,6 +25,7 @@ import {
   ClipboardList,
   Database,
   LogOut,
+  Grid3X3, // ✅ Icono agregado para archivos
 } from "lucide-react";
 
 const mainNavItems = [
@@ -47,6 +48,11 @@ const mainNavItems = [
 
 const adminNavItems = [
   {
+    title: "Todos los Archivos", // ✅ TAREA: Acceso al módulo que ajustaste
+    url: "/all-files",
+    icon: Grid3X3,
+  },
+  {
     title: "Registro de Auditoría",
     url: "/audit-logs",
     icon: ClipboardList,
@@ -62,7 +68,6 @@ export function AppSidebar() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
 
-  // Ajuste para obtener iniciales del nombre de Microsoft
   const getInitials = (name: string) => {
     if (!name) return "AZ";
     return name
