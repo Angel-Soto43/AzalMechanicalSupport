@@ -1,7 +1,7 @@
 import {
   auditLogs, type AuditLog, type InsertAuditLog,
   licitaciones, type Licitacion, type InsertLicitacion,
-  users, files // 👈 Importamos las tablas de usuarios y archivos
+  users, files, folders, type Folder, type InsertFolder
 } from "@shared/schema";
 import { db, pool } from "./db";
 import { desc, eq } from "drizzle-orm";
@@ -15,7 +15,11 @@ export interface IStorage {
   getRecentAuditLogs(limit?: number): Promise<AuditLog[]>;
   getLicitaciones(): Promise<Licitacion[]>;
   createLicitacion(licitacion: InsertLicitacion): Promise<Licitacion>;
-  // --- NUEVOS MÉTODOS PARA ARCHIVOS ---
+
+
+  getFolders(userId: number): Promise<Folder[]>;
+  createFolder(folder: InsertFolder): Promise<Folder>;
+
   getAllFiles(): Promise<any[]>;
   sessionStore: session.Store;
 }
@@ -24,6 +28,20 @@ export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
   constructor() {
     this.sessionStore = new PostgresSessionStore({ pool, createTableIfMissing: true });
+  }
+
+
+  async getFolders(userId: number): Promise<Folder[]> {
+    return await db
+      .select()
+      .from(folders)
+      .where(eq(folders.userId, userId))
+      .orderBy(desc(folders.createdAt));
+  }
+
+  async createFolder(insertFolder: InsertFolder): Promise<Folder> {
+    const [folder] = await db.insert(folders).values(insertFolder).returning();
+    return folder;
   }
 
   // Licitaciones
@@ -37,31 +55,29 @@ export class DatabaseStorage implements IStorage {
   }
 
 
- // En la clase DatabaseStorage de server/storage.ts
- async getAllFiles(): Promise<any[]> {
-   return await db
-     .select({
-       id: files.id,
-       originalName: files.originalName,
-       size: files.size,
-       uploadedAt: files.uploadedAt,
-       mimeType: files.mimeType,
-       contractId: files.contractId,
-       // ✅ TAREA: Traemos el correo directamente del JOIN
-       correo: users.correo,
-     })
-     .from(files)
-     .leftJoin(users, eq(files.uploaderId, users.id))
-     .orderBy(desc(files.uploadedAt));
- }
+  async getAllFiles(): Promise<any[]> {
+    return await db
+      .select({
+        id: files.id,
+        originalName: files.originalName,
+        size: files.size,
+        uploadedAt: files.uploadedAt,
+        mimeType: files.mimeType,
+        contractId: files.contractId,
+        correo: users.correo,
+      })
+      .from(files)
+      .leftJoin(users, eq(files.uploaderId, users.id))
+      .orderBy(desc(files.uploadedAt));
+  }
 
-  // Auditoría
+
   async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
     const [auditLog] = await db.insert(auditLogs).values(log).returning();
     return auditLog;
   }
 
-  async getRecentAuditLogs(limit: number = 10): Promise<AuditLog[]> {
+  async getRecentAuditLogs(limit: number = 100): Promise<AuditLog[]> {
     return db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(limit);
   }
 }

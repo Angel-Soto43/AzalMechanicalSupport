@@ -25,7 +25,7 @@ import {
   ClipboardList,
   Database,
   LogOut,
-  Grid3X3, // ✅ Icono agregado para archivos
+  Grid3X3,
 } from "lucide-react";
 
 const mainNavItems = [
@@ -48,7 +48,7 @@ const mainNavItems = [
 
 const adminNavItems = [
   {
-    title: "Todos los Archivos", // ✅ TAREA: Acceso al módulo que ajustaste
+    title: "Todos los Archivos",
     url: "/all-files",
     icon: Grid3X3,
   },

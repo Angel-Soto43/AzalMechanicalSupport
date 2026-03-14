@@ -125,7 +125,7 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
-      {/* Header */}
+
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
@@ -143,7 +143,7 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {/* Stats - Conectadas al Backend Real */}
+
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard
           title="Licitaciones Activas"
@@ -168,7 +168,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Tabla de Actividad Reciente */}
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>

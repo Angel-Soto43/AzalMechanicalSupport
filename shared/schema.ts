@@ -2,13 +2,13 @@ import { pgTable, text, varchar, timestamp, integer, serial } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// --- TABLAS EXISTENTES ---
 
 export const session = pgTable("session", {
   sid: varchar("sid").primaryKey(),
   sess: text("sess").notNull(),
   expire: timestamp("expire").notNull(),
 });
+
 
 export const auditLogs = pgTable("audit_logs", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -21,6 +21,7 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+
 export const licitaciones = pgTable("licitaciones", {
   id: serial("id").primaryKey(),
   titulo: text("titulo").notNull(),
@@ -32,16 +33,24 @@ export const licitaciones = pgTable("licitaciones", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// --- ✅ NUEVAS TABLAS (AGREGADAS PARA TU TAREA) ---
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   fullName: text("full_name").notNull(),
-  correo: text("correo").notNull().unique(), // <--- Crucial para "Mostrar correo"
+  correo: text("correo").notNull().unique(),
   password: text("password").notNull(),
   isAdmin: text("is_admin").default("false"),
   lastLogin: timestamp("last_login"),
 });
+
+
+export const folders = pgTable("folders", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  userId: integer("user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 
 export const files = pgTable("files", {
   id: serial("id").primaryKey(),
@@ -52,15 +61,16 @@ export const files = pgTable("files", {
   supplier: text("supplier"),
   version: integer("version").default(1),
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
-  uploaderId: integer("uploader_id").references(() => users.id), // Relación para sacar el correo
+  uploaderId: integer("uploader_id").references(() => users.id),
 });
 
-// --- SCHEMAS Y TIPOS ---
 
 export const insertLicitacionSchema = createInsertSchema(licitaciones);
 export const insertAuditLogSchema = createInsertSchema(auditLogs);
 export const insertUserSchema = createInsertSchema(users);
 export const insertFileSchema = createInsertSchema(files);
+export const insertFolderSchema = createInsertSchema(folders);
+
 
 export type Licitacion = typeof licitaciones.$inferSelect;
 export type InsertLicitacion = typeof licitaciones.$inferInsert;
@@ -68,6 +78,8 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type File = typeof files.$inferSelect;
+export type Folder = typeof folders.$inferSelect;
+export type InsertFolder = typeof folders.$inferInsert;
 
-// Mocks para compatibilidad
+
 export const loginSchema = z.object({ username: z.string(), password: z.string() });

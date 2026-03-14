@@ -73,7 +73,7 @@ function Router() {
         </AppLayout>
       </Route>
 
-      {/* ✅ RUTA DE TODOS LOS ARCHIVOS AGREGADA */}
+
       <Route path="/all-files">
         <AppLayout>
           <AllFilesPage />

@@ -44,7 +44,7 @@ import { FileIcon, formatFileSize } from "@/components/file-icon";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
-// ✅ Definimos la interfaz que espera el correo del JOIN del backend
+
 interface FileWithEmail extends File {
   correo: string;
 }
@@ -96,7 +96,7 @@ export default function AllFilesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [previewFile, setPreviewFile] = useState<FileWithEmail | null>(null);
 
-  // ✅ Llamamos al API de archivos
+
   const { data: files, isLoading } = useQuery<FileWithEmail[]>({
     queryKey: ["/api/files"],
   });
@@ -153,7 +153,7 @@ export default function AllFilesPage() {
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-[50px]"></TableHead>
                   <TableHead>Nombre del Archivo</TableHead>
-                  <TableHead>Correo del Propietario</TableHead> {/* ✅ Tarea Cumplida */}
+                  <TableHead>Correo del Propietario</TableHead>
                   <TableHead>Fecha</TableHead>
                   <TableHead className="text-right">Tamaño</TableHead>
                   <TableHead className="w-[50px]"></TableHead>

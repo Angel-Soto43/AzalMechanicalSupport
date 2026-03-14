@@ -39,7 +39,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex bg-background login-page-theme">
-      {/* Lado Izquierdo - Login con Microsoft */}
+
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 relative overflow-hidden">
         <div
           className="absolute inset-0 pointer-events-none opacity-5"
@@ -74,7 +74,7 @@ export default function AuthPage() {
         </div>
       </div>
 
-      {/* Lado Derecho - Hero Section (ESTO ES LO QUE YA HICISTE Y SE QUEDA IGUAL) */}
+
       <div className="hidden lg:flex w-1/2 bg-primary relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#2563EB] via-[#1e40af] to-[#1d4ed8]" />
 

@@ -37,7 +37,7 @@ export default function TendersPage() {
   const [fecha, setFecha] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // --- QUERIES ---
+
   const { data: folders = [], isLoading: loadingFolders } = useQuery<any[]>({
     queryKey: ["/api/folders"],
   });
@@ -46,7 +46,6 @@ export default function TendersPage() {
     queryKey: ["/api/licitaciones"],
   });
 
-  // --- MUTATION ---
   const mutation = useMutation({
     mutationFn: async (nuevaLicitacion: any) => {
       const res = await fetch("/api/licitaciones", {
