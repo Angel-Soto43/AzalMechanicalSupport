@@ -13,34 +13,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     next();
   });
 
-  // ✅ FLUJO REAL DE MICROSOFT AZURE (Usando tus variables del .env)
-  app.get("/api/auth/microsoft", (req, res) => {
-    const tenantId = process.env.MICROSOFT_TENANT_ID || "common";
-    const clientId = process.env.MICROSOFT_CLIENT_ID;
-    const redirectUri = encodeURIComponent(process.env.MICROSOFT_REDIRECT_URI || "http://localhost:5000/api/auth/callback");
+  // Microsoft auth routes are handled in server/auth.ts (Passport + OIDC).
+  // Dejar este bloque vacío aquí para evitar rutas duplicadas / conflicto de flujo.
 
-    if (!clientId) {
-      console.error("ERROR: MICROSOFT_CLIENT_ID no está definido en el .env");
-      return res.status(500).json({ error: "Configuración de autenticación incompleta" });
-    }
-
-    // URL oficial de Microsoft para pedir la cuenta del usuario
-    const azureUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?` +
-      `client_id=${clientId}` +
-      `&response_type=code` +
-      `&redirect_uri=${redirectUri}` +
-      `&response_mode=query` +
-      `&scope=openid%20profile%20email%20User.Read`;
-
-    console.log("Iniciando sesión segura - Redirigiendo a Microsoft...");
-    res.redirect(azureUrl);
-  });
-
-  // Callback: donde Microsoft regresa al usuario después de meter su cuenta
-  app.get("/api/auth/callback", async (req, res) => {
-    console.log("Registro exitoso en Microsoft. Acceso concedido al sistema Azal.");
-    res.redirect("/");
-  });
 
 
   // --- GESTIÓN DE CARPETAS Y ARCHIVOS ---

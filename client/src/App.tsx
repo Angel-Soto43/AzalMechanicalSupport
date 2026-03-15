@@ -1,9 +1,9 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/hooks/use-auth";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -23,6 +23,7 @@ import FolderPage from "@/pages/folder-page";
 import FoldersListPage from "@/pages/folders-list-page";
 import TendersPage from "@/pages/TendersPage";
 import AllFilesPage from "@/pages/all-files-page";
+//import { ProtectedRoute } from "./lib/protected-route";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const style = {
@@ -56,46 +57,79 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
+
+  if (isLoading) {
+    // Mientras le pregunta al backend, mostramos una pantalla de carga
+    return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Verificando seguridad...</div>;
+  }
+
+  if (!user) {
+    // Si el backend dice "No lo conozco", lo pateamos al Login
+    setLocation("/auth");
+    return null;
+  }
+
+  // Si tiene sesión, lo dejamos pasar a la pantalla que pidió
+  return <>{children}</>;
+}
+
+
 function Router() {
   return (
     <Switch>
+      {/* 🟢 Esta es pública, no lleva candado */}
       <Route path="/auth" component={AuthPage} />
 
+      {/* 🔴 A partir de aquí, todo lleva candado */}
       <Route path="/">
-        <AppLayout>
-          <DashboardPage />
-        </AppLayout>
+        <ProtectedRoute>
+          <AppLayout>
+            <DashboardPage />
+          </AppLayout>
+        </ProtectedRoute>
       </Route>
 
       <Route path="/licitaciones">
-        <AppLayout>
-          <TendersPage />
-        </AppLayout>
+        <ProtectedRoute>
+          <AppLayout>
+            <TendersPage />
+          </AppLayout>
+        </ProtectedRoute>
       </Route>
 
-
       <Route path="/all-files">
-        <AppLayout>
-          <AllFilesPage />
-        </AppLayout>
+        <ProtectedRoute>
+          <AppLayout>
+            <AllFilesPage />
+          </AppLayout>
+        </ProtectedRoute>
       </Route>
 
       <Route path="/folders">
-        <AppLayout>
-          <FoldersListPage />
-        </AppLayout>
+        <ProtectedRoute>
+          <AppLayout>
+            <FoldersListPage />
+          </AppLayout>
+        </ProtectedRoute>
       </Route>
 
       <Route path="/folders/:id">
-        <AppLayout>
-          <FolderPage />
-        </AppLayout>
+        <ProtectedRoute>
+          <AppLayout>
+            <FolderPage />
+          </AppLayout>
+        </ProtectedRoute>
       </Route>
 
       <Route path="/audit-logs">
-        <AppLayout>
-          <AuditLogsPage />
-        </AppLayout>
+        <ProtectedRoute>
+          <AppLayout>
+            <AuditLogsPage />
+          </AppLayout>
+        </ProtectedRoute>
       </Route>
 
       <Route component={NotFound} />

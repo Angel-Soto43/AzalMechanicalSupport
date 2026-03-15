@@ -3,6 +3,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { setupAuth } from "./auth";
 
 const app = express();
 const httpServer = createServer(app);
@@ -16,6 +17,9 @@ export function log(message: string) {
 }
 
 (async () => {
+
+  // 🟢 ESTO ES LO QUE FALTA: Conectamos Passport y las sesiones
+  setupAuth(app);
   // 1. Registramos las rutas de la API (incluyendo el login de Microsoft)
   await registerRoutes(app, httpServer);
 

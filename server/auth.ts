@@ -14,13 +14,13 @@ export function setupAuth(app: Express) {
   // 1. Configuración de Sesiones
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET,
-    resave: true, // Cambiado a true para estabilidad en el callback
+    resave: true, 
     saveUninitialized: true,
     store: storage.sessionStore,
     cookie: {
       maxAge: SESSION_MAX_AGE,
       httpOnly: true,
-      secure: false, // Debe ser false en localhost
+      secure: false, // false para localhost
       sameSite: "lax",
     },
     rolling: true,
@@ -43,53 +43,62 @@ export function setupAuth(app: Express) {
 
   // 3. Estrategia de Microsoft Azure AD
   passport.use('azuread-openidconnect', new OIDCStrategy({
-    identityMetadata: `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID}/v2.0/.well-known/openid-configuration`,
-    clientID: process.env.MICROSOFT_CLIENT_ID!,
-    responseType: 'code id_token',
-    responseMode: 'form_post',
-    redirectUrl: process.env.MICROSOFT_REDIRECT_URI!,
+    identityMetadata: `https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration`,
+    clientID: process.env.MICROSOFT_CLIENT_ID || '', 
+    clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
+    responseType: 'code',
+    responseMode: 'query',
+    redirectUrl: process.env.MICROSOFT_REDIRECT_URI || 'http://localhost:5000/api/auth/callback',
     allowHttpForRedirectUrl: true,
-    clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
     validateIssuer: false,
     passReqToCallback: false,
-    scope: ['profile', 'offline_access', 'user.read', 'email'],
-    useCookieInsteadOfSession: false, // Cambiado a false para usar la sesión de express
-    loggingLevel: 'info'
-  }, // <--- AQUÍ SE CIERRAN LAS OPCIONES
-  async (iss: any, sub: any, profile: any, accessToken: any, refreshToken: any, done: any) => {
-    if (!profile.oid) {
-      return done(new Error("No se encontró el OID de Microsoft"), null);
-    }
+    scope: ['openid', 'profile', 'offline_access', 'user.read'],
+    
+    // 🛡️ RELAJAMOS LA SEGURIDAD PARA EVITAR EL "NULL"
+    state: false,
+    nonce: false,
+    clockSkew: 3600, // Le damos 1 hora de margen de error al reloj
+  },
+  async (req: any, iss: any, sub: any, profile: any, accessToken: any, refreshToken: any, done: any) => {
+    // Si llegamos aquí, Microsoft ya nos dio los datos
+    if (!profile) return done(null, false);
     return done(null, profile);
-  }));
+  }
+));
 
   // 4. Rutas de Autenticación
-  app.get('/api/auth/azure',
-    passport.authenticate('azuread-openidconnect', { failureRedirect: '/auth' })
-  );
+  app.get('/api/auth/microsoft', (req, res, next) => {
+    passport.authenticate('azuread-openidconnect', { failureRedirect: '/auth' })(req, res, next);
+  });
 
-  app.post('/api/auth/callback', (req, res, next) => {
+  const callbackHandler = (req: any, res: any, next: any) => {
     passport.authenticate('azuread-openidconnect', {
       failureRedirect: '/auth',
       failureMessage: true
-    }, (err, user) => {
-      if (err) {
-        console.error("❌ ERROR DE AZURE:", err);
-        return res.status(500).send("Error técnico en el servidor.");
+    }, (err: any, user: any) => {
+      if (err || !user) {
+        console.error("❌ Error de Microsoft:", err);
+        return res.redirect('/auth');
       }
-      if (!user) return res.redirect('/auth');
 
-      req.logIn(user, (loginErr) => {
+      req.logIn(user, (loginErr: any) => {
         if (loginErr) return next(loginErr);
-        return res.redirect('/');
+
+        req.session.save(() => {
+          console.log("✅ Sesión guardada. Entrando al sistema...");
+          res.redirect('/');
+        });
       });
     })(req, res, next);
-  });
+  };
 
-  /*app.get("/api/user", (req, res) => {
+  app.post('/api/auth/callback', callbackHandler);
+  app.get('/api/auth/callback', callbackHandler);
+
+  app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
-  });*/
+  });
 
   app.post("/api/logout", (req, res, next) => {
     req.logout((err) => {
@@ -100,13 +109,6 @@ export function setupAuth(app: Express) {
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  if (!req.isAuthenticated()) {
-    return res.status(401).send("No autorizado.");
-  }
-  next();
-}
-
-export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).send("No autorizado.");
   }
