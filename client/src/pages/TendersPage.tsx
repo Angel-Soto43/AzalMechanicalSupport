@@ -80,20 +80,20 @@ export default function TendersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="bg-white border-b p-6 shadow-sm">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <header className="bg-card border-b border-border p-6 shadow-sm">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 bg-[#1E40AF] rounded-lg flex items-center justify-center text-white shadow-lg">
               <Building2 size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 uppercase">{empresaSeleccionada.nombre}</h1>
-              <p className="text-sm text-slate-500 font-mono">{empresaSeleccionada.rfc}</p>
+              <h1 className="text-2xl font-bold text-foreground uppercase">{empresaSeleccionada.nombre}</h1>
+              <p className="text-sm text-muted-foreground font-mono">{empresaSeleccionada.rfc}</p>
             </div>
           </div>
           <Select onValueChange={(v) => setEmpresaSeleccionada(EMPRESAS.find(e => e.id === Number(v))!)} defaultValue="1">
-            <SelectTrigger className="w-[250px] border-[#1E40AF]/20"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[250px] border-border bg-input text-foreground"><SelectValue /></SelectTrigger>
             <SelectContent>{EMPRESAS.map(e => <SelectItem key={e.id} value={e.id.toString()}>{e.nombre}</SelectItem>)}</SelectContent>
           </Select>
         </div>
@@ -103,12 +103,12 @@ export default function TendersPage() {
         <div className="flex justify-end">
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-[#1E40AF] hover:bg-[#1e3a8a] text-white shadow-md">
+              <Button className="bg-primary hover:bg-[#1e3a8a] text-primary-foreground shadow-md">
                 <Plus className="mr-2 h-4 w-4" /> Nueva Licitación
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader><DialogTitle className="text-[#1E40AF] border-b pb-4">Registrar Nueva Licitación</DialogTitle></DialogHeader>
+            <DialogContent className="sm:max-w-[500px] bg-card text-foreground">
+              <DialogHeader><DialogTitle className="text-foreground border-b border-border pb-4">Registrar Nueva Licitación</DialogTitle></DialogHeader>
               <div className="grid gap-4 py-4">
                 <Input label="Folio" value={folio} onChange={e => setFolio(e.target.value)} placeholder="AZAL-2026-XXX" />
                 <Input label="Proyecto" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Nombre del proyecto" />
@@ -128,16 +128,16 @@ export default function TendersPage() {
 
         <div className="grid lg:grid-cols-4 gap-6">
           {/* EXPLORADOR - COLUMNA 1 */}
-          <Card className="rounded-xl border-slate-200 shadow-sm lg:col-span-1">
-            <CardHeader className="bg-slate-50 border-b p-4">
-              <CardTitle className="text-[10px] font-bold uppercase text-slate-500 tracking-widest flex items-center gap-2">
+          <Card className="rounded-xl border-border bg-card shadow-sm lg:col-span-1">
+            <CardHeader className="bg-card border-b border-border p-4">
+              <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                 <Folder size={14} /> Explorador de Archivos
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4">
-              {loadingFolders ? <Skeleton className="h-20 w-full" /> : folders.length === 0 ? <p className="text-xs text-slate-400 italic text-center">No hay carpetas.</p> :
+              {loadingFolders ? <Skeleton className="h-20 w-full" /> : folders.length === 0 ? <p className="text-xs text-muted-foreground italic text-center">No hay carpetas.</p> :
                 folders.map(f => (
-                  <div key={f.id} className="flex items-center gap-2 text-sm text-slate-700 p-2 hover:bg-slate-100 rounded-md">
+                  <div key={f.id} className="flex items-center gap-2 text-sm text-foreground p-2 hover:bg-muted rounded-md">
                     <Folder size={16} className="text-blue-500 fill-blue-500/10" /> {f.name}
                   </div>
                 ))}
@@ -145,17 +145,17 @@ export default function TendersPage() {
           </Card>
 
           {/* TABLA REAL - COLUMNAS 2, 3 Y 4 */}
-          <Card className="lg:col-span-3 rounded-xl border-slate-200 shadow-sm overflow-hidden">
-            <CardHeader className="border-b bg-white">
-              <CardTitle className="text-sm font-bold text-slate-600 uppercase">Gestión de Licitaciones</CardTitle>
+          <Card className="lg:col-span-3 rounded-xl border-border bg-card shadow-sm overflow-hidden">
+            <CardHeader className="border-b border-border bg-card">
+              <CardTitle className="text-sm font-bold text-card-foreground uppercase">Gestión de Licitaciones</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
-                <TableHeader><TableRow className="bg-slate-50/50">
-                  <TableHead className="text-xs">Folio</TableHead>
-                  <TableHead className="text-xs">Proyecto</TableHead>
-                  <TableHead className="text-xs text-right">Presupuesto</TableHead>
-                  <TableHead className="text-xs">Estado</TableHead>
+                <TableHeader><TableRow className="bg-muted/50 dark:bg-slate-800/40">
+                  <TableHead className="text-xs text-muted-foreground">Folio</TableHead>
+                  <TableHead className="text-xs text-muted-foreground">Proyecto</TableHead>
+                  <TableHead className="text-xs text-right text-muted-foreground">Presupuesto</TableHead>
+                  <TableHead className="text-xs text-muted-foreground">Estado</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {loadingTenders ? <TableRow><TableCell colSpan={4} className="text-center py-10">Cargando...</TableCell></TableRow> :

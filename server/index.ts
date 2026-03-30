@@ -11,11 +11,6 @@ const httpServer = createServer(app);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// ✅ FUNCIÓN LOG LIMPIA (Sin hora, como la tenías antes)
-export function log(message: string) {
-  console.log(message);
-}
-
 (async () => {
 
   // 🟢 ESTO ES LO QUE FALTA: Conectamos Passport y las sesiones
@@ -48,8 +43,7 @@ export function log(message: string) {
       host,
     },
     () => {
-     
-      log(`serving on http://localhost:${port}`);
+      // Servidor iniciado
     },
   );
 })();

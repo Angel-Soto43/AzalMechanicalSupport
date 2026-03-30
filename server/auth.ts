@@ -77,7 +77,6 @@ export function setupAuth(app: Express) {
       failureMessage: true
     }, (err: any, user: any) => {
       if (err || !user) {
-        console.error("❌ Error de Microsoft:", err);
         return res.redirect('/auth');
       }
 
@@ -85,7 +84,6 @@ export function setupAuth(app: Express) {
         if (loginErr) return next(loginErr);
 
         req.session.save(() => {
-          console.log("✅ Sesión guardada. Entrando al sistema...");
           res.redirect('/');
         });
       });
