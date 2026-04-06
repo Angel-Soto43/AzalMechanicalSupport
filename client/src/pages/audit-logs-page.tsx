@@ -88,12 +88,12 @@ export default function AuditLogsPage() {
   });
 
   const filteredLogs = logs?.filter((log) => {
-    let matches = true;
+    let matches: boolean = true;
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       matches = matches && (
         (log.correo && log.correo.toLowerCase().includes(query)) ||
-        log.details?.toLowerCase().includes(query)
+        (log.details?.toLowerCase().includes(query) ?? false)
       );
     }
     if (filterAction !== "all") matches = matches && log.action === filterAction;
@@ -128,23 +128,23 @@ export default function AuditLogsPage() {
       </div>
 
       {/* Tabla de Auditoría */}
-      <Card className="border-slate-200 shadow-sm">
+      <Card className="border-slate-200 dark:border-slate-700 dark:bg-slate-900/50 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-widest">Trazabilidad del Sistema</CardTitle>
+          <CardTitle className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Trazabilidad del Sistema</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
           ) : (
-            <div className="rounded-lg border overflow-hidden">
+            <div className="rounded-lg border dark:border-slate-700 overflow-hidden">
               <Table>
-                <TableHeader className="bg-slate-50">
+                <TableHeader className="bg-slate-50 dark:bg-slate-800/30 border-b dark:border-slate-700">
                   <TableRow>
                     <TableHead className="w-[50px]"></TableHead>
-                    <TableHead>Acción</TableHead>
-                    <TableHead>Correo del Usuario</TableHead>
-                    <TableHead>Detalles del Evento</TableHead>
-                    <TableHead className="text-right">Fecha / Hora</TableHead>
+                    <TableHead className="text-slate-700 dark:text-slate-200">Acción</TableHead>
+                    <TableHead className="text-slate-700 dark:text-slate-200">Correo del Usuario</TableHead>
+                    <TableHead className="text-slate-700 dark:text-slate-200">Detalles del Evento</TableHead>
+                    <TableHead className="text-right text-slate-700 dark:text-slate-200">Fecha / Hora</TableHead>
 
                   </TableRow>
                 </TableHeader>
@@ -152,9 +152,9 @@ export default function AuditLogsPage() {
                   {filteredLogs?.map((log) => {
                     const config = getActionConfig(log.action);
                     return (
-                      <TableRow key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                      <TableRow key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-b dark:border-slate-700">
                         <TableCell>
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
                             {config.icon({})}
                           </div>
                         </TableCell>
@@ -165,20 +165,20 @@ export default function AuditLogsPage() {
                         </TableCell>
                         <TableCell>
 
-                          <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                          <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
                             <Mail className="h-3 w-3 text-blue-500" />
                             {log.correo || "sistema@azal.com"}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <p className="text-xs text-muted-foreground max-w-[250px] truncate">
+                          <p className="text-xs text-slate-600 dark:text-slate-400 max-w-[250px] truncate">
                             {log.details || "N/A"}
                           </p>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="text-xs font-mono">
+                          <div className="text-xs font-mono text-slate-700 dark:text-slate-300">
                             <p>{format(new Date(log.createdAt), "dd/MM/yyyy", { locale: es })}</p>
-                            <p className="text-slate-400">{format(new Date(log.createdAt), "HH:mm:ss")}</p>
+                            <p className="text-slate-500 dark:text-slate-400">{format(new Date(log.createdAt), "HH:mm:ss")}</p>
                           </div>
                         </TableCell>
                       </TableRow>

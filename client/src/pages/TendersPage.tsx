@@ -82,7 +82,7 @@ export default function TendersPage() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <header className="bg-card border-b border-border p-6 shadow-sm">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 bg-[#1E40AF] rounded-lg flex items-center justify-center text-white shadow-lg">
               <Building2 size={24} />
@@ -92,10 +92,12 @@ export default function TendersPage() {
               <p className="text-sm text-muted-foreground font-mono">{empresaSeleccionada.rfc}</p>
             </div>
           </div>
-          <Select onValueChange={(v) => setEmpresaSeleccionada(EMPRESAS.find(e => e.id === Number(v))!)} defaultValue="1">
-            <SelectTrigger className="w-[250px] border-border bg-input text-foreground"><SelectValue /></SelectTrigger>
-            <SelectContent>{EMPRESAS.map(e => <SelectItem key={e.id} value={e.id.toString()}>{e.nombre}</SelectItem>)}</SelectContent>
-          </Select>
+          <div className="w-full lg:w-64">
+            <Select onValueChange={(v) => setEmpresaSeleccionada(EMPRESAS.find(e => e.id === Number(v))!)} defaultValue="1">
+              <SelectTrigger className="border-border bg-input text-foreground"><SelectValue /></SelectTrigger>
+              <SelectContent>{EMPRESAS.map(e => <SelectItem key={e.id} value={e.id.toString()}>{e.nombre}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
         </div>
       </header>
 
@@ -103,7 +105,7 @@ export default function TendersPage() {
         <div className="flex justify-end">
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-[#1e3a8a] text-primary-foreground shadow-md">
+              <Button className="bg-blue-600 text-white hover:bg-blue-700 border border-transparent shadow-md">
                 <Plus className="mr-2 h-4 w-4" /> Nueva Licitación
               </Button>
             </DialogTrigger>

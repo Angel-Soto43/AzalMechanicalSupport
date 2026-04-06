@@ -119,27 +119,27 @@ export default function AllFilesPage() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2 text-slate-800">
+          <h1 className="text-2xl font-bold flex items-center gap-2 text-slate-900 dark:text-slate-100">
             <Grid3X3 className="h-6 w-6 text-blue-600" />
             Todos los Archivos
           </h1>
           <p className="text-muted-foreground">Gestión de documentos por correo electrónico</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full lg:w-auto">
           <Input
             placeholder="Buscar por nombre o correo..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-72 shadow-sm"
+            className="w-full lg:w-72 shadow-sm"
           />
         </div>
       </div>
 
-      <Card className="shadow-md border-slate-200">
-        <CardHeader className="bg-slate-50/50 border-b">
-          <CardTitle className="text-xs font-bold text-slate-500 uppercase tracking-widest">Registros del Sistema</CardTitle>
+      <Card className="shadow-md border-slate-200 dark:border-slate-700 dark:bg-slate-900/50">
+        <CardHeader className="bg-slate-50/80 dark:bg-slate-800/40 border-b dark:border-slate-700">
+          <CardTitle className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Registros del Sistema</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
@@ -150,31 +150,31 @@ export default function AllFilesPage() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
+                <TableRow className="hover:bg-transparent bg-slate-50/30 dark:bg-slate-800/30 border-b dark:border-slate-700">
                   <TableHead className="w-[50px]"></TableHead>
-                  <TableHead>Nombre del Archivo</TableHead>
-                  <TableHead>Correo del Propietario</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead className="text-right">Tamaño</TableHead>
+                  <TableHead className="text-slate-700 dark:text-slate-200">Nombre del Archivo</TableHead>
+                  <TableHead className="text-slate-700 dark:text-slate-200">Correo del Propietario</TableHead>
+                  <TableHead className="text-slate-700 dark:text-slate-200">Fecha</TableHead>
+                  <TableHead className="text-right text-slate-700 dark:text-slate-200">Tamaño</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredFiles?.map((file) => (
-                  <TableRow key={file.id} className="group transition-colors">
+                  <TableRow key={file.id} className="group transition-colors hover:bg-slate-50/40 dark:hover:bg-slate-800/30 border-b dark:border-slate-700">
                     <TableCell>
                       <FileIcon mimeType={file.mimeType} className="h-5 w-5 opacity-70 group-hover:opacity-100" />
                     </TableCell>
-                    <TableCell className="font-medium text-slate-700">{file.originalName}</TableCell>
+                    <TableCell className="font-medium text-slate-700 dark:text-slate-200">{file.originalName}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100 flex w-fit items-center gap-1.5 font-mono text-[10px]">
+                      <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/30 flex w-fit items-center gap-1.5 font-mono text-[10px]">
                         <Mail className="h-3 w-3" /> {file.correo || "usuario@azal.com"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs text-slate-500">
+                    <TableCell className="text-xs text-slate-500 dark:text-slate-400">
                       {format(new Date(file.uploadedAt), "dd/MM/yyyy HH:mm", { locale: es })}
                     </TableCell>
-                    <TableCell className="text-right text-xs font-mono text-slate-500">
+                    <TableCell className="text-right text-xs font-mono text-slate-500 dark:text-slate-400">
                       {formatFileSize(file.size)}
                     </TableCell>
                     <TableCell>

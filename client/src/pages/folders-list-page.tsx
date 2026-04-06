@@ -116,63 +116,65 @@ export default function FoldersListPage() {
 
   return (
     <div className="p-6 lg:p-10 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-3 text-slate-900">
-            <Folder className="h-8 w-8 text-blue-600" />
-            Gestión de Archivos
-          </h1>
-          <p className="text-slate-500 font-medium italic">Organiza y sube tus documentos aquí</p>
-        </div>
+<div className="flex flex-col gap-6">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div className="space-y-1">
+              <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-3 text-slate-900 dark:text-slate-100">
+                <Folder className="h-8 w-8 text-blue-600" />
+                Gestión de Archivos
+              </h1>
+              <p className="text-slate-500 font-medium italic">Organiza y sube tus documentos aquí</p>
+            </div>
 
-        <div className="flex gap-3">
-          {/* BOTÓN DE SUBIR ARCHIVO DIRECTO */}
-          <Button
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-            className="border-blue-200 hover:bg-blue-50 text-blue-700"
-          >
-            <Upload className="mr-2 h-4 w-4" /> Subir Archivo
-            <input type="file" ref={fileInputRef} className="hidden" onChange={handleUploadFile} />
-          </Button>
+            <div className="flex flex-col sm:flex-row gap-3">
+            {/* BOTÓN DE SUBIR ARCHIVO DIRECTO */}
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              className="border-blue-200 hover:bg-blue-50 text-blue-700"
+            >
+              <Upload className="mr-2 h-4 w-4" /> Subir Archivo
+              <input type="file" ref={fileInputRef} className="hidden" onChange={handleUploadFile} />
+            </Button>
 
-          {/* BOTÓN DE NUEVA CARPETA */}
-          <Button onClick={() => setNewFolderDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700 shadow-lg">
-            <Plus className="mr-2 h-5 w-5" /> Nueva carpeta
-          </Button>
-        </div>
+            {/* BOTÓN DE NUEVA CARPETA */}
+            <Button onClick={() => setNewFolderDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700 shadow-lg border-none text-white">
+              <Plus className="mr-2 h-5 w-5" /> Nueva carpeta
+            </Button>
+          </div>
+          </div>
       </div>
 
-      <Card className="border-slate-200 shadow-xl overflow-hidden rounded-xl">
-        <CardHeader className="bg-slate-50/80 border-b py-4 px-6">
-          <CardTitle className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">Directorios Raíz</CardTitle>
+      <Card className="border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden rounded-xl">
+        <CardHeader className="bg-slate-50/80 dark:bg-slate-800/40 border-b dark:border-slate-700 py-4 px-6">
+          <CardTitle className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Directorios Raíz</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50/30">
+              <TableRow className="bg-slate-50/80 dark:bg-slate-800/30 border-b dark:border-slate-700">
                 <TableHead className="w-[70px]"></TableHead>
-                <TableHead className="font-bold text-slate-800 py-4">Nombre</TableHead>
-                <TableHead className="font-bold text-slate-800 text-center">Fecha de Creación</TableHead>
-                <TableHead className="w-[120px] text-right pr-8">Acciones</TableHead>
+                <TableHead className="font-bold text-slate-700 dark:text-slate-200 py-4">Nombre</TableHead>
+                <TableHead className="font-bold text-slate-700 dark:text-slate-200 text-center">Fecha de Creación</TableHead>
+                <TableHead className="w-[120px] text-right pr-8 text-slate-700 dark:text-slate-200">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {folders.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="h-64 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-4 text-slate-300">
+                    <div className="flex flex-col items-center justify-center space-y-4 text-slate-400 dark:text-slate-500">
                       <FolderOpen className="h-16 w-16 opacity-20" />
-                      <p className="text-slate-400 italic text-sm">No hay carpetas. Crea una o sube un archivo directo.</p>
+                      <p className="text-slate-400 dark:text-slate-500 italic text-sm">No hay carpetas. Crea una o sube un archivo directo.</p>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 folders.map((folder: any) => (
-                  <TableRow key={folder.id} className="group cursor-pointer hover:bg-blue-50/40" onClick={() => setLocation(`/folders/${folder.id}`)}>
+                  <TableRow key={folder.id} className="group cursor-pointer hover:bg-blue-50/40 dark:hover:bg-slate-800/30 border-b dark:border-slate-700" onClick={() => setLocation(`/folders/${folder.id}`)}>
                     <TableCell className="py-5 pl-6"><Folder className="h-6 w-6 text-amber-400 fill-amber-400/20" /></TableCell>
-                    <TableCell className="font-bold text-slate-700">{folder.name}</TableCell>
-                    <TableCell className="text-center text-sm text-slate-500">
+                    <TableCell className="font-bold text-slate-700 dark:text-slate-200">{folder.name}</TableCell>
+                    <TableCell className="text-center text-sm text-slate-500 dark:text-slate-400">
                       {format(new Date(folder.createdAt), "dd 'de' MMMM, yyyy", { locale: es })}
                     </TableCell>
                     <TableCell className="text-right pr-8" onClick={(e) => e.stopPropagation()}>

@@ -1,5 +1,6 @@
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useSidebar } from "@/components/ui/sidebar";
 import {
   Sidebar,
   SidebarContent,
@@ -26,6 +27,7 @@ import {
   Database,
   LogOut,
   Grid3X3,
+  X,
 } from "lucide-react";
 
 const mainNavItems = [
@@ -67,6 +69,7 @@ const adminNavItems = [
 export function AppSidebar() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
+  const { toggleSidebar } = useSidebar();
 
   const getInitials = (name: string) => {
     if (!name) return "AZ";
@@ -81,14 +84,23 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
-            <Shield className="h-6 w-6" />
+        <div className="flex items-center gap-3 justify-between">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
+              <Shield className="h-6 w-6" />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-semibold text-sm leading-tight">Azal Mechanical</span>
+              <span className="text-xs text-muted-foreground">Supports</span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="font-semibold text-sm leading-tight">Azal Mechanical</span>
-            <span className="text-xs text-muted-foreground">Supports</span>
-          </div>
+          <button
+            onClick={() => toggleSidebar()}
+            className="md:hidden p-1 hover:bg-sidebar-accent rounded-md text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Cerrar navegación"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
       </SidebarHeader>
 
