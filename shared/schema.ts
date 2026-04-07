@@ -1,4 +1,4 @@
-import { pgTable, text, varchar, timestamp, integer, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, serial, boolean, bigint } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -39,14 +39,21 @@ export const users = pgTable("users", {
   fullName: text("full_name").notNull(),
   correo: text("correo").notNull().unique(),
   password: text("password").notNull(),
-  isAdmin: text("is_admin").default("false"),
+  isAdmin: boolean("is_admin").default(false).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  failedLoginAttempts: integer("failed_login_attempts").default(0).notNull(),
+  lockedUntil: timestamp("locked_until"),
   lastLogin: timestamp("last_login"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
 });
 
 
 export const folders = pgTable("folders", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  parentId: integer("parent_id"),
   userId: integer("user_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -54,6 +61,7 @@ export const folders = pgTable("folders", {
 
 export const files = pgTable("files", {
   id: serial("id").primaryKey(),
+  filename: text("filename").notNull(),
   originalName: text("original_name").notNull(),
   mimeType: text("mime_type").notNull(),
   size: integer("size").notNull(),
@@ -61,7 +69,12 @@ export const files = pgTable("files", {
   supplier: text("supplier"),
   version: integer("version").default(1),
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
-  uploaderId: integer("uploader_id").references(() => users.id),
+  uploadedBy: integer("uploaded_by").references(() => users.id),
+  folderId: integer("folder_id").references(() => folders.id),
+  previousVersionId: integer("previous_version_id"),
+  isDeleted: boolean("is_deleted").default(false).notNull(),
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: integer("deleted_by").references(() => users.id),
 });
 
 
@@ -76,10 +89,11 @@ export type Licitacion = typeof licitaciones.$inferSelect;
 export type InsertLicitacion = typeof licitaciones.$inferInsert;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
-export type User = typeof users.$inferSelect;
+export type User = typeof users.$inferSelect & { displayName?: string };
 export type File = typeof files.$inferSelect;
 export type Folder = typeof folders.$inferSelect;
 export type InsertFolder = typeof folders.$inferInsert;
 
 
 export const loginSchema = z.object({ username: z.string(), password: z.string() });
+export type LoginInput = z.infer<typeof loginSchema>;

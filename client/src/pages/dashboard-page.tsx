@@ -8,10 +8,10 @@ import { File as LucideFile, Clock, Upload } from "lucide-react";
 import { File } from "@shared/schema";
 import { formatFileSize } from "@/components/file-icon";
 
-const STORAGE_QUOTA_BYTES = 5 * 1024 * 1024 * 1024;
+const STORAGE_QUOTA_BYTES = 5 * 1024 * 1024 * 1024; // Fallback
 
-function bytesToUsageRatio(bytes: number) {
-  return Math.min(100, Math.round((bytes / STORAGE_QUOTA_BYTES) * 100));
+function bytesToUsageRatio(bytes: number, total: number) {
+  return Math.min(100, Math.round((bytes / total) * 100));
 }
 
 function StatCard({
@@ -58,18 +58,24 @@ function StatCard({
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  // Usar el endpoint de archivos de Microsoft
   const { data: files, isLoading } = useQuery<File[]>({
-    queryKey: ["/api/files"],
+    queryKey: ["/api/microsoft-files"],
+  });
+
+  // Obtener información de almacenamiento de Microsoft
+  const { data: quota } = useQuery({
+    queryKey: ["/api/microsoft-quota"],
   });
 
   const totalFiles = files?.length ?? 0;
   const totalStorageBytes = files?.reduce((sum, file) => sum + (file.size ?? 0), 0) ?? 0;
-  const usedPercent = bytesToUsageRatio(totalStorageBytes);
-  const usageDescription = `${formatFileSize(totalStorageBytes)} de ${formatFileSize(STORAGE_QUOTA_BYTES)}`;
+  const realQuotaBytes = quota?.quota?.total || STORAGE_QUOTA_BYTES;
+  const usedPercent = bytesToUsageRatio(totalStorageBytes, realQuotaBytes);
+  const usageDescription = `${formatFileSize(totalStorageBytes)} de ${formatFileSize(realQuotaBytes)}`;
 
   const recentFiles = files
     ? files
-        .filter((file) => new Date(file.uploadedAt) >= subDays(new Date(), 7))
         .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
     : [];
 
@@ -137,7 +143,7 @@ export default function DashboardPage() {
           <CardHeader>
             <div>
               <CardTitle className="text-card-foreground">Recientes</CardTitle>
-              <CardDescription className="text-muted-foreground">Archivos de los últimos 7 días</CardDescription>
+              <CardDescription className="text-muted-foreground">Archivos de Microsoft y locales</CardDescription>
             </div>
           </CardHeader>
           <CardContent>

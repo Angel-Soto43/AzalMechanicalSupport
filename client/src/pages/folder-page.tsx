@@ -167,7 +167,16 @@ export default function FolderPage() {
           body: form,
         });
         if (!res.ok) {
+          const contentType = res.headers.get("Content-Type") || "";
           const text = await res.text();
+          if (contentType.includes("application/json")) {
+            try {
+              const body = JSON.parse(text);
+              throw new Error(body.error || text || "Error al subir el archivo");
+            } catch {
+              throw new Error(text || "Error al subir el archivo");
+            }
+          }
           throw new Error(text || "Error al subir el archivo");
         }
       }
@@ -177,7 +186,7 @@ export default function FolderPage() {
       loadFolder();
       queryClient.invalidateQueries({ queryKey: ["/api/files/recent"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/files/my"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/files-all"] });
       setUploadSuccess(true);
       toast({ title: "Archivos subidos", description: "Los archivos se subieron correctamente" });
     } catch (err: any) {
@@ -237,7 +246,7 @@ export default function FolderPage() {
       loadFolder();
       queryClient.invalidateQueries({ queryKey: ["/api/files/recent"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/files/my"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/files-all"] });
       setDeleteFileDialog({ open: false, file: null });
       toast({ title: "Archivo eliminado", description: `"${file.originalName}" fue eliminado` });
     } catch (err: any) {

@@ -279,7 +279,7 @@ export default function MyFilesPage() {
   const [updateVersionFile, setUpdateVersionFile] = useState<FileWithUploader | null>(null);
 
   const { data: files, isLoading } = useQuery<FileWithUploader[]>({
-    queryKey: ["/api/files/my"],
+    queryKey: ["/api/files-all"],
   });
 
   const uploadMutation = useMutation({
@@ -303,7 +303,7 @@ export default function MyFilesPage() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/files/my"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/files-all"] });
       queryClient.invalidateQueries({ queryKey: ["/api/files/recent"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       setContractId("");
@@ -341,7 +341,7 @@ export default function MyFilesPage() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/files/my"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/files-all"] });
       queryClient.invalidateQueries({ queryKey: ["/api/files/recent"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       setUpdateVersionFile(null);

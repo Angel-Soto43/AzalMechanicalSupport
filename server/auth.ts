@@ -34,15 +34,24 @@ export function setupAuth(app: Express) {
   app.use(passport.session());
 
   passport.serializeUser((user: any, done) => {
-    done(null, user);
+    console.log("📝 serializeUser called with user:", user?.id, user?.correo);
+    done(null, user.id);
   });
 
-  passport.deserializeUser((obj: any, done) => {
-    done(null, obj);
+  passport.deserializeUser(async (id: number, done) => {
+    console.log("🔄 deserializeUser called with id:", id);
+    try {
+      const user = await storage.getUserById(id);
+      console.log("✅ User fetched:", user?.id, user?.correo, !!user?.accessToken);
+      done(null, user);
+    } catch (error) {
+      console.error("❌ Error in deserializeUser:", error);
+      done(error, null);
+    }
   });
 
   // 3. Estrategia de Microsoft Azure AD
-  passport.use('azuread-openidconnect', new OIDCStrategy({
+passport.use('azuread-openidconnect', new OIDCStrategy({
     identityMetadata: `https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration`,
     clientID: process.env.MICROSOFT_CLIENT_ID || '', 
     clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
@@ -52,17 +61,57 @@ export function setupAuth(app: Express) {
     allowHttpForRedirectUrl: true,
     validateIssuer: false,
     passReqToCallback: false,
-    scope: ['openid', 'profile', 'offline_access', 'user.read'],
     
-    // 🛡️ RELAJAMOS LA SEGURIDAD PARA EVITAR EL "NULL"
+    // 🔑 SCOPES para obtener Token de Microsoft Graph
+    scope: [
+      'openid',
+      'profile',
+      'offline_access',
+      'User.Read',
+      'Files.Read',
+      'Files.Read.All',
+      'Files.ReadWrite',
+      'Files.ReadWrite.All',
+    ],
+    
     state: false,
     nonce: false,
-    clockSkew: 3600, // Le damos 1 hora de margen de error al reloj
+    clockSkew: 3600,
   },
-  async (req: any, iss: any, sub: any, profile: any, accessToken: any, refreshToken: any, done: any) => {
-    // Si llegamos aquí, Microsoft ya nos dio los datos
-    if (!profile) return done(null, false);
-    return done(null, profile);
+  async (iss: any, sub: any, profile: any, accessToken: any, refreshToken: any, done: any) => {
+    console.log('🔐 OIDC callback called with profile:', profile?.displayName, 'accessToken:', !!accessToken);
+    if (!profile) {
+      console.error('❌ No profile in OIDC callback');
+      return done(null, false);
+    }
+
+    const email = profile._json?.email || profile._json?.preferred_username || profile.upn;
+    console.log('📧 Email extracted:', email);
+    if (!email) {
+      console.error('❌ No email found in profile');
+      return done(new Error('No se encontró correo del usuario en el perfil de Microsoft'));
+    }
+
+    const fullName = profile.displayName || `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim() || email;
+    console.log('👤 Full name:', fullName);
+
+    try {
+      const localUser = await storage.getOrCreateUserByEmail(email, fullName);
+      console.log('✅ Local user created/found:', localUser.id, localUser.correo);
+      await storage.updateUserTokens(localUser.id, accessToken, refreshToken);
+      console.log('✅ Tokens updated for user');
+      const user = {
+        ...localUser,
+        accessToken,
+        refreshToken,
+        microsoftProfile: profile._json,
+      };
+      console.log('🔑 User with tokens created');
+      return done(null, user);
+    } catch (error) {
+      console.error('❌ Error in getOrCreateUserByEmail or updateTokens:', error);
+      return done(error);
+    }
   }
 ));
 
@@ -75,15 +124,26 @@ export function setupAuth(app: Express) {
     passport.authenticate('azuread-openidconnect', {
       failureRedirect: '/auth',
       failureMessage: true
-    }, (err: any, user: any) => {
-      if (err || !user) {
+    }, (err: any, user: any, info: any) => {
+      if (err) {
+        console.error('Auth callback error:', err);
+        return res.redirect('/auth');
+      }
+      if (!user) {
+        console.error('Auth callback no user:', info);
         return res.redirect('/auth');
       }
 
       req.logIn(user, (loginErr: any) => {
-        if (loginErr) return next(loginErr);
+        if (loginErr) {
+          console.error('Error en req.logIn:', loginErr);
+          return next(loginErr);
+        }
 
-        req.session.save(() => {
+        req.session.save((saveErr: any) => {
+          if (saveErr) {
+            console.error('Error saving session after auth:', saveErr);
+          }
           res.redirect('/');
         });
       });
@@ -94,14 +154,25 @@ export function setupAuth(app: Express) {
   app.get('/api/auth/callback', callbackHandler);
 
   app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    console.log("🔍 /api/user called - isAuthenticated:", req.isAuthenticated(), "sessionID:", req.sessionID, "user:", !!req.user);
+    if (!req.isAuthenticated()) {
+      console.log("❌ Not authenticated");
+      return res.sendStatus(401);
+    }
+    console.log("✅ Returning user:", req.user.id, req.user.correo);
     res.json(req.user);
   });
 
   app.post("/api/logout", (req, res, next) => {
     req.logout((err) => {
       if (err) return next(err);
-      res.sendStatus(200);
+      req.session.destroy((destroyErr) => {
+        if (destroyErr) {
+          console.error('Error destruyendo sesión al salir:', destroyErr);
+        }
+        res.clearCookie('connect.sid');
+        res.sendStatus(200);
+      });
     });
   });
 }
