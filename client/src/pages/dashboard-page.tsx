@@ -2,16 +2,26 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format, formatDistanceToNow, subDays } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { File as LucideFile, Clock, Upload } from "lucide-react";
-import { File } from "@shared/schema";
 import { formatFileSize } from "@/components/file-icon";
 
-const STORAGE_QUOTA_BYTES = 5 * 1024 * 1024 * 1024; // Fallback
+const STORAGE_QUOTA_BYTES = 5 * 1024 * 1024 * 1024; // Fallback: 5GB
 
-function bytesToUsageRatio(bytes: number, total: number) {
-  return Math.min(100, Math.round((bytes / total) * 100));
+interface DashboardData {
+  fileCount: number;
+  storageUsed: number;
+  storageTotal: number;
+  usagePercent: number;
+  recentFiles: Array<{
+    id: string;
+    name: string;
+    size: number;
+    uploadedAt: string;
+    mimeType: string;
+    webUrl?: string;
+  }>;
 }
 
 function StatCard({
@@ -58,26 +68,24 @@ function StatCard({
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  // Usar el endpoint de archivos de Microsoft
-  const { data: files, isLoading } = useQuery<File[]>({
-    queryKey: ["/api/microsoft-files"],
+  
+  // Obtener todos los datos del dashboard desde un único endpoint
+  // Configurado para refrescarse cada 30 segundos y no hacer cache por más de 10 segundos
+  const { data: dashboardData, isLoading } = useQuery<DashboardData>({
+    queryKey: ["/api/dashboard"],
+    staleTime: 10 * 1000, // Los datos se consideran "stale" después de 10 segundos
+    gcTime: 5 * 60 * 1000, // Los datos se limpian de la memoria después de 5 minutos
+    refetchInterval: 30 * 1000, // Refrescar automáticamente cada 30 segundos
   });
 
-  // Obtener información de almacenamiento de Microsoft
-  const { data: quota } = useQuery({
-    queryKey: ["/api/microsoft-quota"],
-  });
-
-  const totalFiles = files?.length ?? 0;
-  const totalStorageBytes = quota?.used || 0;
-  const realQuotaBytes = quota?.total || STORAGE_QUOTA_BYTES;
-  const usedPercent = bytesToUsageRatio(totalStorageBytes, realQuotaBytes);
+  const totalFiles = dashboardData?.fileCount ?? 0;
+  const totalStorageBytes = dashboardData?.storageUsed ?? 0;
+  const realQuotaBytes = dashboardData?.storageTotal ?? STORAGE_QUOTA_BYTES;
+  const usedPercent = dashboardData?.usagePercent ?? 0;
   const usageDescription = `${formatFileSize(totalStorageBytes)} de ${formatFileSize(realQuotaBytes)}`;
 
-  const recentFiles = files
-    ? files
-        .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
-    : [];
+  // Los archivos recientes ya vienen del endpoint, no necesitamos sortearlos de nuevo
+  const recentFiles = dashboardData?.recentFiles ?? [];
 
   const greeting = () => {
     const hour = new Date().getHours();
@@ -162,7 +170,7 @@ export default function DashboardPage() {
                         <LucideFile className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="font-semibold text-foreground truncate">{file.originalName}</p>
+                        <p className="font-semibold text-foreground truncate">{file.name}</p>
                         <p className="text-xs text-muted-foreground">{format(new Date(file.uploadedAt), "d 'de' MMMM, HH:mm", { locale: es })}</p>
                       </div>
                     </div>

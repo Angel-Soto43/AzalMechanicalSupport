@@ -119,8 +119,8 @@ export default function FolderPage() {
       body: JSON.stringify({ name, parentId: folderId }),
     });
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || "Error al crear carpeta");
+      const errorData = await res.json().catch(() => ({ error: "Error al crear carpeta" }));
+      throw new Error(errorData.error || "Error al crear carpeta");
     }
     loadFolder();
     queryClient.invalidateQueries({ queryKey: ["/api/folders/root"] });

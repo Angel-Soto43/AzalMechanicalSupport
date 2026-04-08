@@ -183,6 +183,75 @@ export async function getMicrosoftFolders(accessToken: string, refreshToken: str
   }
 }
 
+export async function createMicrosoftFolder(
+  accessToken: string,
+  refreshToken: string,
+  userId: number,
+  folderName: string,
+) {
+  try {
+    console.log('🔍 Creando carpeta en Microsoft OneDrive...', folderName);
+    let currentToken = accessToken;
+
+    const fetchCreate = async (token: string) => {
+      const response = await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: folderName,
+          folder: {},
+          '@microsoft.graph.conflictBehavior': 'rename',
+        }),
+      });
+      return response;
+    };
+
+    let response = await fetchCreate(currentToken);
+
+    if (response.status === 401 && refreshToken) {
+      console.log('🔄 Token expirado, intentando refrescar...');
+      try {
+        const newTokens = await refreshAccessToken(refreshToken);
+        currentToken = newTokens.accessToken;
+
+        const { storage } = await import('./storage');
+        await storage.updateUserTokens(userId, newTokens.accessToken, newTokens.refreshToken);
+
+        console.log('✅ Token refrescado y guardado');
+        response = await fetchCreate(currentToken);
+      } catch (refreshError) {
+        console.error('❌ Error refrescando token:', refreshError);
+        throw refreshError;
+      }
+    }
+
+    console.log('📌 Microsoft Graph create folder status:', response.status, response.statusText);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Microsoft Graph create folder error:', response.status, errorText);
+      throw new Error(`No se pudo crear la carpeta en OneDrive: ${errorText}`);
+    }
+
+    const data = await response.json();
+    return {
+      id: data.id,
+      name: data.name,
+      createdAt: data.createdDateTime || new Date().toISOString(),
+      updatedAt: data.lastModifiedDateTime || data.createdDateTime || new Date().toISOString(),
+      source: 'microsoft',
+      webUrl: data.webUrl,
+      parentId: data.parentReference?.id || null,
+    };
+  } catch (error) {
+    console.error('❌ Error creando carpeta Microsoft:', error);
+    throw error;
+  }
+}
+
 export async function getMicrosoftQuota(accessToken: string) {
   try {
     const response = await fetch('https://graph.microsoft.com/v1.0/me/drive', {

@@ -76,7 +76,10 @@ export default function FoldersListPage() {
         credentials: "include",
         body: JSON.stringify({ name }),
       });
-      if (!res.ok) throw new Error("Error al crear la carpeta");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: "Error al crear la carpeta" }));
+        throw new Error(errorData.error || "Error al crear la carpeta");
+      }
       await fetchFolders();
       toast({ title: "¡Éxito!", description: `Carpeta "${name}" creada.` });
     } catch (err: any) {
@@ -163,34 +166,36 @@ export default function FoldersListPage() {
             <div className="flex flex-col sm:flex-row gap-3">
             {/* BOTÓN DE SUBIR ARCHIVO DIRECTO */}
             <Button
+              type="button"
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
               className="border-blue-200 hover:bg-blue-50 text-blue-700"
             >
               <Upload className="mr-2 h-4 w-4" /> Subir Archivo
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                onChange={handleUploadFile}
-                multiple
-              />
             </Button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={handleUploadFile}
+              multiple
+            />
 
             <Button
+              type="button"
               variant="outline"
               onClick={handleUploadFolder}
               className="border-blue-200 hover:bg-blue-50 text-blue-700"
             >
               <Upload className="mr-2 h-4 w-4" /> Subir Carpeta
-              <input
-                type="file"
-                ref={folderInputRef}
-                className="hidden"
-                onChange={handleUploadFolderChange}
-                multiple
-              />
             </Button>
+            <input
+              type="file"
+              ref={folderInputRef}
+              className="hidden"
+              onChange={handleUploadFolderChange}
+              multiple
+            />
 
             {/* BOTÓN DE NUEVA CARPETA */}
             <Button onClick={() => setNewFolderDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700 shadow-lg border-none text-white">

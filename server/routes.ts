@@ -6,7 +6,7 @@ import multer from "multer";
 import { storage } from "./storage";
 import { insertLicitacionSchema } from "@shared/schema";
 import "isomorphic-fetch";
-import { getMicrosoftFiles, getMicrosoftQuota, getMicrosoftFolders, uploadFileToGraph } from "./microsoft-graph";
+import { getMicrosoftFiles, getMicrosoftQuota, getMicrosoftFolders, createMicrosoftFolder, uploadFileToGraph } from "./microsoft-graph";
 import { requireAuth } from "./auth";
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -35,6 +35,81 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const userId = req.user.id;
       const lista = await storage.getRootFolders(userId);
       res.status(200).json(lista || []);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/folders", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const name = req.body?.name;
+      const parentId = req.body?.parentId != null ? Number(req.body.parentId) : null;
+
+      if (!name || typeof name !== "string" || !name.trim()) {
+        return res.status(400).json({ error: "El nombre de la carpeta es obligatorio" });
+      }
+
+      const folderData: any = {
+        name: name.trim(),
+        userId,
+      };
+      if (parentId != null) {
+        folderData.parentId = parentId;
+      }
+
+      const folder = await storage.createFolder(folderData);
+
+      if (req.user.accessToken && req.user.refreshToken) {
+        try {
+          await createMicrosoftFolder(req.user.accessToken, req.user.refreshToken, req.user.id, name.trim());
+        } catch (graphError: any) {
+          console.warn("No se pudo crear la carpeta en OneDrive:", graphError.message || graphError);
+        }
+      }
+
+      res.status(201).json(folder);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.patch("/api/folders/:id", requireAuth, async (req: any, res) => {
+    try {
+      const folderId = Number(req.params.id);
+      const name = req.body?.name;
+      if (!name || typeof name !== "string" || !name.trim()) {
+        return res.status(400).json({ error: "El nombre de la carpeta es obligatorio" });
+      }
+
+      const folder = await storage.getFolderById(folderId);
+      if (!folder) {
+        return res.status(404).json({ error: "Carpeta no encontrada" });
+      }
+      if (folder.userId !== req.user.id) {
+        return res.status(403).json({ error: "No autorizado" });
+      }
+
+      const updatedFolder = await storage.updateFolderName(folderId, name.trim());
+      res.status(200).json(updatedFolder);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete("/api/folders/:id", requireAuth, async (req: any, res) => {
+    try {
+      const folderId = Number(req.params.id);
+      const folder = await storage.getFolderById(folderId);
+      if (!folder) {
+        return res.status(404).json({ error: "Carpeta no encontrada" });
+      }
+      if (folder.userId !== req.user.id) {
+        return res.status(403).json({ error: "No autorizado" });
+      }
+
+      await storage.deleteFolder(folderId);
+      res.status(204).end();
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
@@ -90,32 +165,50 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
       await fs.promises.writeFile(filePath, file.buffer);
 
-      const createdFile = await storage.createFile({
-        filename: storedFilename,
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
-        contractId,
-        supplier,
-        version: 1,
-        uploadedAt: new Date(),
-        uploadedBy: uploaderId,
-        folderId,
-        previousVersionId: null,
-        isDeleted: false,
-        deletedAt: null,
-        deletedBy: null,
-      });
+      let createdFile: any = null;
+      try {
+        createdFile = await storage.createFile({
+          filename: storedFilename,
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          contractId,
+          supplier,
+          version: 1,
+          uploadedAt: new Date(),
+          uploadedBy: uploaderId,
+          folderId,
+          previousVersionId: null,
+          isDeleted: false,
+          deletedAt: null,
+          deletedBy: null,
+        });
+      } catch (dbError: any) {
+        console.warn("⚠️ No se pudo guardar metadatos en la DB, se omite el registro local:", dbError.message || dbError);
+      }
 
+      let graphResponse: any = null;
       if (req.user.accessToken) {
         try {
-          await uploadFileToGraph(req.user.accessToken, file.originalname, file.buffer, file.mimetype, file.size);
+          graphResponse = await uploadFileToGraph(req.user.accessToken, file.originalname, file.buffer, file.mimetype, file.size);
         } catch (graphError: any) {
           console.error("Error al subir a Microsoft Graph:", graphError);
         }
       }
 
-      res.status(201).json(createdFile);
+      if (createdFile) {
+        return res.status(201).json(createdFile);
+      }
+
+      return res.status(201).json({
+        id: graphResponse?.id || null,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+        uploadedAt: new Date().toISOString(),
+        webUrl: graphResponse?.webUrl || null,
+        source: graphResponse ? 'microsoft' : 'local',
+      });
     } catch (e: any) {
       console.error("Error en /api/files/upload:", e);
       res.status(500).json({ error: e.message || "Error interno al subir archivo" });
@@ -215,17 +308,48 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  app.post("/api/microsoft-folders", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const accessToken = user?.accessToken;
+      const refreshToken = user?.refreshToken;
+      const folderName = req.body?.name;
+
+      if (!accessToken || !refreshToken) {
+        console.error('❌ No access token or refresh token para usuario:', user?.oid);
+        return res.status(401).json({ error: "No access token or refresh token available" });
+      }
+
+      if (!folderName || typeof folderName !== 'string' || !folderName.trim()) {
+        return res.status(400).json({ error: "El nombre de la carpeta es obligatorio" });
+      }
+
+      const createdFolder = await createMicrosoftFolder(accessToken, refreshToken, user.id, folderName.trim());
+      console.log('✅ Carpeta creada en Microsoft:', createdFolder);
+      res.status(201).json(createdFolder);
+    } catch (e: any) {
+      console.error('❌ Error en POST /api/microsoft-folders:', e.message || e);
+      res.status(500).json({ error: e.message || 'Error interno al crear carpeta en OneDrive' });
+    }
+  });
+
   // NUEVO: Obtener archivos combinados (locales + Microsoft)
   app.get("/api/files-all", requireAuth, async (req: any, res) => {
     try {
       const user = req.user;
       const accessToken = user?.accessToken;
+      const refreshToken = user?.refreshToken;
 
       console.log('📍 /api/files-all - Usuario:', user?.oid, 'Token disponible:', !!accessToken);
 
       // Obtener archivos locales
-      const localFiles = await storage.getAllFiles();
-      console.log('✅ Archivos locales:', localFiles?.length || 0);
+      let localFiles: any[] = [];
+      try {
+        localFiles = await storage.getAllFiles();
+        console.log('✅ Archivos locales:', localFiles?.length || 0);
+      } catch (dbError: any) {
+        console.warn('⚠️ No se pudo obtener archivos locales de la DB, se omite la lista local:', dbError.message || dbError);
+      }
 
       // Obtener archivos de Microsoft si tenemos accessToken
       let microsoftFiles: any[] = [];
@@ -265,6 +389,138 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.json(quota);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Dashboard: Información consolidada de OneDrive
+  app.get("/api/dashboard", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const accessToken = user?.accessToken;
+      const refreshToken = user?.refreshToken;
+      const userId = user?.id;
+
+      console.log('📊 /api/dashboard - Calculando estadísticas para usuario:', user?.oid, 'ID:', userId);
+
+      // Obtener datos de archivo y almacenamiento de OneDrive
+      let fileCount = 0;
+      let storageUsed = 0;
+      let storageTotal = 5 * 1024 * 1024 * 1024; // 5GB default
+      let recentFiles: any[] = [];
+      let allFiles: any[] = [];
+
+      // 1. Primero intentar obtener archivos locales
+      try {
+        const localFiles = await storage.getAllFiles();
+        console.log('✅ Archivos locales obtenidos:', localFiles?.length || 0);
+        if (localFiles && localFiles.length > 0) {
+          console.log('   Primer archivo local:', {
+            id: localFiles[0]?.id,
+            name: localFiles[0]?.originalName,
+            uploadedAt: localFiles[0]?.uploadedAt,
+          });
+        }
+        allFiles = [...(localFiles || [])];
+      } catch (dbError: any) {
+        console.error('❌ Error obteniendo archivos locales:', dbError.message);
+      }
+
+      // 2. Intentar obtener archivos de Microsoft
+      if (accessToken && refreshToken) {
+        try {
+          const microsoftFiles = await getMicrosoftFiles(accessToken, refreshToken, userId);
+          console.log('✅ Archivos de Microsoft obtenidos:', microsoftFiles?.length || 0);
+          if (microsoftFiles && microsoftFiles.length > 0) {
+            console.log('   Primer archivo Microsoft:', {
+              id: microsoftFiles[0]?.id,
+              name: microsoftFiles[0]?.originalName,
+              uploadedAt: microsoftFiles[0]?.uploadedAt,
+            });
+            allFiles = [...allFiles, ...microsoftFiles];
+          }
+        } catch (error: any) {
+          console.warn("⚠️ Error obteniendo archivos de Microsoft:", error.message);
+        }
+      } else {
+        console.warn('⚠️ No hay tokens de Microsoft disponibles para usuario:', userId);
+      }
+
+      fileCount = allFiles.length;
+      console.log('📊 Total de archivos (Local + Microsoft):', fileCount);
+
+      // 3. Obtener información de almacenamiento de Microsoft
+      if (accessToken) {
+        try {
+          const quota = await getMicrosoftQuota(accessToken);
+          storageUsed = quota.used || 0;
+          storageTotal = quota.total || storageTotal;
+          console.log('✅ Almacenamiento Microsoft - Usado:', storageUsed, 'Total:', storageTotal);
+        } catch (error: any) {
+          console.warn('⚠️ Error obteniendo cuota de Microsoft:', error.message);
+        }
+      }
+
+      // 4. Obtener archivos recientes (últimos 10), ordenados por fecha
+      if (allFiles && allFiles.length > 0) {
+        recentFiles = allFiles
+          .sort((a: any, b: any) => {
+            const dateA = new Date(a.uploadedAt).getTime();
+            const dateB = new Date(b.uploadedAt).getTime();
+            return dateB - dateA; // Más recientes primero
+          })
+          .slice(0, 10);
+        console.log('✅ Archivos recientes después de ordenar:', recentFiles.length);
+        if (recentFiles.length > 0) {
+          console.log('   Archivo más reciente:', {
+            id: recentFiles[0]?.id,
+            name: recentFiles[0]?.originalName || recentFiles[0]?.name,
+            uploadedAt: recentFiles[0]?.uploadedAt,
+          });
+        }
+      } else {
+        console.warn('⚠️ Sin archivos para mostrar como recientes');
+      }
+
+      // 5. Calcular porcentaje de uso
+      const usagePercent = storageTotal > 0 
+        ? Math.round((storageUsed / storageTotal) * 100)
+        : 0;
+
+      // 6. Construir respuesta consolidada del dashboard
+      const dashboardData = {
+        fileCount,
+        storageUsed,
+        storageTotal,
+        usagePercent,
+        recentFiles: recentFiles.map((file: any) => ({
+          id: file.id,
+          name: file.originalName || file.name || 'Sin nombre',
+          size: file.size || 0,
+          uploadedAt: file.uploadedAt || new Date().toISOString(),
+          mimeType: file.mimeType || 'application/octet-stream',
+          webUrl: file.webUrl || null,
+        })),
+      };
+
+      console.log('📊 Dashboard data final:', {
+        fileCount: dashboardData.fileCount,
+        storageUsed: dashboardData.storageUsed,
+        usagePercent: dashboardData.usagePercent,
+        recentFilesCount: dashboardData.recentFiles.length,
+        recentFilesNames: dashboardData.recentFiles.slice(0, 3).map(f => f.name),
+      });
+
+      res.json(dashboardData);
+    } catch (e: any) {
+      console.error('❌ Error en /api/dashboard:', e.message, e.stack);
+      // Retornar datos vacíos en lugar de error para que el frontend no falle
+      res.json({
+        fileCount: 0,
+        storageUsed: 0,
+        storageTotal: 5 * 1024 * 1024 * 1024,
+        usagePercent: 0,
+        recentFiles: [],
+      });
     }
   });
 
