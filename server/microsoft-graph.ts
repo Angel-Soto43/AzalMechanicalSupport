@@ -109,6 +109,80 @@ export async function getMicrosoftFiles(accessToken: string, refreshToken: strin
   }
 }
 
+export async function getMicrosoftFolders(accessToken: string, refreshToken: string, userId: number) {
+  try {
+    console.log('🔍 Obteniendo carpetas de Microsoft Graph...');
+    console.log('   Token length:', accessToken?.length || 0);
+
+    let currentToken = accessToken;
+
+    // Función para hacer la llamada a la API
+    const fetchFolders = async (token: string) => {
+      const response = await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children?$top=100', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      return response;
+    };
+
+    let response = await fetchFolders(currentToken);
+
+    // Si el token expiró, intentar refrescar
+    if (response.status === 401 && refreshToken) {
+      console.log('🔄 Token expirado, intentando refrescar...');
+      try {
+        const newTokens = await refreshAccessToken(refreshToken);
+        currentToken = newTokens.accessToken;
+
+        // Actualizar tokens en DB
+        const { storage } = await import('./storage');
+        await storage.updateUserTokens(userId, newTokens.accessToken, newTokens.refreshToken);
+
+        console.log('✅ Token refrescado y guardado');
+        
+        // Reintentar la llamada
+        response = await fetchFolders(currentToken);
+      } catch (refreshError) {
+        console.error('❌ Error refrescando token:', refreshError);
+        return [];
+      }
+    }
+
+    console.log('📌 Microsoft Graph response status:', response.status, response.statusText);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Microsoft Graph error:', response.status, errorText);
+      return [];
+    }
+
+    const data = await response.json();
+    console.log('✅ Microsoft Graph returned:', data.value?.length || 0, 'items');
+    
+    // Transformar carpetas de Microsoft format a nuestro formato (solo carpetas)
+    const transformed = (data.value || [])
+      .filter((item: any) => item.folder) // Solo carpetas
+      .map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        createdAt: item.createdDateTime || item.lastModifiedDateTime || new Date().toISOString(),
+        updatedAt: item.lastModifiedDateTime || item.createdDateTime || new Date().toISOString(),
+        source: 'microsoft', // Identificar que viene de Microsoft
+        webUrl: item.webUrl,
+        parentId: null, // Asumir que son root folders
+      }));
+
+    console.log('✅ Transformed to:', transformed.length, 'folders');
+    return transformed;
+  } catch (error) {
+    console.error('❌ Error fetching Microsoft folders:', error);
+    return [];
+  }
+}
+
 export async function getMicrosoftQuota(accessToken: string) {
   try {
     const response = await fetch('https://graph.microsoft.com/v1.0/me/drive', {

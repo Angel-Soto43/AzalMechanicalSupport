@@ -6,7 +6,7 @@ import multer from "multer";
 import { storage } from "./storage";
 import { insertLicitacionSchema } from "@shared/schema";
 import "isomorphic-fetch";
-import { getMicrosoftFiles, getMicrosoftQuota, uploadFileToGraph } from "./microsoft-graph";
+import { getMicrosoftFiles, getMicrosoftQuota, getMicrosoftFolders, uploadFileToGraph } from "./microsoft-graph";
 import { requireAuth } from "./auth";
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -189,6 +189,28 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.json(microsoftFiles || []);
     } catch (e: any) {
       console.error('❌ Error en /api/microsoft-files:', e.message);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Obtener carpetas de Microsoft
+  app.get("/api/microsoft-folders", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const accessToken = user?.accessToken;
+      const refreshToken = user?.refreshToken;
+
+      if (!accessToken || !refreshToken) {
+        console.error('❌ No access token or refresh token para usuario:', user?.oid);
+        return res.status(401).json({ error: "No access token or refresh token available" });
+      }
+
+      const microsoftFolders = await getMicrosoftFolders(accessToken, refreshToken, user.id);
+      console.log('✅ Carpetas obtenidas de Microsoft:', microsoftFolders?.length || 0);
+      
+      res.json(microsoftFolders || []);
+    } catch (e: any) {
+      console.error('❌ Error en /api/microsoft-folders:', e.message);
       res.status(500).json({ error: e.message });
     }
   });

@@ -69,8 +69,8 @@ export default function DashboardPage() {
   });
 
   const totalFiles = files?.length ?? 0;
-  const totalStorageBytes = files?.reduce((sum, file) => sum + (file.size ?? 0), 0) ?? 0;
-  const realQuotaBytes = quota?.quota?.total || STORAGE_QUOTA_BYTES;
+  const totalStorageBytes = quota?.used || 0;
+  const realQuotaBytes = quota?.total || STORAGE_QUOTA_BYTES;
   const usedPercent = bytesToUsageRatio(totalStorageBytes, realQuotaBytes);
   const usageDescription = `${formatFileSize(totalStorageBytes)} de ${formatFileSize(realQuotaBytes)}`;
 
