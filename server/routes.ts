@@ -6,7 +6,7 @@ import multer from "multer";
 import { storage } from "./storage";
 import { insertLicitacionSchema } from "@shared/schema";
 import "isomorphic-fetch";
-import { getMicrosoftFiles, getMicrosoftQuota, getMicrosoftFolders, createMicrosoftFolder, uploadFileToGraph } from "./microsoft-graph";
+import { getMicrosoftFiles, getMicrosoftQuota, getMicrosoftFolders, getMicrosoftRecentFiles, createMicrosoftFolder, uploadFileToGraph } from "./microsoft-graph";
 import { requireAuth } from "./auth";
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -380,12 +380,14 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     try {
       const user = req.user;
       const accessToken = user?.accessToken;
+      const refreshToken = user?.refreshToken;
+      const userId = user?.id;
 
       if (!accessToken) {
         return res.status(401).json({ error: "No access token available" });
       }
 
-      const quota = await getMicrosoftQuota(accessToken);
+      const quota = await getMicrosoftQuota(accessToken, refreshToken, userId);
       res.json(quota);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -402,104 +404,46 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
       console.log('📊 /api/dashboard - Calculando estadísticas para usuario:', user?.oid, 'ID:', userId);
 
-      // Obtener datos de archivo y almacenamiento de OneDrive
-      let fileCount = 0;
-      let storageUsed = 0;
-      let storageTotal = 5 * 1024 * 1024 * 1024; // 5GB default
-      let recentFiles: any[] = [];
-      let allFiles: any[] = [];
+      const [microsoftFiles, recentMicrosoftFiles] = await Promise.all([
+        accessToken && refreshToken
+          ? getMicrosoftFiles(accessToken, refreshToken, userId)
+          : Promise.resolve([] as any[]),
+        accessToken && refreshToken
+          ? getMicrosoftRecentFiles(accessToken, refreshToken, userId)
+          : Promise.resolve([] as any[]),
+      ]);
 
-      // 1. Primero intentar obtener archivos locales
-      try {
-        const localFiles = await storage.getAllFiles();
-        console.log('✅ Archivos locales obtenidos:', localFiles?.length || 0);
-        if (localFiles && localFiles.length > 0) {
-          console.log('   Primer archivo local:', {
-            id: localFiles[0]?.id,
-            name: localFiles[0]?.originalName,
-            uploadedAt: localFiles[0]?.uploadedAt,
-          });
-        }
-        allFiles = [...(localFiles || [])];
-      } catch (dbError: any) {
-        console.error('❌ Error obteniendo archivos locales:', dbError.message);
-      }
+      const quota = accessToken
+        ? await getMicrosoftQuota(accessToken, refreshToken, userId)
+        : { used: 0, total: 5 * 1024 * 1024 * 1024 };
 
-      // 2. Intentar obtener archivos de Microsoft
-      if (accessToken && refreshToken) {
-        try {
-          const microsoftFiles = await getMicrosoftFiles(accessToken, refreshToken, userId);
-          console.log('✅ Archivos de Microsoft obtenidos:', microsoftFiles?.length || 0);
-          if (microsoftFiles && microsoftFiles.length > 0) {
-            console.log('   Primer archivo Microsoft:', {
-              id: microsoftFiles[0]?.id,
-              name: microsoftFiles[0]?.originalName,
-              uploadedAt: microsoftFiles[0]?.uploadedAt,
-            });
-            allFiles = [...allFiles, ...microsoftFiles];
-          }
-        } catch (error: any) {
-          console.warn("⚠️ Error obteniendo archivos de Microsoft:", error.message);
-        }
-      } else {
-        console.warn('⚠️ No hay tokens de Microsoft disponibles para usuario:', userId);
-      }
+      const fileCount = microsoftFiles?.length || 0;
+      console.log('📊 Total de archivos de OneDrive:', fileCount);
 
-      fileCount = allFiles.length;
-      console.log('📊 Total de archivos (Local + Microsoft):', fileCount);
+      const recentFiles = (recentMicrosoftFiles || [])
+        .map((file: any) => ({
+          id: file.id,
+          name: file.name,
+          size: file.size || 0,
+          uploadedAt: file.uploadedAt || file.lastModifiedDateTime || new Date().toISOString(),
+          mimeType: file.mimeType || file.type || 'application/octet-stream',
+          webUrl: file.webUrl || null,
+          type: file.type || file.mimeType || 'application/octet-stream',
+          lastModifiedDateTime: file.lastModifiedDateTime || file.uploadedAt || new Date().toISOString(),
+        }))
+        .sort((a: any, b: any) => new Date(b.lastModifiedDateTime).getTime() - new Date(a.lastModifiedDateTime).getTime())
+        .slice(0, 10);
 
-      // 3. Obtener información de almacenamiento de Microsoft
-      if (accessToken) {
-        try {
-          const quota = await getMicrosoftQuota(accessToken);
-          storageUsed = quota.used || 0;
-          storageTotal = quota.total || storageTotal;
-          console.log('✅ Almacenamiento Microsoft - Usado:', storageUsed, 'Total:', storageTotal);
-        } catch (error: any) {
-          console.warn('⚠️ Error obteniendo cuota de Microsoft:', error.message);
-        }
-      }
+      const storageUsed = quota.used || 0;
+      const storageTotal = quota.total || 5 * 1024 * 1024 * 1024;
+      const usagePercent = storageTotal > 0 ? Math.round((storageUsed / storageTotal) * 100) : 0;
 
-      // 4. Obtener archivos recientes (últimos 10), ordenados por fecha
-      if (allFiles && allFiles.length > 0) {
-        recentFiles = allFiles
-          .sort((a: any, b: any) => {
-            const dateA = new Date(a.uploadedAt).getTime();
-            const dateB = new Date(b.uploadedAt).getTime();
-            return dateB - dateA; // Más recientes primero
-          })
-          .slice(0, 10);
-        console.log('✅ Archivos recientes después de ordenar:', recentFiles.length);
-        if (recentFiles.length > 0) {
-          console.log('   Archivo más reciente:', {
-            id: recentFiles[0]?.id,
-            name: recentFiles[0]?.originalName || recentFiles[0]?.name,
-            uploadedAt: recentFiles[0]?.uploadedAt,
-          });
-        }
-      } else {
-        console.warn('⚠️ Sin archivos para mostrar como recientes');
-      }
-
-      // 5. Calcular porcentaje de uso
-      const usagePercent = storageTotal > 0 
-        ? Math.round((storageUsed / storageTotal) * 100)
-        : 0;
-
-      // 6. Construir respuesta consolidada del dashboard
       const dashboardData = {
         fileCount,
         storageUsed,
         storageTotal,
         usagePercent,
-        recentFiles: recentFiles.map((file: any) => ({
-          id: file.id,
-          name: file.originalName || file.name || 'Sin nombre',
-          size: file.size || 0,
-          uploadedAt: file.uploadedAt || new Date().toISOString(),
-          mimeType: file.mimeType || 'application/octet-stream',
-          webUrl: file.webUrl || null,
-        })),
+        recentFiles,
       };
 
       console.log('📊 Dashboard data final:', {
@@ -507,13 +451,12 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         storageUsed: dashboardData.storageUsed,
         usagePercent: dashboardData.usagePercent,
         recentFilesCount: dashboardData.recentFiles.length,
-        recentFilesNames: dashboardData.recentFiles.slice(0, 3).map(f => f.name),
+        recentFilesNames: dashboardData.recentFiles.slice(0, 3).map((f: any) => f.name),
       });
 
       res.json(dashboardData);
     } catch (e: any) {
       console.error('❌ Error en /api/dashboard:', e.message, e.stack);
-      // Retornar datos vacíos en lugar de error para que el frontend no falle
       res.json({
         fileCount: 0,
         storageUsed: 0,

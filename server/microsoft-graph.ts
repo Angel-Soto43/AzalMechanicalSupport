@@ -35,76 +35,155 @@ async function refreshAccessToken(refreshToken: string) {
   };
 }
 
+async function fetchWithTokenRefresh(
+  url: string,
+  accessToken: string,
+  refreshToken?: string,
+  userId?: number,
+  init: RequestInit = {},
+) {
+  let currentToken = accessToken;
+  const defaultHeaders = {
+    Authorization: `Bearer ${currentToken}`,
+    'Content-Type': 'application/json',
+  };
+
+  const request = async (): Promise<Response> => {
+    return await fetch(url, {
+      ...init,
+      headers: {
+        ...defaultHeaders,
+        ...(init.headers || {}),
+      },
+    });
+  };
+
+  let response = await request();
+  if (response.status !== 401 || !refreshToken || userId == null) {
+    return { response, accessToken: currentToken };
+  }
+
+  const newTokens = await refreshAccessToken(refreshToken);
+  currentToken = newTokens.accessToken;
+  const { storage } = await import("./storage");
+  await storage.updateUserTokens(userId, newTokens.accessToken, newTokens.refreshToken);
+
+  response = await fetch(url, {
+    ...init,
+    headers: {
+      ...defaultHeaders,
+      Authorization: `Bearer ${currentToken}`,
+      ...(init.headers || {}),
+    },
+  });
+
+  return { response, accessToken: currentToken };
+}
+
 export async function getMicrosoftFiles(accessToken: string, refreshToken: string, userId: number) {
   try {
     console.log('🔍 Obteniendo archivos de Microsoft Graph...');
     console.log('   Token length:', accessToken?.length || 0);
 
     let currentToken = accessToken;
+    const fileItems: any[] = [];
+    const queue: string[] = ['https://graph.microsoft.com/v1.0/me/drive/root/children?$top=200'];
 
-    // Función para hacer la llamada a la API
-    const fetchFiles = async (token: string) => {
-      const response = await fetch('https://graph.microsoft.com/v1.0/me/drive/items?$top=100', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      return response;
-    };
+    while (queue.length > 0) {
+      const url = queue.shift()!;
+      const { response, accessToken: tokenUsed } = await fetchWithTokenRefresh(url, currentToken, refreshToken, userId);
+      currentToken = tokenUsed;
 
-    let response = await fetchFiles(currentToken);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Microsoft Graph error al obtener archivos:', response.status, errorText);
+        return fileItems.map((item: any) => ({
+          id: item.id,
+          originalName: item.name,
+          size: item.size || 0,
+          uploadedAt: item.createdDateTime || item.lastModifiedDateTime || new Date().toISOString(),
+          mimeType: item.file?.mimeType || 'application/octet-stream',
+          webUrl: item.webUrl,
+          source: 'microsoft',
+        }));
+      }
 
-    // Si el token expiró, intentar refrescar
-    if (response.status === 401 && refreshToken) {
-      console.log('🔄 Token expirado, intentando refrescar...');
-      try {
-        const newTokens = await refreshAccessToken(refreshToken);
-        currentToken = newTokens.accessToken;
+      const data = await response.json();
+      const content = data.value || [];
 
-        // Actualizar tokens en DB
-        const { storage } = await import('./storage');
-        await storage.updateUserTokens(userId, newTokens.accessToken, newTokens.refreshToken);
+      for (const item of content) {
+        if (item.folder) {
+          queue.push(`https://graph.microsoft.com/v1.0/me/drive/items/${item.id}/children?$top=200`);
+        }
 
-        console.log('✅ Token refrescado y guardado');
-        
-        // Reintentar la llamada
-        response = await fetchFiles(currentToken);
-      } catch (refreshError) {
-        console.error('❌ Error refrescando token:', refreshError);
-        return [];
+        if (item.file) {
+          fileItems.push(item);
+        }
+      }
+
+      if (data['@odata.nextLink']) {
+        queue.unshift(data['@odata.nextLink']);
       }
     }
 
-    console.log('📌 Microsoft Graph response status:', response.status, response.statusText);
+    const transformed = fileItems.map((item: any) => ({
+      id: item.id,
+      originalName: item.name,
+      size: item.size || 0,
+      uploadedAt: item.createdDateTime || item.lastModifiedDateTime || new Date().toISOString(),
+      mimeType: item.file?.mimeType || 'application/octet-stream',
+      webUrl: item.webUrl,
+      source: 'microsoft',
+    }));
+
+    console.log('✅ Archivos Microsoft obtenidos y transformados:', transformed.length);
+    return transformed;
+  } catch (error) {
+    console.error('❌ Error fetching Microsoft files:', error);
+    return [];
+  }
+}
+
+export async function getMicrosoftRecentFiles(accessToken: string, refreshToken: string, userId: number) {
+  try {
+    let currentToken = accessToken;
+    const { response, accessToken: tokenUsed } = await fetchWithTokenRefresh(
+      'https://graph.microsoft.com/v1.0/me/drive/recent',
+      currentToken,
+      refreshToken,
+      userId,
+    );
+    currentToken = tokenUsed;
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Microsoft Graph error:', response.status, errorText);
+      console.error('❌ Microsoft Graph recent files error:', response.status, errorText);
       return [];
     }
 
     const data = await response.json();
-    console.log('✅ Microsoft Graph returned:', data.value?.length || 0, 'items');
-    
-    // Transformar archivos de Microsoft format a nuestro formato (solo archivos, no carpetas)
-    const transformed = (data.value || [])
-      .filter((item: any) => item.file) // Solo archivos
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const recent = (data.value || [])
+      .filter((item: any) => item.file && item.lastModifiedDateTime)
       .map((item: any) => ({
         id: item.id,
-        originalName: item.name,
+        name: item.name,
         size: item.size || 0,
-        uploadedAt: item.createdDateTime || item.lastModifiedDateTime || new Date().toISOString(),
+        uploadedAt: item.lastModifiedDateTime,
+        lastModifiedDateTime: item.lastModifiedDateTime,
+        type: item.file?.mimeType || 'application/octet-stream',
         mimeType: item.file?.mimeType || 'application/octet-stream',
         webUrl: item.webUrl,
-        source: 'microsoft', // Identificar que viene de Microsoft
-      }));
+      }))
+      .filter((item: any) => new Date(item.lastModifiedDateTime) >= sevenDaysAgo)
+      .sort((a: any, b: any) => new Date(b.lastModifiedDateTime).getTime() - new Date(a.lastModifiedDateTime).getTime())
+      .slice(0, 10);
 
-    console.log('✅ Transformed to:', transformed.length, 'files');
-    return transformed;
+    console.log('✅ Archivos recientes de Microsoft obtenidos:', recent.length);
+    return recent;
   } catch (error) {
-    console.error('❌ Error fetching Microsoft files:', error);
+    console.error('❌ Error fetching Microsoft recent files:', error);
     return [];
   }
 }
@@ -252,17 +331,30 @@ export async function createMicrosoftFolder(
   }
 }
 
-export async function getMicrosoftQuota(accessToken: string) {
+export async function getMicrosoftQuota(accessToken: string, refreshToken?: string, userId?: number) {
   try {
-    const response = await fetch('https://graph.microsoft.com/v1.0/me/drive', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    let currentToken = accessToken;
+    const request = async (token: string) => {
+      return await fetch('https://graph.microsoft.com/v1.0/me/drive', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+    };
+
+    let response = await request(currentToken);
+    if (response.status === 401 && refreshToken && userId != null) {
+      const newTokens = await refreshAccessToken(refreshToken);
+      currentToken = newTokens.accessToken;
+      const { storage } = await import("./storage");
+      await storage.updateUserTokens(userId, newTokens.accessToken, newTokens.refreshToken);
+      response = await request(currentToken);
+    }
 
     if (!response.ok) {
+      console.error('❌ Microsoft Graph quota error:', response.status, response.statusText);
       return { used: 0, total: 0 };
     }
 
