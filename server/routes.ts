@@ -38,7 +38,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // ☁️ 100% NUBE: CREAR CARPETAS DIRECTO EN ONEDRIVE
+  // ☁️ 100% NUBE: CREAR CARPETAS DIRECTO EN ONEDRIVE + AUDITORÍA FORZADA
   app.post("/api/folders", requireAuth, async (req: any, res) => {
     try {
       const name = req.body?.name;
@@ -57,6 +57,18 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         req.user.id, 
         name.trim()
       );
+
+      // ✅ AUDITORÍA FORZADA
+      try {
+        await storage.createAuditLog({
+          userId: req.user.id,
+          action: "Crear carpeta",
+          details: `Carpeta creada en OneDrive: ${name.trim()}`
+        });
+        console.log("✅ Auditoría registrada: Crear carpeta");
+      } catch (auditErr: any) {
+        console.error("⚠️ Error en auditoría (Carpetas):", auditErr.message || auditErr);
+      }
 
       res.status(201).json(nuevaCarpetaNube);
 
@@ -125,7 +137,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // ☁️ 100% NUBE: SUBIR ARCHIVOS DIRECTO A ONEDRIVE
+  // ☁️ 100% NUBE: SUBIR ARCHIVOS DIRECTO A ONEDRIVE + AUDITORÍA FORZADA
   app.post("/api/files/upload", requireAuth, upload.single("file"), async (req: any, res) => {
     try {
       const file = req.file;
@@ -148,6 +160,18 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         file.size
       );
 
+      // ✅ AUDITORÍA FORZADA
+      try {
+        await storage.createAuditLog({
+          userId: req.user.id,
+          action: "Subir archivo",
+          details: `Archivo subido a OneDrive: ${file.originalname}`
+        });
+        console.log("✅ Auditoría registrada: Subir archivo");
+      } catch (auditErr: any) {
+        console.error("⚠️ Error en auditoría (Archivos):", auditErr.message || auditErr);
+      }
+
       return res.status(201).json({
         id: graphResponse.id,
         originalName: file.originalname,
@@ -159,7 +183,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       });
 
     } catch (e: any) {
-      console.error("❌ Error subiendo archivo a la nube:", e);
+      console.error("❌ Error subiendo archivo a la nube:", e.message);
       res.status(500).json({ error: e.message || "Error interno al subir archivo a OneDrive" });
     }
   });
@@ -416,9 +440,12 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // --- AUDITORÍA Y ESTADÍSTICAS ---
-  app.get("/api/audit-logs", async (_req, res) => {
+// --- AUDITORÍA Y ESTADÍSTICAS ---
+  
+  // 1. Ruta de Logs: Con requireAuth para que reconozca tu sesión de danmen27@outlook.com
+  app.get("/api/audit-logs", requireAuth, async (req: any, res) => {
     try {
+      // Traemos los 100 más recientes. Esto debería incluir los tuyos y los de sistema.
       const logs = await storage.getRecentAuditLogs(100);
       res.json(logs || []);
     } catch (e: any) {
@@ -426,7 +453,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  app.get("/api/stats", async (_req, res) => {
+  // 2. Ruta de Estadísticas: También con requireAuth
+  app.get("/api/stats", requireAuth, async (req: any, res) => {
     try {
       const licitaciones = await storage.getLicitaciones();
       const logs = await storage.getRecentAuditLogs(100);
