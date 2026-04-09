@@ -27,8 +27,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Microsoft auth routes are handled in server/auth.ts (Passport + OIDC).
   // Dejar este bloque vacío aquí para evitar rutas duplicadas / conflicto de flujo.
 
-
-
   // --- GESTIÓN DE CARPETAS Y ARCHIVOS ---
   app.get("/api/folders", requireAuth, async (req: any, res) => {
     try {
@@ -40,37 +38,31 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // ☁️ 100% NUBE: CREAR CARPETAS DIRECTO EN ONEDRIVE
   app.post("/api/folders", requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.id;
       const name = req.body?.name;
-      const parentId = req.body?.parentId != null ? Number(req.body.parentId) : null;
 
       if (!name || typeof name !== "string" || !name.trim()) {
         return res.status(400).json({ error: "El nombre de la carpeta es obligatorio" });
       }
 
-      const folderData: any = {
-        name: name.trim(),
-        userId,
-      };
-      if (parentId != null) {
-        folderData.parentId = parentId;
+      if (!req.user.accessToken || !req.user.refreshToken) {
+        return res.status(401).json({ error: "No hay sesión activa con Microsoft OneDrive" });
       }
 
-      const folder = await storage.createFolder(folderData);
+      const nuevaCarpetaNube = await createMicrosoftFolder(
+        req.user.accessToken, 
+        req.user.refreshToken, 
+        req.user.id, 
+        name.trim()
+      );
 
-      if (req.user.accessToken && req.user.refreshToken) {
-        try {
-          await createMicrosoftFolder(req.user.accessToken, req.user.refreshToken, req.user.id, name.trim());
-        } catch (graphError: any) {
-          console.warn("No se pudo crear la carpeta en OneDrive:", graphError.message || graphError);
-        }
-      }
+      res.status(201).json(nuevaCarpetaNube);
 
-      res.status(201).json(folder);
     } catch (e: any) {
-      res.status(500).json({ error: e.message });
+      console.error("❌ Error creando carpeta en la nube:", e.message);
+      res.status(500).json({ error: "No se pudo crear la carpeta en OneDrive" });
     }
   });
 
@@ -133,85 +125,42 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // ☁️ 100% NUBE: SUBIR ARCHIVOS DIRECTO A ONEDRIVE
   app.post("/api/files/upload", requireAuth, upload.single("file"), async (req: any, res) => {
     try {
       const file = req.file;
-      console.log("/api/files/upload request", {
-        hasUser: !!req.user,
-        userId: req.user?.id,
-        hasFile: !!file,
-        fileName: file?.originalname,
-        fileSize: file?.size,
-        hasBuffer: !!file?.buffer,
-        folderId: req.body.folderId,
-        contractId: req.body.contractId,
-        supplier: req.body.supplier,
-      });
 
-      if (!file) {
-        return res.status(400).json({ error: "No se recibió el archivo" });
+      if (!file || !file.buffer) {
+        return res.status(400).json({ error: "No se recibió el archivo correctamente" });
       }
 
-      if (!file.buffer) {
-        return res.status(500).json({ error: "El archivo no se procesó correctamente en el servidor" });
+      if (!req.user.accessToken) {
+        return res.status(401).json({ error: "No hay sesión activa con Microsoft OneDrive" });
       }
 
-      const folderId = req.body.folderId ? Number(req.body.folderId) : null;
-      const contractId = req.body.contractId ?? "";
-      const supplier = req.body.supplier ?? "";
-      const uploaderId = req.user.id;
-      const storedFilename = `${Date.now()}-${Math.random().toString(36).slice(2)}-${file.originalname}`;
-      const filePath = path.join(uploadsDir, storedFilename);
+      console.log(`☁️ Subiendo archivo ${file.originalname} directo a OneDrive...`);
 
-      await fs.promises.writeFile(filePath, file.buffer);
-
-      let createdFile: any = null;
-      try {
-        createdFile = await storage.createFile({
-          filename: storedFilename,
-          originalName: file.originalname,
-          mimeType: file.mimetype,
-          size: file.size,
-          contractId,
-          supplier,
-          version: 1,
-          uploadedAt: new Date(),
-          uploadedBy: uploaderId,
-          folderId,
-          previousVersionId: null,
-          isDeleted: false,
-          deletedAt: null,
-          deletedBy: null,
-        });
-      } catch (dbError: any) {
-        console.warn("⚠️ No se pudo guardar metadatos en la DB, se omite el registro local:", dbError.message || dbError);
-      }
-
-      let graphResponse: any = null;
-      if (req.user.accessToken) {
-        try {
-          graphResponse = await uploadFileToGraph(req.user.accessToken, file.originalname, file.buffer, file.mimetype, file.size);
-        } catch (graphError: any) {
-          console.error("Error al subir a Microsoft Graph:", graphError);
-        }
-      }
-
-      if (createdFile) {
-        return res.status(201).json(createdFile);
-      }
+      const graphResponse = await uploadFileToGraph(
+        req.user.accessToken, 
+        file.originalname, 
+        file.buffer, 
+        file.mimetype, 
+        file.size
+      );
 
       return res.status(201).json({
-        id: graphResponse?.id || null,
+        id: graphResponse.id,
         originalName: file.originalname,
         mimeType: file.mimetype,
         size: file.size,
         uploadedAt: new Date().toISOString(),
-        webUrl: graphResponse?.webUrl || null,
-        source: graphResponse ? 'microsoft' : 'local',
+        webUrl: graphResponse.webUrl,
+        source: 'microsoft',
       });
+
     } catch (e: any) {
-      console.error("Error en /api/files/upload:", e);
-      res.status(500).json({ error: e.message || "Error interno al subir archivo" });
+      console.error("❌ Error subiendo archivo a la nube:", e);
+      res.status(500).json({ error: e.message || "Error interno al subir archivo a OneDrive" });
     }
   });
 
@@ -467,7 +416,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-
   // --- AUDITORÍA Y ESTADÍSTICAS ---
   app.get("/api/audit-logs", async (_req, res) => {
     try {
@@ -491,7 +439,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.status(500).json({ error: e.message });
     }
   });
-
 
   // --- LICITACIONES ---
   app.get("/api/licitaciones", async (_req, res) => {
