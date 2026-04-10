@@ -457,3 +457,59 @@ export async function getMicrosoftFilesPaginated(accessToken: string, refreshTok
     return { files: [], nextLink: null };
   }
 }
+
+export async function getMicrosoftFolderContent(accessToken: string, refreshToken: string, userId: number, folderId: string) {
+  try {
+    let currentToken = accessToken;
+
+    // 1. Obtenemos el nombre de la carpeta
+    const folderRes = await fetchWithTokenRefresh(`https://graph.microsoft.com/v1.0/me/drive/items/${folderId}`, currentToken, refreshToken, userId);
+    currentToken = folderRes.accessToken;
+    if (!folderRes.response.ok) throw new Error("Error getting folder metadata");
+    const folderData = await folderRes.response.json();
+
+    // 2. Obtenemos el contenido (hijos)
+    const childrenRes = await fetchWithTokenRefresh(`https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children`, currentToken, refreshToken, userId);
+    if (!childrenRes.response.ok) throw new Error("Error getting folder children");
+    const childrenData = await childrenRes.response.json();
+
+    const items = childrenData.value || [];
+
+    // 3. Mapeamos subcarpetas
+    const subfolders = items.filter((item: any) => item.folder).map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        createdAt: item.createdDateTime,
+        updatedAt: item.lastModifiedDateTime,
+        creatorName: item.createdBy?.user?.displayName || "OneDrive",
+        source: "microsoft",
+        webUrl: item.webUrl
+    }));
+
+    // 4. Mapeamos archivos
+    const files = items.filter((item: any) => item.file).map((item: any) => ({
+        id: item.id,
+        originalName: item.name,
+        size: item.size || 0,
+        uploadedAt: item.createdDateTime,
+        mimeType: item.file?.mimeType || 'application/octet-stream',
+        contractId: "Nube", 
+        supplier: "Microsoft",
+        uploaderName: item.createdBy?.user?.displayName || "OneDrive",
+        source: "microsoft",
+        webUrl: item.webUrl,
+        version: 1
+    }));
+
+    return {
+      folder: { id: folderData.id, name: folderData.name, source: "microsoft" },
+      path: [{ id: "root", name: "Carpetas" }, { id: folderData.id, name: folderData.name }],
+      folders: subfolders,
+      files: files
+    };
+
+  } catch (error) {
+    console.error('❌ Error fetching Microsoft folder content:', error);
+    throw error;
+  }
+}

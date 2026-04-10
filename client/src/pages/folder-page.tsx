@@ -60,7 +60,12 @@ export default function FolderPage() {
   const { toast } = useToast();
   const [, params] = useRoute("/folders/:id");
   const [, setLocation] = useLocation();
-  const folderId = Number(params?.id);
+  const rawFolderId = params?.id;
+  
+  // 🧠 DETECCIÓN AUTOMÁTICA
+  const isMicrosoftId = Number.isNaN(Number(rawFolderId));
+  const folderId = Number(rawFolderId); // Solo útil si no es Microsoft
+  
   const { user } = useAuth();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -93,7 +98,12 @@ export default function FolderPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/folders/${folderId}/content`, {
+      // 🧠 Detección automática de la ruta correcta para la API
+      const endpoint = isMicrosoftId 
+        ? `/api/microsoft-folders/${rawFolderId}/content`
+        : `/api/folders/${rawFolderId}/content`;
+
+      const res = await fetch(endpoint, {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Error al cargar carpeta");
@@ -106,8 +116,8 @@ export default function FolderPage() {
   };
 
   useEffect(() => {
-    if (!Number.isNaN(folderId)) loadFolder();
-  }, [folderId]);
+    if (rawFolderId) loadFolder();
+  }, [rawFolderId]);
 
   /* ---------------- create folder ---------------- */
 
@@ -157,7 +167,6 @@ export default function FolderPage() {
         const form = new FormData();
         form.append("file", file);
         form.append("contractId", contractId);
-        // backend expects the field "supplier"; keep key but use the UI label "Cliente"
         form.append("supplier", client);
         form.append("folderId", String(folderId));
 
@@ -475,7 +484,6 @@ export default function FolderPage() {
             className="w-64 border border-gray-300"
           />
 
-          {/* Nuevo button with actions */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button className="bg-blue-600 text-white hover:bg-blue-700">
@@ -497,11 +505,9 @@ export default function FolderPage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* No legacy separate "Nueva carpeta" button - use Nuevo menu only */}
         </div>
       </div>
 
-      {/* Upload block moved below files (see order: Subcarpetas -> Archivos -> Upload) */}
       {/* Subfolders */}
       <Card>
         <CardHeader>
@@ -1015,16 +1021,3 @@ export default function FolderPage() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

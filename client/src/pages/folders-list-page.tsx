@@ -153,7 +153,7 @@ export default function FoldersListPage() {
 
   return (
     <div className="p-6 lg:p-10 space-y-8 animate-in fade-in duration-500">
-<div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div className="space-y-1">
               <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-3 text-slate-900 dark:text-slate-100">
@@ -232,7 +232,11 @@ export default function FoldersListPage() {
                 </TableRow>
               ) : (
                 folders.map((folder: any) => (
-                  <TableRow key={folder.id} className="group cursor-pointer hover:bg-blue-50/40 dark:hover:bg-slate-800/30 border-b dark:border-slate-700" onClick={() => folder.source === 'local' ? setLocation(`/folders/${folder.id}`) : window.open(folder.webUrl, '_blank')}>
+                  <TableRow 
+                    key={folder.id} 
+                    className="group cursor-pointer hover:bg-blue-50/40 dark:hover:bg-slate-800/30 border-b dark:border-slate-700" 
+                    onClick={() => setLocation(`/folders/${folder.id}`)}
+                  >
                     <TableCell className="py-5 pl-6"><Folder className="h-6 w-6 text-amber-400 fill-amber-400/20" /></TableCell>
                     <TableCell className="font-bold text-slate-700 dark:text-slate-200">{folder.name}</TableCell>
                     <TableCell className="text-center text-sm text-slate-500 dark:text-slate-400">
@@ -244,19 +248,24 @@ export default function FoldersListPage() {
                       {format(new Date(folder.createdAt), "dd 'de' MMMM, yyyy", { locale: es })}
                     </TableCell>
                     <TableCell className="text-right pr-8" onClick={(e) => e.stopPropagation()}>
-                      {folder.source === 'local' ? (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setLocation(`/folders/${folder.id}`)}><FolderOpen className="mr-3 h-4 w-4" /> Abrir</DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600" onClick={() => setDeleteFolderDialog({ open: true, folder })}><Trash2 className="mr-3 h-4 w-4" /> Eliminar</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      ) : (
-                        <Button variant="ghost" size="icon" onClick={() => window.open(folder.webUrl, '_blank')}>
-                          <FolderOpen className="h-5 w-5" />
-                        </Button>
-                      )}
+                      {/* Ahora todos los menús de acciones abren internamente */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-5 w-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setLocation(`/folders/${folder.id}`)}>
+                            <FolderOpen className="mr-3 h-4 w-4" /> Abrir
+                          </DropdownMenuItem>
+                          {folder.source === 'local' && (
+                            <DropdownMenuItem className="text-red-600" onClick={() => setDeleteFolderDialog({ open: true, folder })}>
+                              <Trash2 className="mr-3 h-4 w-4" /> Eliminar
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))

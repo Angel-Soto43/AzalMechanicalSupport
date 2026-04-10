@@ -11,6 +11,7 @@ import { getMicrosoftFiles,
         getMicrosoftFolders, 
         getMicrosoftRecentFiles, 
         createMicrosoftFolder, 
+        getMicrosoftFolderContent,
         uploadFileToGraph } from "./microsoft-graph";
 import { requireAuth } from "./auth";
 import { getMicrosoftFilesPaginated } from "./microsoft-graph";
@@ -287,6 +288,24 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // NUEVO: Ver el contenido de una subcarpeta específica en Microsoft
+  app.get("/api/microsoft-folders/:id/content", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const folderId = req.params.id; // En Microsoft el ID es un String
+
+      if (!user?.accessToken) {
+        return res.status(401).json({ error: "No access token" });
+      }
+
+      const data = await getMicrosoftFolderContent(user.accessToken, user.refreshToken, user.id, folderId);
+      res.json(data);
+    } catch (e: any) {
+      console.error('❌ Error en /api/microsoft-folders/:id/content:', e.message);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.post("/api/microsoft-folders", requireAuth, async (req: any, res) => {
     try {
       const user = req.user;
@@ -368,6 +387,25 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.json(quota);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 📁 NUEVO: Ver el contenido de una subcarpeta específica en Microsoft
+  app.get("/api/microsoft-folders/:id/content", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const folderId = req.params.id; // En Microsoft el ID es un String
+
+      if (!user?.accessToken) {
+        return res.status(401).json({ error: "No hay una sesión activa de Microsoft" });
+      }
+
+      console.log(`📂 Escaneando subcarpeta de OneDrive: ${folderId}`);
+      const data = await getMicrosoftFolderContent(user.accessToken, user.refreshToken, user.id, folderId);
+      res.json(data);
+    } catch (e: any) {
+      console.error('❌ Error cargando subcarpeta de Microsoft:', e.message);
+      res.status(500).json({ error: "No se pudo obtener el contenido de la carpeta en OneDrive" });
     }
   });
 
