@@ -371,7 +371,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // Dashboard: Información consolidada de OneDrive
+  // Dashboard: Información 100% Exclusiva y Precisa de OneDrive
   app.get("/api/dashboard", requireAuth, async (req: any, res) => {
     try {
       const user = req.user;
@@ -379,61 +379,61 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const refreshToken = user?.refreshToken;
       const userId = user?.id;
 
-      console.log('📊 /api/dashboard - Calculando estadísticas para usuario:', user?.oid, 'ID:', userId);
-
-      const [microsoftFiles, recentMicrosoftFiles] = await Promise.all([
-        accessToken && refreshToken
-          ? getMicrosoftFiles(accessToken, refreshToken, userId)
-          : Promise.resolve([] as any[]),
-        accessToken && refreshToken
-          ? getMicrosoftRecentFiles(accessToken, refreshToken, userId)
-          : Promise.resolve([] as any[]),
-      ]);
+      // 🚀 Hacemos un solo escaneo masivo (Más rápido y eficiente)
+      const microsoftFiles = accessToken && refreshToken
+        ? await getMicrosoftFiles(accessToken, refreshToken, userId)
+        : [];
 
       const quota = accessToken
         ? await getMicrosoftQuota(accessToken, refreshToken, userId)
         : { used: 0, total: 5 * 1024 * 1024 * 1024 };
 
-      const fileCount = microsoftFiles?.length || 0;
-      console.log('📊 Total de archivos de OneDrive:', fileCount);
+      // 1. Conteo total
+      const fileCount = microsoftFiles.length;
+      
+      // 2. Filtro estricto y preciso de los últimos 7 días
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-      const recentFiles = (recentMicrosoftFiles || [])
-        .map((file: any) => ({
-          id: file.id,
-          name: file.name,
-          size: file.size || 0,
-          uploadedAt: file.uploadedAt || file.lastModifiedDateTime || new Date().toISOString(),
-          mimeType: file.mimeType || file.type || 'application/octet-stream',
-          webUrl: file.webUrl || null,
-          type: file.type || file.mimeType || 'application/octet-stream',
-          lastModifiedDateTime: file.lastModifiedDateTime || file.uploadedAt || new Date().toISOString(),
-        }))
-        .sort((a: any, b: any) => new Date(b.lastModifiedDateTime).getTime() - new Date(a.lastModifiedDateTime).getTime())
-        .slice(0, 10);
+      const recentFiles = microsoftFiles
+        .filter((file: any) => {
+           // Checamos la fecha real del archivo
+           const fileDate = new Date(file.createdDateTime || file.lastModifiedDateTime || 0);
+           return fileDate >= sevenDaysAgo;
+        })
+        .sort((a: any, b: any) => {
+           const dateA = new Date(a.lastModifiedDateTime || a.createdDateTime || 0).getTime();
+           const dateB = new Date(b.lastModifiedDateTime || b.createdDateTime || 0).getTime();
+           return dateB - dateA; // Ordenamos del más nuevo al más viejo
+        })
+        .slice(0, 10) // Tomamos el Top 10
+        .map((item: any) => {
+          const fecha = item.createdDateTime || item.lastModifiedDateTime || new Date().toISOString();
+          return {
+            id: item.id,
+            name: item.name,
+            size: item.size || 0,
+            uploadedAt: fecha,
+            lastModifiedDateTime: fecha,
+            type: item.file?.mimeType || 'application/octet-stream',
+            mimeType: item.file?.mimeType || 'application/octet-stream',
+            webUrl: item.webUrl,
+          };
+        });
 
+      // 3. Cálculos de almacenamiento
       const storageUsed = quota.used || 0;
       const storageTotal = quota.total || 5 * 1024 * 1024 * 1024;
       const usagePercent = storageTotal > 0 ? Math.round((storageUsed / storageTotal) * 100) : 0;
 
-      const dashboardData = {
+      res.json({
         fileCount,
         storageUsed,
         storageTotal,
         usagePercent,
-        recentFiles,
-      };
-
-      console.log('📊 Dashboard data final:', {
-        fileCount: dashboardData.fileCount,
-        storageUsed: dashboardData.storageUsed,
-        usagePercent: dashboardData.usagePercent,
-        recentFilesCount: dashboardData.recentFiles.length,
-        recentFilesNames: dashboardData.recentFiles.slice(0, 3).map((f: any) => f.name),
+        recentFiles, // Ahora sí, precisión milimétrica 🎯
       });
-
-      res.json(dashboardData);
     } catch (e: any) {
-      console.error('❌ Error en /api/dashboard:', e.message, e.stack);
+      console.error('❌ Error en /api/dashboard:', e.message);
       res.json({
         fileCount: 0,
         storageUsed: 0,

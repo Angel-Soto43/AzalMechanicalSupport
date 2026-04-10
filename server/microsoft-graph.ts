@@ -82,39 +82,32 @@ async function fetchWithTokenRefresh(
 
 export async function getMicrosoftFiles(accessToken: string, refreshToken: string, userId: number) {
   try {
-    console.log('🔍 Obteniendo lista rápida de archivos (Máx 200)...');
+    console.log('🔍 Escaneando disco duro para métricas del Dashboard...');
     let currentToken = accessToken;
+    
+    // 🔗 Agregamos name, createdDateTime y lastModifiedDateTime al select
+    let url: string | null = "https://graph.microsoft.com/v1.0/me/drive/root/delta?$select=id,name,file,deleted,size,createdDateTime,lastModifiedDateTime,webUrl&$top=500";
+    const totalFiles: any[] = [];
 
-    // 🚀 Búsqueda de 1 sola petición, limitada a 200 archivos para no ahogar el navegador
-    const url = "https://graph.microsoft.com/v1.0/me/drive/root/search(q='')?filter=file ne null&$top=200";
+    while (url) {
+      const { response, accessToken: tokenUsed } = await fetchWithTokenRefresh(url, currentToken, refreshToken, userId);
+      currentToken = tokenUsed;
 
-    const { response, accessToken: tokenUsed } = await fetchWithTokenRefresh(url, currentToken, refreshToken, userId);
+      if (!response.ok) break;
 
-    if (!response.ok) {
-      console.error('❌ Error de Microsoft:', response.status);
-      return [];
+      const data = await response.json();
+      const items = data.value || [];
+      
+      const validFiles = items.filter((item: any) => item.file && !item.deleted);
+      totalFiles.push(...validFiles);
+
+      url = data['@odata.nextLink'] || null;
     }
 
-    const data = await response.json();
-    const content = data.value || [];
-
-    const transformed = content.map((item: any) => ({
-      id: item.id,
-      originalName: item.name,
-      size: item.size || 0,
-      uploadedAt: item.createdDateTime || item.lastModifiedDateTime || new Date().toISOString(),
-      mimeType: item.file?.mimeType || 'application/octet-stream',
-      webUrl: item.webUrl,
-      source: 'microsoft',
-      // 📧 Extraemos el correo aquí mismo
-      correo: item.createdBy?.user?.email || item.createdBy?.user?.userPrincipalName || item.createdBy?.user?.displayName || "usuario@azal.com",
-    }));
-
-    console.log(`✅ ${transformed.length} Archivos encontrados y listos para la tabla.`);
-    return transformed;
+    return totalFiles; // Regresamos el arreglo con todos los datos vitales
 
   } catch (error) {
-    console.error('❌ Error crítico fetching Microsoft files:', error);
+    console.error('❌ Error crítico en el escaneo del Dashboard:', error);
     return [];
   }
 }
@@ -131,31 +124,38 @@ export async function getMicrosoftRecentFiles(accessToken: string, refreshToken:
     currentToken = tokenUsed;
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Microsoft Graph recent files error:', response.status, errorText);
+      console.error('❌ Microsoft Graph recent files error:', response.status);
       return [];
     }
 
     const data = await response.json();
+
+    // 📅 Calculamos la fecha límite (hace 7 días exactos)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     const recent = (data.value || [])
-      .filter((item: any) => item.file && item.lastModifiedDateTime)
-      .map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        size: item.size || 0,
-        uploadedAt: item.lastModifiedDateTime,
-        lastModifiedDateTime: item.lastModifiedDateTime,
-        type: item.file?.mimeType || 'application/octet-stream',
-        mimeType: item.file?.mimeType || 'application/octet-stream',
-        webUrl: item.webUrl,
-      }))
-      .filter((item: any) => new Date(item.lastModifiedDateTime) >= sevenDaysAgo)
+      .filter((item: any) => {
+        if (!item.file) return false;
+        // 🛡️ Filtro estricto: Verificamos si la fecha de subida/creación es de los últimos 7 días
+        const fileDate = new Date(item.createdDateTime || item.lastModifiedDateTime || 0);
+        return fileDate >= sevenDaysAgo;
+      })
+      .map((item: any) => {
+        const fecha = item.createdDateTime || item.lastModifiedDateTime || new Date().toISOString();
+        return {
+          id: item.id,
+          name: item.name,
+          size: item.size || 0,
+          uploadedAt: fecha,
+          lastModifiedDateTime: fecha,
+          type: item.file?.mimeType || 'application/octet-stream',
+          mimeType: item.file?.mimeType || 'application/octet-stream',
+          webUrl: item.webUrl,
+        };
+      })
       .sort((a: any, b: any) => new Date(b.lastModifiedDateTime).getTime() - new Date(a.lastModifiedDateTime).getTime())
       .slice(0, 10);
 
-    console.log('✅ Archivos recientes de Microsoft obtenidos:', recent.length);
     return recent;
   } catch (error) {
     console.error('❌ Error fetching Microsoft recent files:', error);

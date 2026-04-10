@@ -151,7 +151,7 @@ export default function DashboardPage() {
           <CardHeader>
             <div>
               <CardTitle className="text-card-foreground">Recientes</CardTitle>
-              <CardDescription className="text-muted-foreground">Archivos de Microsoft y locales</CardDescription>
+              <CardDescription className="text-muted-foreground">Archivos de Microsoft en los últimos 7 días</CardDescription>
             </div>
           </CardHeader>
           <CardContent>
