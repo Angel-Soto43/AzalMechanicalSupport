@@ -6,8 +6,14 @@ import multer from "multer";
 import { storage } from "./storage";
 import { insertLicitacionSchema } from "@shared/schema";
 import "isomorphic-fetch";
-import { getMicrosoftFiles, getMicrosoftQuota, getMicrosoftFolders, getMicrosoftRecentFiles, createMicrosoftFolder, uploadFileToGraph } from "./microsoft-graph";
+import { getMicrosoftFiles, 
+        getMicrosoftQuota, 
+        getMicrosoftFolders, 
+        getMicrosoftRecentFiles, 
+        createMicrosoftFolder, 
+        uploadFileToGraph } from "./microsoft-graph";
 import { requireAuth } from "./auth";
+import { getMicrosoftFilesPaginated } from "./microsoft-graph";
 
 const upload = multer({ storage: multer.memoryStorage() });
 const uploadsDir = path.join(process.cwd(), "uploads");
@@ -307,41 +313,39 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   });
 
   // NUEVO: Obtener archivos combinados (locales + Microsoft)
+  // ☁️ RUTA PAGINADA PARA LA TABLA
+  // ☁️ RUTA PAGINADA PARA LA TABLA
   app.get("/api/files-all", requireAuth, async (req: any, res) => {
     try {
+      console.log(`\n📍 LLAMADA A /api/files-all RECIBIDA. Frontend conectado con éxito.`);
       const user = req.user;
       const accessToken = user?.accessToken;
       const refreshToken = user?.refreshToken;
-
-      console.log('📍 /api/files-all - Usuario:', user?.oid, 'Token disponible:', !!accessToken);
-
-      // Obtener archivos locales
-      let localFiles: any[] = [];
-      try {
-        localFiles = await storage.getAllFiles();
-        console.log('✅ Archivos locales:', localFiles?.length || 0);
-      } catch (dbError: any) {
-        console.warn('⚠️ No se pudo obtener archivos locales de la DB, se omite la lista local:', dbError.message || dbError);
-      }
-
-      // Obtener archivos de Microsoft si tenemos accessToken
-      let microsoftFiles: any[] = [];
-      if (accessToken && refreshToken) {
-        try {
-          microsoftFiles = await getMicrosoftFiles(accessToken, refreshToken, user.id);
-          console.log('✅ Archivos de Microsoft:', microsoftFiles?.length || 0);
-        } catch (error) {
-          console.error("❌ Error fetching Microsoft files:", error);
-        }
-      } else {
-        console.warn('⚠️ No hay accessToken o refreshToken disponible');
-      }
-
-      // Combinar ambas listas
-      const allFiles = [...localFiles, ...microsoftFiles];
-      console.log('📊 Total archivos:', allFiles?.length || 0);
       
-      res.json(allFiles || []);
+      if (!accessToken) {
+        console.error("⚠️ Alerta: No se encontró accessToken para este usuario.");
+      }
+
+      const cursor = req.query.cursor as string; 
+      let localFiles: any[] = [];
+      
+      if (!cursor) {
+        try { localFiles = await storage.getAllFiles(); } catch(e) {}
+      }
+
+      let microsoftData = { files: [], nextLink: null };
+
+      if (accessToken && refreshToken) {
+        console.log(`🔍 Pidiendo archivos a Microsoft (Cursor: ${cursor ? 'Siguiente Página' : 'Página 1'})...`);
+        microsoftData = await getMicrosoftFilesPaginated(accessToken, refreshToken, user.id, cursor);
+        console.log(`✅ Se enviarán ${microsoftData.files.length} archivos a la tabla.`);
+      }
+
+      res.json({
+        files: [...localFiles, ...microsoftData.files],
+        nextCursor: microsoftData.nextLink
+      });
+
     } catch (e: any) {
       console.error('❌ Error en /api/files-all:', e.message);
       res.status(500).json({ error: e.message });

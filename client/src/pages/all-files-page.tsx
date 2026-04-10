@@ -1,13 +1,12 @@
-import { useState, useCallback } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -35,7 +34,6 @@ import {
   Download,
   Eye,
   Trash2,
-  Filter,
   Mail,
   Grid3X3,
 } from "lucide-react";
@@ -43,7 +41,6 @@ import { File } from "@shared/schema";
 import { FileIcon, formatFileSize } from "@/components/file-icon";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-
 
 interface FileWithEmail extends File {
   correo: string;
@@ -96,24 +93,51 @@ export default function AllFilesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [previewFile, setPreviewFile] = useState<FileWithEmail | null>(null);
 
+  // 🔄 CONFIGURACIÓN DEL SCROLL INFINITO Y CONEXIÓN
+  const fetchFiles = async ({ pageParam = null }: { pageParam?: string | null }) => {
+    try {
+      const url = pageParam 
+        ? `/api/files-all?cursor=${encodeURIComponent(pageParam)}` 
+        : "/api/files-all";
+      
+      // 🛡️ Usamos apiRequest en lugar de fetch puro para que envíe tu sesión correctamente
+      const res = await apiRequest("GET", url);
+      return await res.json();
+    } catch (error) {
+      console.error("❌ Error en el Frontend al pedir archivos:", error);
+      throw error;
+    }
+  };
 
-  const { data: files, isLoading } = useQuery<FileWithEmail[]>({
-    queryKey: ["/api/files"],
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading
+  } = useInfiniteQuery({
+    queryKey: ["/api/files-all"],
+    queryFn: fetchFiles,
+    initialPageParam: null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
   });
+
+  // Aplanamos las páginas de forma segura (por si la API tarda o falla)
+  const files = data?.pages.flatMap((page) => page.files || []) || [];
 
   const deleteMutation = useMutation({
     mutationFn: async (fileId: number) => {
       await apiRequest("DELETE", `/api/files/${fileId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/files"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/files-all"] });
       toast({ title: "Eliminado", description: "Archivo borrado con éxito" });
     },
   });
 
-  const filteredFiles = files?.filter((file) => {
+  const filteredFiles = files?.filter((file: any) => {
     const query = searchQuery.toLowerCase();
-    return file.originalName.toLowerCase().includes(query) ||
+    return file.originalName?.toLowerCase().includes(query) ||
            (file.correo && file.correo.toLowerCase().includes(query));
   });
 
@@ -146,54 +170,75 @@ export default function AllFilesPage() {
             <div className="p-6 space-y-3">
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent bg-slate-50/30 dark:bg-slate-800/30 border-b dark:border-slate-700">
-                  <TableHead className="w-[50px]"></TableHead>
-                  <TableHead className="text-slate-700 dark:text-slate-200">Nombre del Archivo</TableHead>
-                  <TableHead className="text-slate-700 dark:text-slate-200">Correo del Propietario</TableHead>
-                  <TableHead className="text-slate-700 dark:text-slate-200">Fecha</TableHead>
-                  <TableHead className="text-right text-slate-700 dark:text-slate-200">Tamaño</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredFiles?.map((file) => (
-                  <TableRow key={file.id} className="group transition-colors hover:bg-slate-50/40 dark:hover:bg-slate-800/30 border-b dark:border-slate-700">
-                    <TableCell>
-                      <FileIcon mimeType={file.mimeType} className="h-5 w-5 opacity-70 group-hover:opacity-100" />
-                    </TableCell>
-                    <TableCell className="font-medium text-slate-700 dark:text-slate-200">{file.originalName}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/30 flex w-fit items-center gap-1.5 font-mono text-[10px]">
-                        <Mail className="h-3 w-3" /> {file.correo || "usuario@azal.com"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-500 dark:text-slate-400">
-                      {format(new Date(file.uploadedAt), "dd/MM/yyyy HH:mm", { locale: es })}
-                    </TableCell>
-                    <TableCell className="text-right text-xs font-mono text-slate-500 dark:text-slate-400">
-                      {formatFileSize(file.size)}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setPreviewFile(file)}><Eye className="mr-2 h-4 w-4" /> Ver</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => window.open(`/api/files/${file.id}/download`, "_blank")}><Download className="mr-2 h-4 w-4" /> Descargar</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => deleteMutation.mutate(file.id)} className="text-red-600 focus:text-red-600"><Trash2 className="mr-2 h-4 w-4" /> Borrar</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent bg-slate-50/30 dark:bg-slate-800/30 border-b dark:border-slate-700">
+                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead className="text-slate-700 dark:text-slate-200">Nombre del Archivo</TableHead>
+                    <TableHead className="text-slate-700 dark:text-slate-200">Correo del Propietario</TableHead>
+                    <TableHead className="text-slate-700 dark:text-slate-200">Fecha</TableHead>
+                    <TableHead className="text-right text-slate-700 dark:text-slate-200">Tamaño</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredFiles?.map((file: any) => (
+                    <TableRow key={file.id} className="group transition-colors hover:bg-slate-50/40 dark:hover:bg-slate-800/30 border-b dark:border-slate-700">
+                      <TableCell>
+                        <FileIcon mimeType={file.mimeType} className="h-5 w-5 opacity-70 group-hover:opacity-100" />
+                      </TableCell>
+                      <TableCell className="font-medium text-slate-700 dark:text-slate-200">{file.originalName}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/30 flex w-fit items-center gap-1.5 font-mono text-[10px]">
+                          <Mail className="h-3 w-3" /> {file.correo || "usuario@azal.com"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-500 dark:text-slate-400">
+                        {format(new Date(file.uploadedAt), "dd/MM/yyyy HH:mm", { locale: es })}
+                      </TableCell>
+                      <TableCell className="text-right text-xs font-mono text-slate-500 dark:text-slate-400">
+                        {formatFileSize(file.size)}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setPreviewFile(file)}><Eye className="mr-2 h-4 w-4" /> Ver</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => window.open(`/api/files/${file.id}/download`, "_blank")}><Download className="mr-2 h-4 w-4" /> Descargar</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => deleteMutation.mutate(file.id)} className="text-red-600 focus:text-red-600"><Trash2 className="mr-2 h-4 w-4" /> Borrar</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              
+              {/* BOTÓN DE PAGINACIÓN */}
+              {hasNextPage && (
+                <div className="flex justify-center mt-6 pb-6">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => fetchNextPage()} 
+                    disabled={isFetchingNextPage}
+                  >
+                    {isFetchingNextPage ? "Cargando más..." : "Cargar siguientes 20 archivos ⬇️"}
+                  </Button>
+                </div>
+              )}
+              {!hasNextPage && files.length > 0 && (
+                <p className="text-center text-sm text-muted-foreground mt-6 pb-6">
+                  Has llegado al final de tus archivos en la nube. ☁️
+                </p>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

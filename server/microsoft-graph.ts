@@ -82,51 +82,23 @@ async function fetchWithTokenRefresh(
 
 export async function getMicrosoftFiles(accessToken: string, refreshToken: string, userId: number) {
   try {
-    console.log('🔍 Obteniendo archivos de Microsoft Graph...');
-    console.log('   Token length:', accessToken?.length || 0);
-
+    console.log('🔍 Obteniendo lista rápida de archivos (Máx 200)...');
     let currentToken = accessToken;
-    const fileItems: any[] = [];
-    const queue: string[] = ['https://graph.microsoft.com/v1.0/me/drive/root/children?$top=200'];
 
-    while (queue.length > 0) {
-      const url = queue.shift()!;
-      const { response, accessToken: tokenUsed } = await fetchWithTokenRefresh(url, currentToken, refreshToken, userId);
-      currentToken = tokenUsed;
+    // 🚀 Búsqueda de 1 sola petición, limitada a 200 archivos para no ahogar el navegador
+    const url = "https://graph.microsoft.com/v1.0/me/drive/root/search(q='')?filter=file ne null&$top=200";
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Microsoft Graph error al obtener archivos:', response.status, errorText);
-        return fileItems.map((item: any) => ({
-          id: item.id,
-          originalName: item.name,
-          size: item.size || 0,
-          uploadedAt: item.createdDateTime || item.lastModifiedDateTime || new Date().toISOString(),
-          mimeType: item.file?.mimeType || 'application/octet-stream',
-          webUrl: item.webUrl,
-          source: 'microsoft',
-        }));
-      }
+    const { response, accessToken: tokenUsed } = await fetchWithTokenRefresh(url, currentToken, refreshToken, userId);
 
-      const data = await response.json();
-      const content = data.value || [];
-
-      for (const item of content) {
-        if (item.folder) {
-          queue.push(`https://graph.microsoft.com/v1.0/me/drive/items/${item.id}/children?$top=200`);
-        }
-
-        if (item.file) {
-          fileItems.push(item);
-        }
-      }
-
-      if (data['@odata.nextLink']) {
-        queue.unshift(data['@odata.nextLink']);
-      }
+    if (!response.ok) {
+      console.error('❌ Error de Microsoft:', response.status);
+      return [];
     }
 
-    const transformed = fileItems.map((item: any) => ({
+    const data = await response.json();
+    const content = data.value || [];
+
+    const transformed = content.map((item: any) => ({
       id: item.id,
       originalName: item.name,
       size: item.size || 0,
@@ -134,12 +106,15 @@ export async function getMicrosoftFiles(accessToken: string, refreshToken: strin
       mimeType: item.file?.mimeType || 'application/octet-stream',
       webUrl: item.webUrl,
       source: 'microsoft',
+      // 📧 Extraemos el correo aquí mismo
+      correo: item.createdBy?.user?.email || item.createdBy?.user?.userPrincipalName || item.createdBy?.user?.displayName || "usuario@azal.com",
     }));
 
-    console.log('✅ Archivos Microsoft obtenidos y transformados:', transformed.length);
+    console.log(`✅ ${transformed.length} Archivos encontrados y listos para la tabla.`);
     return transformed;
+
   } catch (error) {
-    console.error('❌ Error fetching Microsoft files:', error);
+    console.error('❌ Error crítico fetching Microsoft files:', error);
     return [];
   }
 }
@@ -433,4 +408,52 @@ export async function uploadFileToGraph(
   }
 
   return await response.json();
+}
+
+// 🚀 NUEVA FUNCIÓN: Solo para la tabla con Paginación (20 en 20)
+// 🚀 NUEVA VERSIÓN: Usando DELTA para cuentas Personales y Empresariales
+export async function getMicrosoftFilesPaginated(accessToken: string, refreshToken: string, userId: number, nextLink?: string) {
+  try {
+    let currentToken = accessToken;
+    
+    // 🔗 Usamos "delta" en lugar de "search". Delta devuelve TODO el disco plano.
+    // Pedimos un lote más grande porque vendrán carpetas mezcladas que vamos a filtrar
+    const url = nextLink || "https://graph.microsoft.com/v1.0/me/drive/root/delta?$select=id,name,size,file,createdDateTime,lastModifiedDateTime,webUrl,createdBy,deleted&$top=100";
+
+    const { response, accessToken: tokenUsed } = await fetchWithTokenRefresh(url, currentToken, refreshToken, userId);
+
+    if (!response.ok) {
+      console.error('❌ Error de Microsoft Delta:', response.status, await response.text());
+      return { files: [], nextLink: null };
+    }
+
+    const data = await response.json();
+
+    // 🧹 Filtramos para quedarnos SOLO con los que son archivos (ignoramos carpetas y eliminados)
+    const content = (data.value || []).filter((item: any) => item.file && !item.deleted);
+
+    const transformed = content.map((item: any) => ({
+      id: item.id,
+      originalName: item.name,
+      size: item.size || 0,
+      uploadedAt: item.createdDateTime || item.lastModifiedDateTime || new Date().toISOString(),
+      mimeType: item.file?.mimeType || 'application/octet-stream',
+      webUrl: item.webUrl,
+      source: 'microsoft',
+      // 📧 Extraemos el correo del creador
+      correo: item.createdBy?.user?.email || item.createdBy?.user?.userPrincipalName || item.createdBy?.user?.displayName || "usuario@azal.com",
+    }));
+
+    // 🔗 Microsoft puede devolver @odata.nextLink (más páginas)
+    const nextUrl = data['@odata.nextLink'] || null;
+
+    return {
+      files: transformed,
+      nextLink: nextUrl 
+    };
+
+  } catch (error) {
+    console.error('❌ Error fetching paginated files (Delta):', error);
+    return { files: [], nextLink: null };
+  }
 }
