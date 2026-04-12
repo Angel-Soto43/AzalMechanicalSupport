@@ -1,21 +1,16 @@
 /**
- * Integración con Microsoft Graph API para obtener archivos del usuario
- * Documentación: https://learn.microsoft.com/en-us/graph/api/overview
+ * Integración con Microsoft Graph API
  */
 
 async function refreshAccessToken(refreshToken: string) {
   const clientId = process.env.MICROSOFT_CLIENT_ID;
   const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
-
   if (!clientId || !clientSecret || !refreshToken) {
     throw new Error('Missing Microsoft credentials or refresh token');
   }
-
   const response = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       client_id: clientId,
       client_secret: clientSecret,
@@ -23,15 +18,11 @@ async function refreshAccessToken(refreshToken: string) {
       refresh_token: refreshToken,
     }),
   });
-
-  if (!response.ok) {
-    throw new Error(`Token refresh failed: ${response.status} ${response.statusText}`);
-  }
-
+  if (!response.ok) throw new Error(`Token refresh failed: ${response.status}`);
   const data = await response.json();
   return {
     accessToken: data.access_token,
-    refreshToken: data.refresh_token || refreshToken, // Sometimes refresh token is not returned
+    refreshToken: data.refresh_token || refreshToken,
   };
 }
 
@@ -43,22 +34,18 @@ async function fetchWithTokenRefresh(
   init: RequestInit = {},
 ) {
   let currentToken = accessToken;
-  const defaultHeaders = {
-    Authorization: `Bearer ${currentToken}`,
-    'Content-Type': 'application/json',
-  };
-
-  const request = async (): Promise<Response> => {
+  const request = async (token: string): Promise<Response> => {
     return await fetch(url, {
       ...init,
       headers: {
-        ...defaultHeaders,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
         ...(init.headers || {}),
       },
     });
   };
 
-  let response = await request();
+  let response = await request(currentToken);
   if (response.status !== 401 || !refreshToken || userId == null) {
     return { response, accessToken: currentToken };
   }
@@ -68,448 +55,175 @@ async function fetchWithTokenRefresh(
   const { storage } = await import("./storage");
   await storage.updateUserTokens(userId, newTokens.accessToken, newTokens.refreshToken);
 
-  response = await fetch(url, {
-    ...init,
-    headers: {
-      ...defaultHeaders,
-      Authorization: `Bearer ${currentToken}`,
-      ...(init.headers || {}),
-    },
-  });
-
+  response = await request(currentToken);
   return { response, accessToken: currentToken };
-}
-
-export async function getMicrosoftFiles(accessToken: string, refreshToken: string, userId: number) {
-  try {
-    console.log('🔍 Escaneando disco duro para métricas del Dashboard...');
-    let currentToken = accessToken;
-    
-    // 🔗 Agregamos name, createdDateTime y lastModifiedDateTime al select
-    let url: string | null = "https://graph.microsoft.com/v1.0/me/drive/root/delta?$select=id,name,file,deleted,size,createdDateTime,lastModifiedDateTime,webUrl&$top=500";
-    const totalFiles: any[] = [];
-
-    while (url) {
-      const { response, accessToken: tokenUsed } = await fetchWithTokenRefresh(url, currentToken, refreshToken, userId);
-      currentToken = tokenUsed;
-
-      if (!response.ok) break;
-
-      const data = await response.json();
-      const items = data.value || [];
-      
-      const validFiles = items.filter((item: any) => item.file && !item.deleted);
-      totalFiles.push(...validFiles);
-
-      url = data['@odata.nextLink'] || null;
-    }
-
-    return totalFiles; // Regresamos el arreglo con todos los datos vitales
-
-  } catch (error) {
-    console.error('❌ Error crítico en el escaneo del Dashboard:', error);
-    return [];
-  }
-}
-
-export async function getMicrosoftRecentFiles(accessToken: string, refreshToken: string, userId: number) {
-  try {
-    let currentToken = accessToken;
-    const { response, accessToken: tokenUsed } = await fetchWithTokenRefresh(
-      'https://graph.microsoft.com/v1.0/me/drive/recent',
-      currentToken,
-      refreshToken,
-      userId,
-    );
-    currentToken = tokenUsed;
-
-    if (!response.ok) {
-      console.error('❌ Microsoft Graph recent files error:', response.status);
-      return [];
-    }
-
-    const data = await response.json();
-
-    // 📅 Calculamos la fecha límite (hace 7 días exactos)
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
-    const recent = (data.value || [])
-      .filter((item: any) => {
-        if (!item.file) return false;
-        // 🛡️ Filtro estricto: Verificamos si la fecha de subida/creación es de los últimos 7 días
-        const fileDate = new Date(item.createdDateTime || item.lastModifiedDateTime || 0);
-        return fileDate >= sevenDaysAgo;
-      })
-      .map((item: any) => {
-        const fecha = item.createdDateTime || item.lastModifiedDateTime || new Date().toISOString();
-        return {
-          id: item.id,
-          name: item.name,
-          size: item.size || 0,
-          uploadedAt: fecha,
-          lastModifiedDateTime: fecha,
-          type: item.file?.mimeType || 'application/octet-stream',
-          mimeType: item.file?.mimeType || 'application/octet-stream',
-          webUrl: item.webUrl,
-        };
-      })
-      .sort((a: any, b: any) => new Date(b.lastModifiedDateTime).getTime() - new Date(a.lastModifiedDateTime).getTime())
-      .slice(0, 10);
-
-    return recent;
-  } catch (error) {
-    console.error('❌ Error fetching Microsoft recent files:', error);
-    return [];
-  }
-}
-
-export async function getMicrosoftFolders(accessToken: string, refreshToken: string, userId: number) {
-  try {
-    console.log('🔍 Obteniendo carpetas de Microsoft Graph...');
-    console.log('   Token length:', accessToken?.length || 0);
-
-    let currentToken = accessToken;
-
-    // Función para hacer la llamada a la API
-    const fetchFolders = async (token: string) => {
-      const response = await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children?$top=100', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      return response;
-    };
-
-    let response = await fetchFolders(currentToken);
-
-    // Si el token expiró, intentar refrescar
-    if (response.status === 401 && refreshToken) {
-      console.log('🔄 Token expirado, intentando refrescar...');
-      try {
-        const newTokens = await refreshAccessToken(refreshToken);
-        currentToken = newTokens.accessToken;
-
-        // Actualizar tokens en DB
-        const { storage } = await import('./storage');
-        await storage.updateUserTokens(userId, newTokens.accessToken, newTokens.refreshToken);
-
-        console.log('✅ Token refrescado y guardado');
-        
-        // Reintentar la llamada
-        response = await fetchFolders(currentToken);
-      } catch (refreshError) {
-        console.error('❌ Error refrescando token:', refreshError);
-        return [];
-      }
-    }
-
-    console.log('📌 Microsoft Graph response status:', response.status, response.statusText);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Microsoft Graph error:', response.status, errorText);
-      return [];
-    }
-
-    const data = await response.json();
-    console.log('✅ Microsoft Graph returned:', data.value?.length || 0, 'items');
-    
-    // Transformar carpetas de Microsoft format a nuestro formato (solo carpetas)
-    const transformed = (data.value || [])
-      .filter((item: any) => item.folder) // Solo carpetas
-      .map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        createdAt: item.createdDateTime || item.lastModifiedDateTime || new Date().toISOString(),
-        updatedAt: item.lastModifiedDateTime || item.createdDateTime || new Date().toISOString(),
-        source: 'microsoft', // Identificar que viene de Microsoft
-        webUrl: item.webUrl,
-        parentId: null, // Asumir que son root folders
-      }));
-
-    console.log('✅ Transformed to:', transformed.length, 'folders');
-    return transformed;
-  } catch (error) {
-    console.error('❌ Error fetching Microsoft folders:', error);
-    return [];
-  }
-}
-
-export async function createMicrosoftFolder(
-  accessToken: string,
-  refreshToken: string,
-  userId: number,
-  folderName: string,
-) {
-  try {
-    console.log('🔍 Creando carpeta en Microsoft OneDrive...', folderName);
-    let currentToken = accessToken;
-
-    const fetchCreate = async (token: string) => {
-      const response = await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: folderName,
-          folder: {},
-          '@microsoft.graph.conflictBehavior': 'rename',
-        }),
-      });
-      return response;
-    };
-
-    let response = await fetchCreate(currentToken);
-
-    if (response.status === 401 && refreshToken) {
-      console.log('🔄 Token expirado, intentando refrescar...');
-      try {
-        const newTokens = await refreshAccessToken(refreshToken);
-        currentToken = newTokens.accessToken;
-
-        const { storage } = await import('./storage');
-        await storage.updateUserTokens(userId, newTokens.accessToken, newTokens.refreshToken);
-
-        console.log('✅ Token refrescado y guardado');
-        response = await fetchCreate(currentToken);
-      } catch (refreshError) {
-        console.error('❌ Error refrescando token:', refreshError);
-        throw refreshError;
-      }
-    }
-
-    console.log('📌 Microsoft Graph create folder status:', response.status, response.statusText);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Microsoft Graph create folder error:', response.status, errorText);
-      throw new Error(`No se pudo crear la carpeta en OneDrive: ${errorText}`);
-    }
-
-    const data = await response.json();
-    return {
-      id: data.id,
-      name: data.name,
-      createdAt: data.createdDateTime || new Date().toISOString(),
-      updatedAt: data.lastModifiedDateTime || data.createdDateTime || new Date().toISOString(),
-      source: 'microsoft',
-      webUrl: data.webUrl,
-      parentId: data.parentReference?.id || null,
-    };
-  } catch (error) {
-    console.error('❌ Error creando carpeta Microsoft:', error);
-    throw error;
-  }
-}
-
-export async function getMicrosoftQuota(accessToken: string, refreshToken?: string, userId?: number) {
-  try {
-    let currentToken = accessToken;
-    const request = async (token: string) => {
-      return await fetch('https://graph.microsoft.com/v1.0/me/drive', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-    };
-
-    let response = await request(currentToken);
-    if (response.status === 401 && refreshToken && userId != null) {
-      const newTokens = await refreshAccessToken(refreshToken);
-      currentToken = newTokens.accessToken;
-      const { storage } = await import("./storage");
-      await storage.updateUserTokens(userId, newTokens.accessToken, newTokens.refreshToken);
-      response = await request(currentToken);
-    }
-
-    if (!response.ok) {
-      console.error('❌ Microsoft Graph quota error:', response.status, response.statusText);
-      return { used: 0, total: 0 };
-    }
-
-    const data = await response.json();
-    return {
-      used: data.quota?.used || 0,
-      total: data.quota?.total || 0,
-    };
-  } catch (error) {
-    console.error('Error fetching Microsoft quota:', error);
-    return { used: 0, total: 0 };
-  }
 }
 
 export async function uploadFileToGraph(
   accessToken: string,
-  fileName: string,
+  refreshToken: string,
+  userId: number,
   fileBuffer: Buffer,
+  targetPath: string,
   mimeType: string,
-  fileSize: number,
+  parentId?: string 
 ) {
-  const safeName = encodeURIComponent(fileName);
-  const uploadUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${safeName}:/content`;
+  try {
+    let currentToken = accessToken;
+    
+    const isRoot = !parentId || parentId === "undefined" || parentId === "NaN" || parentId === "root";
+    
+    // 🛡️ CORRECCIÓN: Codificamos el parentId para proteger el ID
+    const baseEndpoint = isRoot ? `root` : `items/${encodeURIComponent(parentId!)}`;
+      
+    const url = `https://graph.microsoft.com/v1.0/me/drive/${baseEndpoint}:/${encodeURIComponent(targetPath)}:/content`;
 
-  if (fileSize <= 4 * 1024 * 1024) {
-    const response = await fetch(uploadUrl, {
+    const response = await fetch(url, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
+        'Authorization': `Bearer ${currentToken}`,
         'Content-Type': mimeType,
       },
       body: fileBuffer,
     });
 
+    if (response.status === 401 && refreshToken) {
+      const refreshed = await refreshAccessToken(refreshToken);
+      const { storage } = await import("./storage");
+      await storage.updateUserTokens(userId, refreshed.accessToken, refreshed.refreshToken);
+      return uploadFileToGraph(refreshed.accessToken, refreshed.refreshToken, userId, fileBuffer, targetPath, mimeType, parentId);
+    }
+
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Microsoft Graph upload failed: ${response.status} ${errorText}`);
+      // 👈 Devolvemos el error real
+      throw new Error(`Error Graph (${response.status}): ${errorText}`);
     }
 
     return await response.json();
+  } catch (error) {
+    console.error('❌ Error en uploadFileToGraph:', error);
+    throw error;
   }
+}
 
-  const sessionResponse = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${safeName}:/createUploadSession`, {
+export async function getMicrosoftFiles(accessToken: string, refreshToken: string, userId: number) {
+  let currentToken = accessToken;
+  let url: string | null = "https://graph.microsoft.com/v1.0/me/drive/root/delta?$select=id,name,file,deleted,size,createdDateTime,lastModifiedDateTime,webUrl&$top=500";
+  const totalFiles: any[] = [];
+  while (url) {
+    const { response, accessToken: t } = await fetchWithTokenRefresh(url, currentToken, refreshToken, userId);
+    currentToken = t;
+    if (!response.ok) break;
+    const data = await response.json();
+    totalFiles.push(...(data.value || []).filter((item: any) => item.file && !item.deleted));
+    url = data['@odata.nextLink'] || null;
+  }
+  return totalFiles;
+}
+
+export async function getMicrosoftFolders(accessToken: string, refreshToken: string, userId: number) {
+  let currentToken = accessToken;
+  const { response } = await fetchWithTokenRefresh('https://graph.microsoft.com/v1.0/me/drive/root/children?$top=100', currentToken, refreshToken, userId);
+  if (!response.ok) return [];
+  const data = await response.json();
+  return (data.value || []).filter((item: any) => item.folder).map((item: any) => ({
+    id: item.id,
+    name: item.name,
+    createdAt: item.createdDateTime || new Date().toISOString(),
+    source: 'microsoft',
+    webUrl: item.webUrl,
+  }));
+}
+
+export async function createMicrosoftFolder(
+  accessToken: string, 
+  refreshToken: string, 
+  userId: number, 
+  folderName: string,
+  parentId?: string
+) {
+  // 📂 Identificamos si va a la raíz o a una subcarpeta
+  const isRoot = !parentId || parentId === "undefined" || parentId === "NaN" || parentId === "root";
+  
+  // 🛡️ Mantenemos la codificación del ID para que el signo "!" no rompa la URL (Esto es vital)
+  const url = isRoot
+    ? `https://graph.microsoft.com/v1.0/me/drive/root/children`
+    : `https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(parentId!)}/children`;
+
+  // 📦 Solo enviamos lo estrictamente necesario
+  const payload: any = { 
+    name: folderName, 
+    folder: {}, 
+    '@microsoft.graph.conflictBehavior': 'rename' 
+  };
+
+  // 👇 ELIMINAMOS la inyección del parentReference que causaba el conflicto (redundancia)
+
+  const { response } = await fetchWithTokenRefresh(url, accessToken, refreshToken, userId, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ item: { '@microsoft.graph.conflictBehavior': 'replace' } }),
-  });
-
-  if (!sessionResponse.ok) {
-    const errorText = await sessionResponse.text();
-    throw new Error(`Upload session failed: ${sessionResponse.status} ${errorText}`);
-  }
-
-  const sessionData = await sessionResponse.json();
-  const { uploadUrl: sessionUrl } = sessionData;
-  if (!sessionUrl) {
-    throw new Error('No uploadUrl returned from Microsoft Graph upload session');
-  }
-
-  const response = await fetch(sessionUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Range': `bytes 0-${fileSize - 1}/${fileSize}`,
-      'Content-Length': String(fileSize),
-      'Content-Type': mimeType,
-    },
-    body: fileBuffer,
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Microsoft Graph upload session failed: ${response.status} ${errorText}`);
+    throw new Error(`Error Graph (${response.status}): ${errorText}`); 
   }
-
-  return await response.json();
+  
+  const data = await response.json();
+  return { id: data.id, name: data.name, source: 'microsoft', webUrl: data.webUrl };
 }
 
-// 🚀 NUEVA FUNCIÓN: Solo para la tabla con Paginación (20 en 20)
-// 🚀 NUEVA VERSIÓN: Usando DELTA para cuentas Personales y Empresariales
+export async function getMicrosoftQuota(accessToken: string, refreshToken?: string, userId?: number) {
+  const { response } = await fetchWithTokenRefresh('https://graph.microsoft.com/v1.0/me/drive', accessToken, refreshToken, userId);
+  if (!response.ok) return { used: 0, total: 0 };
+  const data = await response.json();
+  return { used: data.quota?.used || 0, total: data.quota?.total || 0 };
+}
+
 export async function getMicrosoftFilesPaginated(accessToken: string, refreshToken: string, userId: number, nextLink?: string) {
-  try {
-    let currentToken = accessToken;
-    
-    // 🔗 Usamos "delta" en lugar de "search". Delta devuelve TODO el disco plano.
-    // Pedimos un lote más grande porque vendrán carpetas mezcladas que vamos a filtrar
-    const url = nextLink || "https://graph.microsoft.com/v1.0/me/drive/root/delta?$select=id,name,size,file,createdDateTime,lastModifiedDateTime,webUrl,createdBy,deleted&$top=100";
-
-    const { response, accessToken: tokenUsed } = await fetchWithTokenRefresh(url, currentToken, refreshToken, userId);
-
-    if (!response.ok) {
-      console.error('❌ Error de Microsoft Delta:', response.status, await response.text());
-      return { files: [], nextLink: null };
-    }
-
-    const data = await response.json();
-
-    // 🧹 Filtramos para quedarnos SOLO con los que son archivos (ignoramos carpetas y eliminados)
-    const content = (data.value || []).filter((item: any) => item.file && !item.deleted);
-
-    const transformed = content.map((item: any) => ({
-      id: item.id,
-      originalName: item.name,
-      size: item.size || 0,
-      uploadedAt: item.createdDateTime || item.lastModifiedDateTime || new Date().toISOString(),
-      mimeType: item.file?.mimeType || 'application/octet-stream',
-      webUrl: item.webUrl,
-      source: 'microsoft',
-      // 📧 Extraemos el correo del creador
-      correo: item.createdBy?.user?.email || item.createdBy?.user?.userPrincipalName || item.createdBy?.user?.displayName || "usuario@azal.com",
-    }));
-
-    // 🔗 Microsoft puede devolver @odata.nextLink (más páginas)
-    const nextUrl = data['@odata.nextLink'] || null;
-
-    return {
-      files: transformed,
-      nextLink: nextUrl 
-    };
-
-  } catch (error) {
-    console.error('❌ Error fetching paginated files (Delta):', error);
-    return { files: [], nextLink: null };
-  }
+  const url = nextLink || "https://graph.microsoft.com/v1.0/me/drive/root/delta?$select=id,name,size,file,createdDateTime,lastModifiedDateTime,webUrl,createdBy,deleted&$top=100";
+  const { response } = await fetchWithTokenRefresh(url, accessToken, refreshToken, userId);
+  if (!response.ok) return { files: [], nextLink: null };
+  const data = await response.json();
+  const transformed = (data.value || []).filter((item: any) => item.file && !item.deleted).map((item: any) => ({
+    id: item.id,
+    originalName: item.name,
+    size: item.size || 0,
+    uploadedAt: item.createdDateTime || new Date().toISOString(),
+    mimeType: item.file?.mimeType || 'application/octet-stream',
+    source: 'microsoft',
+  }));
+  return { files: transformed, nextLink: data['@odata.nextLink'] || null };
 }
 
 export async function getMicrosoftFolderContent(accessToken: string, refreshToken: string, userId: number, folderId: string) {
-  try {
-    let currentToken = accessToken;
-
-    // 1. Obtenemos el nombre de la carpeta
-    const folderRes = await fetchWithTokenRefresh(`https://graph.microsoft.com/v1.0/me/drive/items/${folderId}`, currentToken, refreshToken, userId);
-    currentToken = folderRes.accessToken;
-    if (!folderRes.response.ok) throw new Error("Error getting folder metadata");
-    const folderData = await folderRes.response.json();
-
-    // 2. Obtenemos el contenido (hijos)
-    const childrenRes = await fetchWithTokenRefresh(`https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children`, currentToken, refreshToken, userId);
-    if (!childrenRes.response.ok) throw new Error("Error getting folder children");
-    const childrenData = await childrenRes.response.json();
-
-    const items = childrenData.value || [];
-
-    // 3. Mapeamos subcarpetas
-    const subfolders = items.filter((item: any) => item.folder).map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        createdAt: item.createdDateTime,
-        updatedAt: item.lastModifiedDateTime,
-        creatorName: item.createdBy?.user?.displayName || "OneDrive",
-        source: "microsoft",
-        webUrl: item.webUrl
-    }));
-
-    // 4. Mapeamos archivos
-    const files = items.filter((item: any) => item.file).map((item: any) => ({
-        id: item.id,
-        originalName: item.name,
-        size: item.size || 0,
-        uploadedAt: item.createdDateTime,
-        mimeType: item.file?.mimeType || 'application/octet-stream',
-        contractId: "Nube", 
-        supplier: "Microsoft",
-        uploaderName: item.createdBy?.user?.displayName || "OneDrive",
-        source: "microsoft",
-        webUrl: item.webUrl,
-        version: 1
-    }));
-
-    return {
-      folder: { id: folderData.id, name: folderData.name, source: "microsoft" },
-      path: [{ id: "root", name: "Carpetas" }, { id: folderData.id, name: folderData.name }],
-      folders: subfolders,
-      files: files
-    };
-
-  } catch (error) {
-    console.error('❌ Error fetching Microsoft folder content:', error);
-    throw error;
-  }
+  const meta = await fetchWithTokenRefresh(`https://graph.microsoft.com/v1.0/me/drive/items/${folderId}`, accessToken, refreshToken, userId);
+  const children = await fetchWithTokenRefresh(`https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children`, meta.accessToken, refreshToken, userId);
+  
+  const folderData = await meta.response.json();
+  const items = (await children.response.json()).value || [];
+  
+  return {
+    folder: { id: folderData.id, name: folderData.name, source: "microsoft" },
+    path: [{ id: "root", name: "Carpetas" }, { id: folderData.id, name: folderData.name }],
+    
+    // 🛡️ CORRECCIÓN: Agregamos "createdAt" para que React no choque al formatear la fecha
+    folders: items.filter((i: any) => i.folder).map((i: any) => ({ 
+      id: i.id, 
+      name: i.name, 
+      source: "microsoft",
+      createdAt: i.createdDateTime || new Date().toISOString() // 👈 FECHA AGREGADA
+    })),
+    
+    // 🛡️ CORRECCIÓN: Agregamos "uploadedAt" y "mimeType" para los archivos
+    files: items.filter((i: any) => i.file).map((i: any) => ({ 
+      id: i.id, 
+      originalName: i.name, 
+      size: i.size, 
+      source: "microsoft",
+      uploadedAt: i.createdDateTime || new Date().toISOString(), // 👈 FECHA AGREGADA
+      mimeType: i.file?.mimeType || 'application/octet-stream'   // 👈 Para que muestre el ícono correcto
+    }))
+  };
 }

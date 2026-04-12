@@ -126,7 +126,10 @@ export default function FolderPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ name, parentId: folderId }),
+      body: JSON.stringify({ 
+        name, 
+        parentId: rawFolderId // 👈 CLAVE: Usamos rawFolderId, no folderId
+      }),
     });
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({ error: "Error al crear carpeta" }));
@@ -165,10 +168,14 @@ export default function FolderPage() {
     try {
       for (const file of selectedFiles) {
         const form = new FormData();
-        form.append("file", file);
+        // ⚠️ CLAVE: Los campos de texto DEBEN ir ANTES del archivo para que el servidor los lea
         form.append("contractId", contractId);
         form.append("supplier", client);
-        form.append("folderId", String(folderId));
+        form.append("folderId", String(rawFolderId)); 
+        form.append("parentId", String(rawFolderId)); // Lo mandamos doble por seguridad
+        
+        // El archivo siempre se empaqueta al final
+        form.append("file", file); 
 
         const res = await fetch("/api/files/upload", {
           method: "POST",
@@ -197,7 +204,7 @@ export default function FolderPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/files-all"] });
       setUploadSuccess(true);
-      toast({ title: "Archivos subidos", description: "Los archivos se subieron correctamente" });
+      toast({ title: "Archivos subidos", description: "Los archivos se subieron en esta subcarpeta" });
     } catch (err: any) {
       toast({
         title: "Error al subir",

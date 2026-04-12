@@ -45,43 +45,36 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // ☁️ 100% NUBE: CREAR CARPETAS DIRECTO EN ONEDRIVE + AUDITORÍA FORZADA
+
+  // ☁️ RUTA EXCLUSIVA DE ONEDRIVE
+  // ☁️ RUTA EXCLUSIVA DE ONEDRIVE
   app.post("/api/folders", requireAuth, async (req: any, res) => {
     try {
-      const name = req.body?.name;
+      const { name, parentId } = req.body; 
 
-      if (!name || typeof name !== "string" || !name.trim()) {
-        return res.status(400).json({ error: "El nombre de la carpeta es obligatorio" });
-      }
+      if (!name) return res.status(400).json({ error: "El nombre es obligatorio" });
+      if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
 
-      if (!req.user.accessToken || !req.user.refreshToken) {
-        return res.status(401).json({ error: "No hay sesión activa con Microsoft OneDrive" });
-      }
-
-      const nuevaCarpetaNube = await createMicrosoftFolder(
-        req.user.accessToken, 
-        req.user.refreshToken, 
-        req.user.id, 
-        name.trim()
+      const folderCloud = await createMicrosoftFolder(
+        req.user.accessToken,
+        req.user.refreshToken,
+        req.user.id,
+        name,
+        parentId 
       );
 
-      // ✅ AUDITORÍA FORZADA
-      try {
-        await storage.createAuditLog({
-          userId: req.user.id,
-          action: "Crear carpeta",
-          details: `Carpeta creada en OneDrive: ${name.trim()}`
-        });
-        console.log("✅ Auditoría registrada: Crear carpeta");
-      } catch (auditErr: any) {
-        console.error("⚠️ Error en auditoría (Carpetas):", auditErr.message || auditErr);
-      }
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: "Crear carpeta nube",
+        details: `Se creó la carpeta "${name}" en Microsoft OneDrive`
+      });
 
-      res.status(201).json(nuevaCarpetaNube);
+      res.status(201).json(folderCloud);
 
     } catch (e: any) {
-      console.error("❌ Error creando carpeta en la nube:", e.message);
-      res.status(500).json({ error: "No se pudo crear la carpeta en OneDrive" });
+      console.error("❌ Error en Microsoft Graph:", e.message);
+      // 🛡️ CORRECCIÓN: Pasamos el mensaje real para que aparezca en pantalla si falla
+      res.status(500).json({ error: e.message || "Error al crear la carpeta en OneDrive" });
     }
   });
 
@@ -144,56 +137,43 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // ☁️ 100% NUBE: SUBIR ARCHIVOS DIRECTO A ONEDRIVE
   // ☁️ 100% NUBE: SUBIR ARCHIVOS DIRECTO A ONEDRIVE + AUDITORÍA FORZADA
   app.post("/api/files/upload", requireAuth, upload.single("file"), async (req: any, res) => {
-    try {
-      const file = req.file;
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    
+    const user = req.user;
+    const relativePath = req.body.relativePath || ""; 
+    const parentId = req.body.folderId || req.body.parentId; // Compatible con lo que manda tu front
+    
+    const targetPath = relativePath ? relativePath : req.file.originalname;
 
-      if (!file || !file.buffer) {
-        return res.status(400).json({ error: "No se recibió el archivo correctamente" });
-      }
+    console.log(`🚀 Subiendo a OneDrive: ${targetPath} en carpeta: ${parentId || 'root'}`);
 
-      if (!req.user.accessToken) {
-        return res.status(401).json({ error: "No hay sesión activa con Microsoft OneDrive" });
-      }
+    const result = await uploadFileToGraph(
+      user.accessToken,
+      user.refreshToken,
+      user.id,
+      req.file.buffer,
+      targetPath,
+      req.file.mimetype,
+      parentId
+    );
 
-      console.log(`☁️ Subiendo archivo ${file.originalname} directo a OneDrive...`);
+    await storage.createAuditLog({
+      userId: user.id,
+      action: "Subida nube",
+      details: `Archivo: ${targetPath}`
+    });
 
-      const graphResponse = await uploadFileToGraph(
-        req.user.accessToken, 
-        file.originalname, 
-        file.buffer, 
-        file.mimetype, 
-        file.size
-      );
-
-      // ✅ AUDITORÍA FORZADA
-      try {
-        await storage.createAuditLog({
-          userId: req.user.id,
-          action: "Subir archivo",
-          details: `Archivo subido a OneDrive: ${file.originalname}`
-        });
-        console.log("✅ Auditoría registrada: Subir archivo");
-      } catch (auditErr: any) {
-        console.error("⚠️ Error en auditoría (Archivos):", auditErr.message || auditErr);
-      }
-
-      return res.status(201).json({
-        id: graphResponse.id,
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
-        uploadedAt: new Date().toISOString(),
-        webUrl: graphResponse.webUrl,
-        source: 'microsoft',
-      });
-
-    } catch (e: any) {
-      console.error("❌ Error subiendo archivo a la nube:", e.message);
-      res.status(500).json({ error: e.message || "Error interno al subir archivo a OneDrive" });
-    }
-  });
+    res.json(result);
+  } catch (e: any) {
+    console.error("❌ Error en subida estructurada:", e.message);
+    // 🛡️ CORRECCIÓN: Pasamos el mensaje real
+    res.status(500).json({ error: e.message || "Error al subir el archivo" });
+  }
+});
 
   app.get("/api/files/:id/download", requireAuth, async (req: any, res) => {
     try {
