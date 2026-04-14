@@ -552,7 +552,11 @@ export default function FolderPage() {
                       <TableCell className="text-sm">
                         {format(new Date(folder.createdAt), "dd/MM/yyyy HH:mm", { locale: es })}
                       </TableCell>
-                      <TableCell className="text-right font-mono text-sm">—</TableCell>
+                      
+                      <TableCell className="text-right font-mono text-sm">
+                        {folder.size ? formatFileSize(folder.size) : "—"}
+                      </TableCell>
+
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -662,8 +666,9 @@ export default function FolderPage() {
                         { locale: es }
                       )}
                     </TableCell>
+                    {/* 🚀 CORRECCIÓN AQUÍ: Usamos file.size en lugar de folder.size */}
                     <TableCell className="text-right font-mono text-sm">
-                      {formatFileSize(file.size)}
+                      {file.size ? formatFileSize(file.size) : "—"}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>

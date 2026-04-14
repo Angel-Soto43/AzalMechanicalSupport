@@ -199,7 +199,10 @@ export async function getMicrosoftFilesPaginated(accessToken: string, refreshTok
 
 export async function getMicrosoftFolderContent(accessToken: string, refreshToken: string, userId: number, folderId: string) {
   const meta = await fetchWithTokenRefresh(`https://graph.microsoft.com/v1.0/me/drive/items/${folderId}`, accessToken, refreshToken, userId);
-  const children = await fetchWithTokenRefresh(`https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children`, meta.accessToken, refreshToken, userId);
+  
+  // 🛡️ Obligamos a Microsoft a devolver 'description' usando $select
+  const childrenUrl = `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children?$select=id,name,description,size,file,folder,createdDateTime,lastModifiedDateTime,createdBy,webUrl`;
+  const children = await fetchWithTokenRefresh(childrenUrl, meta.accessToken, refreshToken, userId);
   
   const folderData = await meta.response.json();
   const items = (await children.response.json()).value || [];
@@ -208,22 +211,68 @@ export async function getMicrosoftFolderContent(accessToken: string, refreshToke
     folder: { id: folderData.id, name: folderData.name, source: "microsoft" },
     path: [{ id: "root", name: "Carpetas" }, { id: folderData.id, name: folderData.name }],
     
-    // 🛡️ CORRECCIÓN: Agregamos "createdAt" para que React no choque al formatear la fecha
     folders: items.filter((i: any) => i.folder).map((i: any) => ({ 
       id: i.id, 
       name: i.name, 
       source: "microsoft",
-      createdAt: i.createdDateTime || new Date().toISOString() // 👈 FECHA AGREGADA
+      createdAt: i.createdDateTime || new Date().toISOString(),
+      creatorName: i.createdBy?.user?.displayName || "Propietario",
+      size: i.size || 0
     })),
     
-    // 🛡️ CORRECCIÓN: Agregamos "uploadedAt" y "mimeType" para los archivos
-    files: items.filter((i: any) => i.file).map((i: any) => ({ 
-      id: i.id, 
-      originalName: i.name, 
-      size: i.size, 
-      source: "microsoft",
-      uploadedAt: i.createdDateTime || new Date().toISOString(), // 👈 FECHA AGREGADA
-      mimeType: i.file?.mimeType || 'application/octet-stream'   // 👈 Para que muestre el ícono correcto
-    }))
+    // 🚀 CORRECCIÓN: Separador inteligente de Metadatos
+    files: items.filter((i: any) => i.file).map((i: any) => {
+      let contractId = "—";
+      let supplier = "—";
+      let displayFileName = i.name;
+      
+      // Busca el patrón exacto: "[ID] [Cliente] NombreDelArchivo.pdf"
+      const metaRegex = /^\[(.*?)\]\s\[(.*?)\]\s(.*)$/;
+      const match = i.name.match(metaRegex);
+
+      if (match) {
+        contractId = match[1] === "SinID" ? "—" : match[1];
+        supplier = match[2] === "SinCliente" ? "—" : match[2];
+        displayFileName = match[3]; // El nombre limpio para la interfaz
+      }
+
+      return {
+        id: i.id,
+        originalName: displayFileName, // Mostramos el nombre limpio en la tabla
+        size: i.size,
+        source: "microsoft",
+        uploadedAt: i.createdDateTime || new Date().toISOString(),
+        mimeType: i.file?.mimeType || 'application/octet-stream',
+        uploaderName: i.createdBy?.user?.displayName || "Propietario",
+        contractId,
+        supplier
+      };
+    })
   };
+}
+
+export async function updateMicrosoftItemDescription(
+  accessToken: string,
+  refreshToken: string,
+  userId: number,
+  itemId: string,
+  description: string,
+  retries = 3 // 👈 Sistema de reintentos automático
+) {
+  const url = `https://graph.microsoft.com/v1.0/me/drive/items/${itemId}`;
+  
+  for (let i = 0; i < retries; i++) {
+    const { response } = await fetchWithTokenRefresh(url, accessToken, refreshToken, userId, {
+      method: 'PATCH',
+      body: JSON.stringify({ description }),
+    });
+    
+    if (response.ok) {
+      return; // Éxito total
+    }
+    
+    // Si falla (ej. OneDrive está escaneando el archivo en busca de virus), esperamos 2s y reintentamos
+    await new Promise(res => setTimeout(res, 2000));
+  }
+  console.error(`❌ Error Graph guardando metadatos después de ${retries} intentos.`);
 }

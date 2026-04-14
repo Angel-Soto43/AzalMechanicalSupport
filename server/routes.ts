@@ -12,6 +12,7 @@ import { getMicrosoftFiles,
         getMicrosoftRecentFiles, 
         createMicrosoftFolder, 
         getMicrosoftFolderContent,
+        updateMicrosoftItemDescription,
         uploadFileToGraph } from "./microsoft-graph";
 import { requireAuth } from "./auth";
 import { getMicrosoftFilesPaginated } from "./microsoft-graph";
@@ -137,19 +138,33 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // ☁️ 100% NUBE: SUBIR ARCHIVOS DIRECTO A ONEDRIVE
   // ☁️ 100% NUBE: SUBIR ARCHIVOS DIRECTO A ONEDRIVE + AUDITORÍA FORZADA
+  // ☁️ 100% NUBE: SUBIR ARCHIVOS DIRECTO A ONEDRIVE + AUDITORÍA FORZADA
+  // ☁️ 100% NUBE: SUBIR ARCHIVOS DIRECTO A ONEDRIVE CON METADATOS INFALIBLES
   app.post("/api/files/upload", requireAuth, upload.single("file"), async (req: any, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
     
     const user = req.user;
     const relativePath = req.body.relativePath || ""; 
-    const parentId = req.body.folderId || req.body.parentId; // Compatible con lo que manda tu front
+    const parentId = req.body.folderId || req.body.parentId; 
     
-    const targetPath = relativePath ? relativePath : req.file.originalname;
+    const contractId = (req.body.contractId || "").trim();
+    const supplier = (req.body.supplier || "").trim();
+    
+    // 🚀 ESTRATEGIA INFALIBLE: Incorporar los datos en el nombre del archivo
+    const originalName = req.file.originalname;
+    let finalFileName = originalName;
+    
+    if (contractId || supplier) {
+      // Crea un nombre tipo: "[CONT-123] [Cliente XYZ] Informe.pdf"
+      const safeContract = contractId || "SinID";
+      const safeSupplier = supplier || "SinCliente";
+      finalFileName = `[${safeContract}] [${safeSupplier}] ${originalName}`;
+    }
 
-    console.log(`🚀 Subiendo a OneDrive: ${targetPath} en carpeta: ${parentId || 'root'}`);
+    // Si viene de una carpeta (subida masiva), reemplazamos el nombre original por el nuevo
+    const targetPath = relativePath ? relativePath.replace(originalName, finalFileName) : finalFileName;
 
     const result = await uploadFileToGraph(
       user.accessToken,
@@ -164,13 +179,12 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     await storage.createAuditLog({
       userId: user.id,
       action: "Subida nube",
-      details: `Archivo: ${targetPath}`
+      details: `Archivo subido: ${finalFileName}`
     });
 
     res.json(result);
   } catch (e: any) {
-    console.error("❌ Error en subida estructurada:", e.message);
-    // 🛡️ CORRECCIÓN: Pasamos el mensaje real
+    console.error("❌ Error en subida:", e.message);
     res.status(500).json({ error: e.message || "Error al subir el archivo" });
   }
 });
