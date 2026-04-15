@@ -91,7 +91,8 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(folders)
-      .where(eq(folders.userId, userId), eq(folders.parentId, null))
+      .where(eq(folders.userId, userId))
+      .where(eq(folders.parentId, null))
       .orderBy(desc(folders.createdAt));
   }
 
@@ -163,7 +164,8 @@ export class DatabaseStorage implements IStorage {
       })
       .from(files)
       .leftJoin(users, eq(files.uploadedBy, users.id))
-      .where(eq(files.folderId, folderId), eq(files.isDeleted, false))
+      .where(eq(files.folderId, folderId))
+      .where(eq(files.isDeleted, false))
       .orderBy(desc(files.uploadedAt));
   }
 
@@ -218,23 +220,6 @@ export class DatabaseStorage implements IStorage {
   async createLicitacion(insertLicitacion: InsertLicitacion): Promise<Licitacion> {
     const [licitacion] = await db.insert(licitaciones).values(insertLicitacion).returning();
     return licitacion;
-  }
-
-
-  async getAllFiles(): Promise<any[]> {
-    return await db
-      .select({
-        id: files.id,
-        originalName: files.originalName,
-        size: files.size,
-        uploadedAt: files.uploadedAt,
-        mimeType: files.mimeType,
-        contractId: files.contractId,
-        correo: users.correo,
-      })
-      .from(files)
-      .leftJoin(users, eq(files.uploadedBy, users.id))
-      .orderBy(desc(files.uploadedAt));
   }
 
 

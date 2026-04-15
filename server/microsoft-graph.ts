@@ -265,6 +265,31 @@ export async function getMicrosoftItemContentStream(
   return response;
 }
 
+export async function updateMicrosoftItemContent(
+  accessToken: string,
+  refreshToken: string,
+  userId: number,
+  itemId: string,
+  fileBuffer: Buffer,
+  mimeType: string
+) {
+  const url = `https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(itemId)}/content`;
+  const { response } = await fetchWithTokenRefresh(url, accessToken, refreshToken, userId, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': mimeType,
+    },
+    body: fileBuffer as unknown as BodyInit,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Error Graph (${response.status}): ${errorText}`);
+  }
+
+  return await response.json();
+}
+
 export async function getMicrosoftQuota(accessToken: string, refreshToken?: string, userId?: number) {
   const { response } = await fetchWithTokenRefresh('https://graph.microsoft.com/v1.0/me/drive', accessToken, refreshToken, userId);
   if (!response.ok) return { used: 0, total: 0 };

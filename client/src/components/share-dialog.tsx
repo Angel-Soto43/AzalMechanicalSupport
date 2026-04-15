@@ -43,6 +43,27 @@ export function ShareDialog({
     return data.shareLink;
   };
 
+  const writeTextToClipboard = async (text: string) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text);
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const successful = document.execCommand("copy");
+    document.body.removeChild(textarea);
+
+    if (!successful) {
+      throw new Error("No se pudo copiar el enlace al portapapeles");
+    }
+  };
+
   const handleShareViaWhatsApp = async () => {
     let whatsappWindow: Window | null = null;
     try {
@@ -101,7 +122,7 @@ export function ShareDialog({
     try {
       setLoadingAction("copy");
       const link = await getShareLink();
-      await navigator.clipboard.writeText(link);
+      await writeTextToClipboard(link);
       toast({
         title: "Copiado",
         description: "Enlace copiado al portapapeles",

@@ -7,7 +7,9 @@ import { pipeline } from "stream/promises";
 import archiver from "archiver";
 import multer from "multer";
 import { storage } from "./storage";
-import { insertLicitacionSchema } from "@shared/schema";
+import { insertLicitacionSchema, files } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import "isomorphic-fetch";
 import { getMicrosoftFiles, 
         getMicrosoftQuota, 
@@ -22,7 +24,8 @@ import { getMicrosoftFiles,
         getMicrosoftFolderChildren,
         getMicrosoftItemDownloadUrl,
         getMicrosoftItemMetadata,
-        getMicrosoftItemContentStream } from "./microsoft-graph";
+        getMicrosoftItemContentStream,
+        updateMicrosoftItemContent } from "./microsoft-graph";
 import { requireAuth } from "./auth";
 import { getMicrosoftFilesPaginated } from "./microsoft-graph";
 
@@ -366,7 +369,21 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
   app.get("/api/files/:id/share", requireAuth, async (req: any, res) => {
     try {
-      const fileId = Number(req.params.id);
+      const fileIdParam = req.params.id;
+      const isMicrosoft = Number.isNaN(Number(fileIdParam));
+
+      if (isMicrosoft) {
+        if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
+        const shareLink = await createMicrosoftShareLink(
+          req.user.accessToken,
+          req.user.refreshToken,
+          req.user.id,
+          fileIdParam
+        );
+        return res.json({ shareLink });
+      }
+
+      const fileId = Number(fileIdParam);
       if (Number.isNaN(fileId)) {
         return res.status(400).json({ error: "ID de archivo inválido" });
       }
@@ -375,7 +392,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       if (!file) {
         return res.status(404).json({ error: "Archivo no encontrado" });
       }
-      if (file.uploadedBy !== req.user.id) {
+
+      const folder = await storage.getFolderById(file.folderId);
+      if (!folder || (folder.userId !== req.user.id && !req.user.isAdmin)) {
         return res.status(403).json({ error: "No autorizado" });
       }
 
@@ -388,6 +407,110 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/files/:id/version", requireAuth, upload.single("file"), async (req: any, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+      const fileIdParam = req.params.id;
+      const isMicrosoft = Number.isNaN(Number(fileIdParam));
+
+      if (isMicrosoft) {
+        if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
+
+        const updatedFile = await updateMicrosoftItemContent(
+          req.user.accessToken,
+          req.user.refreshToken,
+          req.user.id,
+          fileIdParam,
+          req.file.buffer,
+          req.file.mimetype
+        );
+
+        return res.status(200).json(updatedFile);
+      }
+
+      const fileId = Number(fileIdParam);
+      if (Number.isNaN(fileId)) {
+        return res.status(400).json({ error: "ID de archivo inválido" });
+      }
+
+      const file = await storage.getFileById(fileId);
+      if (!file) {
+        return res.status(404).json({ error: "Archivo no encontrado" });
+      }
+      if (file.uploadedBy !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ error: "No autorizado" });
+      }
+
+      const newFilename = `${Date.now()}-${req.file.originalname}`;
+      const destinationPath = path.join(uploadsDir, newFilename);
+      await fs.promises.writeFile(destinationPath, req.file.buffer);
+
+      const oldPath = path.join(uploadsDir, file.filename);
+      if (file.filename !== newFilename && fs.existsSync(oldPath)) {
+        await fs.promises.unlink(oldPath).catch(() => null);
+      }
+
+      const [updatedFile] = await db
+        .update(files)
+        .set({
+          filename: newFilename,
+          mimeType: req.file.mimetype,
+          size: req.file.size,
+          uploadedAt: new Date(),
+          version: (file.version || 1) + 1,
+        })
+        .where(eq(files.id, fileId))
+        .returning();
+
+      res.status(200).json(updatedFile || {});
+    } catch (e: any) {
+      console.error("❌ Error replacing file:", e.message);
+      res.status(500).json({ error: e.message || "Error al reemplazar el archivo" });
+    }
+  });
+
+  app.delete("/api/files/:id", requireAuth, async (req: any, res) => {
+    try {
+      const fileIdParam = req.params.id;
+      const isMicrosoft = Number.isNaN(Number(fileIdParam));
+
+      if (isMicrosoft) {
+        if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
+        await deleteMicrosoftItem(req.user.accessToken, req.user.refreshToken, req.user.id, fileIdParam);
+        return res.status(204).end();
+      }
+
+      const fileId = Number(fileIdParam);
+      if (Number.isNaN(fileId)) {
+        return res.status(400).json({ error: "ID de archivo inválido" });
+      }
+
+      const file = await storage.getFileById(fileId);
+      if (!file) {
+        return res.status(404).json({ error: "Archivo no encontrado" });
+      }
+      if (file.uploadedBy !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ error: "No autorizado" });
+      }
+
+      await db
+        .update(files)
+        .set({ isDeleted: true, deletedAt: new Date(), deletedBy: req.user.id })
+        .where(eq(files.id, fileId));
+
+      const filePath = path.join(uploadsDir, file.filename);
+      if (fs.existsSync(filePath)) {
+        await fs.promises.unlink(filePath).catch(() => null);
+      }
+
+      res.status(204).end();
+    } catch (e: any) {
+      console.error("❌ Error deleting file:", e.message);
+      res.status(500).json({ error: e.message || "Error al eliminar el archivo" });
     }
   });
 

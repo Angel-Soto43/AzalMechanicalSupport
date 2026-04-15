@@ -80,6 +80,7 @@ export default function FolderPage() {
   const [deleteFolderDialog, setDeleteFolderDialog] = useState<{ open: boolean; folder: any }>({ open: false, folder: null });
   const [shareDialog, setShareDialog] = useState<{ open: boolean; file?: any; folder?: any }>({ open: false });
   const [replaceFileTarget, setReplaceFileTarget] = useState<any | null>(null);
+  const replaceFileTargetRef = useRef<any>(null);
   const [renameFolderDialog, setRenameFolderDialog] = useState<{ open: boolean; folder: any }>({ open: false, folder: null });
   const [renameLoading, setRenameLoading] = useState(false);
 
@@ -656,6 +657,7 @@ export default function FolderPage() {
                           <DropdownMenuItem
                             onClick={() => {
                               setReplaceFileTarget(file);
+                              replaceFileTargetRef.current = file;
                               setTimeout(() => replaceInputRef.current?.click(), 100);
                             }}
                           >
@@ -738,9 +740,11 @@ export default function FolderPage() {
               hidden
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f && replaceFileTarget) {
+                const currentTarget = replaceFileTargetRef.current ?? replaceFileTarget;
+                if (f && currentTarget) {
                   handleReplaceFile(f);
                   setReplaceFileTarget(null);
+                  replaceFileTargetRef.current = null;
                 }
                 e.target.value = "";
               }}
