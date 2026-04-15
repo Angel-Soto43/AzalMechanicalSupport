@@ -2,6 +2,9 @@ import { Express } from "express";
 import { createServer, type Server } from "http";
 import path from "path";
 import fs from "fs";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
+import archiver from "archiver";
 import multer from "multer";
 import { storage } from "./storage";
 import { insertLicitacionSchema } from "@shared/schema";
@@ -9,11 +12,17 @@ import "isomorphic-fetch";
 import { getMicrosoftFiles, 
         getMicrosoftQuota, 
         getMicrosoftFolders, 
-        getMicrosoftRecentFiles, 
         createMicrosoftFolder, 
         getMicrosoftFolderContent,
         updateMicrosoftItemDescription,
-        uploadFileToGraph } from "./microsoft-graph";
+        uploadFileToGraph,
+        renameMicrosoftItem,
+        deleteMicrosoftItem,
+        createMicrosoftShareLink,
+        getMicrosoftFolderChildren,
+        getMicrosoftItemDownloadUrl,
+        getMicrosoftItemMetadata,
+        getMicrosoftItemContentStream } from "./microsoft-graph";
 import { requireAuth } from "./auth";
 import { getMicrosoftFilesPaginated } from "./microsoft-graph";
 
@@ -51,27 +60,45 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // ☁️ RUTA EXCLUSIVA DE ONEDRIVE
   app.post("/api/folders", requireAuth, async (req: any, res) => {
     try {
-      const { name, parentId } = req.body; 
+      const { name, parentId } = req.body;
+      const trimmedName = typeof name === "string" ? name.trim() : "";
 
-      if (!name) return res.status(400).json({ error: "El nombre es obligatorio" });
-      if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
+      if (!trimmedName) return res.status(400).json({ error: "El nombre es obligatorio" });
 
-      const folderCloud = await createMicrosoftFolder(
-        req.user.accessToken,
-        req.user.refreshToken,
-        req.user.id,
-        name,
-        parentId 
-      );
+      const isMicrosoftParent = parentId != null && Number.isNaN(Number(parentId));
+      if (isMicrosoftParent) {
+        if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
 
-      await storage.createAuditLog({
+        const folderCloud = await createMicrosoftFolder(
+          req.user.accessToken,
+          req.user.refreshToken,
+          req.user.id,
+          trimmedName,
+          parentId
+        );
+
+        await storage.createAuditLog({
+          correo: req.user.correo || req.user.email || null,
+          action: "Crear carpeta nube",
+          details: `Se creó la carpeta "${trimmedName}" en Microsoft OneDrive`
+        });
+
+        return res.status(201).json(folderCloud);
+      }
+
+      const folder = await storage.createFolder({
+        name: trimmedName,
+        parentId: parentId ? Number(parentId) : null,
         userId: req.user.id,
-        action: "Crear carpeta nube",
-        details: `Se creó la carpeta "${name}" en Microsoft OneDrive`
       });
 
-      res.status(201).json(folderCloud);
+      await storage.createAuditLog({
+        correo: req.user.correo || req.user.email || null,
+        action: "Crear carpeta local",
+        details: `Se creó la carpeta "${trimmedName}" en el sistema local`
+      });
 
+      res.status(201).json(folder);
     } catch (e: any) {
       console.error("❌ Error en Microsoft Graph:", e.message);
       // 🛡️ CORRECCIÓN: Pasamos el mensaje real para que aparezca en pantalla si falla
@@ -81,21 +108,36 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
   app.patch("/api/folders/:id", requireAuth, async (req: any, res) => {
     try {
-      const folderId = Number(req.params.id);
-      const name = req.body?.name;
-      if (!name || typeof name !== "string" || !name.trim()) {
-        return res.status(400).json({ error: "El nombre de la carpeta es obligatorio" });
+      const folderIdParam = req.params.id;
+      const isMicrosoft = Number.isNaN(Number(folderIdParam));
+      const name = (req.body.name || "").trim();
+      if (!name) return res.status(400).json({ error: "El nombre es obligatorio" });
+
+      if (isMicrosoft) {
+        if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
+        try {
+          const updated = await renameMicrosoftItem(
+            req.user.accessToken,
+            req.user.refreshToken,
+            req.user.id,
+            folderIdParam,
+            name
+          );
+          return res.status(200).json(updated);
+        } catch (cloudErr: any) {
+          console.error("❌ Error renombrar carpeta de Microsoft:", cloudErr.message || cloudErr);
+          return res.status(500).json({ error: cloudErr.message || "Error al renombrar carpeta de Microsoft" });
+        }
       }
+
+      const folderId = Number(folderIdParam);
+      if (Number.isNaN(folderId)) return res.status(400).json({ error: "ID de carpeta inválido" });
 
       const folder = await storage.getFolderById(folderId);
-      if (!folder) {
-        return res.status(404).json({ error: "Carpeta no encontrada" });
-      }
-      if (folder.userId !== req.user.id) {
-        return res.status(403).json({ error: "No autorizado" });
-      }
+      if (!folder) return res.status(404).json({ error: "Carpeta no encontrada" });
+      if (folder.userId !== req.user.id) return res.status(403).json({ error: "No autorizado" });
 
-      const updatedFolder = await storage.updateFolderName(folderId, name.trim());
+      const updatedFolder = await storage.updateFolderName(folderId, name);
       res.status(200).json(updatedFolder);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -104,18 +146,36 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
   app.delete("/api/folders/:id", requireAuth, async (req: any, res) => {
     try {
-      const folderId = Number(req.params.id);
+      const folderIdParam = req.params.id;
+      const isMicrosoft = Number.isNaN(Number(folderIdParam));
+
+      if (isMicrosoft) {
+        if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
+        try {
+          await deleteMicrosoftItem(
+            req.user.accessToken,
+            req.user.refreshToken,
+            req.user.id,
+            folderIdParam
+          );
+          return res.status(204).end();
+        } catch (cloudErr: any) {
+          console.error("❌ Error eliminar carpeta de Microsoft:", cloudErr.message || cloudErr);
+          return res.status(500).json({ error: cloudErr.message || "Error al eliminar carpeta de Microsoft" });
+        }
+      }
+
+      const folderId = Number(folderIdParam);
+      if (Number.isNaN(folderId)) return res.status(400).json({ error: "ID de carpeta inválido" });
+
       const folder = await storage.getFolderById(folderId);
-      if (!folder) {
-        return res.status(404).json({ error: "Carpeta no encontrada" });
-      }
-      if (folder.userId !== req.user.id) {
-        return res.status(403).json({ error: "No autorizado" });
-      }
+      if (!folder) return res.status(404).json({ error: "Carpeta no encontrada" });
+      if (folder.userId !== req.user.id) return res.status(403).json({ error: "No autorizado" });
 
       await storage.deleteFolder(folderId);
       res.status(204).end();
     } catch (e: any) {
+      console.error("❌ Error Eliminar:", e.message);
       res.status(500).json({ error: e.message });
     }
   });
@@ -133,6 +193,199 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const files = await storage.getFilesByFolder(folderId);
 
       res.json({ folder, path: pathFolders, folders: subfolders, files });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get("/api/folders/:id/download", requireAuth, async (req: any, res) => {
+    try {
+      const folderIdParam = req.params.id;
+      const isMicrosoft = Number.isNaN(Number(folderIdParam));
+
+      if (isMicrosoft) {
+        if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
+
+        const folderMetadata = await getMicrosoftItemMetadata(
+          req.user.accessToken,
+          req.user.refreshToken,
+          req.user.id,
+          folderIdParam
+        );
+        const filename = `${folderMetadata.name || "carpeta"}.zip`;
+        res.setHeader("Content-Type", "application/zip");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+        const archive = archiver("zip", { zlib: { level: 9 } });
+        archive.on("error", (err) => {
+          throw err;
+        });
+        archive.pipe(res);
+
+        const addMicrosoftFolderToArchive = async (currentFolderId: string, currentPath: string) => {
+          const children = await getMicrosoftFolderChildren(
+            req.user.accessToken,
+            req.user.refreshToken,
+            req.user.id,
+            currentFolderId
+          );
+
+          for (const child of children) {
+            if (child.folder) {
+              await addMicrosoftFolderToArchive(child.id, `${currentPath}${child.name}/`);
+              continue;
+            }
+
+            if (child.file) {
+              let downloadUrl = child['@microsoft.graph.downloadUrl'];
+              if (!downloadUrl) {
+                downloadUrl = await getMicrosoftItemDownloadUrl(
+                  req.user.accessToken,
+                  req.user.refreshToken,
+                  req.user.id,
+                  child.id
+                );
+              }
+
+              const fileResponse = await fetch(downloadUrl);
+              if (!fileResponse.ok) {
+                const errorText = await fileResponse.text();
+                throw new Error(`Error al descargar archivo de Graph: ${errorText}`);
+              }
+              if (!fileResponse.body) {
+                throw new Error("No se recibió stream del archivo de Graph");
+              }
+
+              archive.append(Readable.fromWeb(fileResponse.body as any), { name: `${currentPath}${child.name}` });
+            }
+          }
+        };
+
+        await addMicrosoftFolderToArchive(folderIdParam, `${folderMetadata.name}/`);
+        await archive.finalize();
+        return;
+      }
+
+      const folderId = Number(folderIdParam);
+      if (Number.isNaN(folderId)) {
+        return res.status(400).json({ error: "ID de carpeta inválido" });
+      }
+
+      const folder = await storage.getFolderById(folderId);
+      if (!folder) {
+        return res.status(404).json({ error: "Carpeta no encontrada" });
+      }
+      if (folder.userId !== req.user.id) {
+        return res.status(403).json({ error: "No autorizado" });
+      }
+
+      const archive = archiver("zip", { zlib: { level: 9 } });
+      const filename = `${folder.name || "carpeta"}.zip`;
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+      archive.on("error", (err) => {
+        throw err;
+      });
+
+      archive.pipe(res);
+
+      const addFolderToArchive = async (currentFolderId: number, currentPath: string) => {
+        const currentFolder = await storage.getFolderById(currentFolderId);
+        if (!currentFolder) return;
+
+        const files = await storage.getFilesByFolder(currentFolderId);
+        for (const file of files) {
+          const filePath = path.join(uploadsDir, file.filename);
+          if (fs.existsSync(filePath)) {
+            archive.file(filePath, { name: `${currentPath}${file.originalName}` });
+          }
+        }
+
+        const subfolders = await storage.getSubfolders(currentFolderId);
+        for (const subfolder of subfolders) {
+          await addFolderToArchive(subfolder.id, `${currentPath}${subfolder.name}/`);
+        }
+      };
+
+      await addFolderToArchive(folderId, `${folder.name}/`);
+      await archive.finalize();
+    } catch (e: any) {
+      console.error("❌ Error al generar ZIP:", e.message);
+      if (!res.headersSent) {
+        res.status(500).json({ error: e.message });
+      }
+    }
+  });
+
+  app.get("/api/folders/:id/share", requireAuth, async (req: any, res) => {
+    try {
+      const folderIdParam = req.params.id;
+      const isMicrosoft = Number.isNaN(Number(folderIdParam));
+
+      if (isMicrosoft) {
+        if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
+        try {
+          const shareLink = await createMicrosoftShareLink(
+            req.user.accessToken,
+            req.user.refreshToken,
+            req.user.id,
+            folderIdParam
+          );
+          return res.json({ shareLink });
+        } catch (cloudErr: any) {
+          console.error("❌ Error crear enlace de Microsoft:", cloudErr.message || cloudErr);
+          return res.status(500).json({ error: cloudErr.message || "Error al crear el enlace de Microsoft" });
+        }
+      }
+
+      const folderId = Number(folderIdParam);
+      if (Number.isNaN(folderId)) {
+        return res.status(400).json({ error: "ID de carpeta inválido" });
+      }
+
+      const folder = await storage.getFolderById(folderId);
+      if (!folder) {
+        return res.status(404).json({ error: "Carpeta no encontrada" });
+      }
+      if (folder.userId !== req.user.id) {
+        return res.status(403).json({ error: "No autorizado" });
+      }
+
+      const origin = req.get("x-forwarded-proto")
+        ? `${req.get("x-forwarded-proto")}://${req.get("host")}`
+        : `${req.protocol}://${req.get("host")}`;
+
+      res.json({
+        shareLink: `${origin}/api/folders/${folderId}/download`,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get("/api/files/:id/share", requireAuth, async (req: any, res) => {
+    try {
+      const fileId = Number(req.params.id);
+      if (Number.isNaN(fileId)) {
+        return res.status(400).json({ error: "ID de archivo inválido" });
+      }
+
+      const file = await storage.getFileById(fileId);
+      if (!file) {
+        return res.status(404).json({ error: "Archivo no encontrado" });
+      }
+      if (file.uploadedBy !== req.user.id) {
+        return res.status(403).json({ error: "No autorizado" });
+      }
+
+      const origin = req.get("x-forwarded-proto")
+        ? `${req.get("x-forwarded-proto")}://${req.get("host")}`
+        : `${req.protocol}://${req.get("host")}`;
+
+      res.json({
+        shareLink: `${origin}/api/files/${fileId}/download`,
+      });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
@@ -177,9 +430,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     );
 
     await storage.createAuditLog({
-      userId: user.id,
-      action: "Subida nube",
-      details: `Archivo subido: ${finalFileName}`
+        correo: user.correo || null,
+        action: "Subida nube",
+        details: `Archivo subido: ${finalFileName}`
     });
 
     res.json(result);
@@ -191,7 +444,40 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
   app.get("/api/files/:id/download", requireAuth, async (req: any, res) => {
     try {
-      const fileId = Number(req.params.id);
+      const fileIdParam = req.params.id;
+      const isMicrosoft = Number.isNaN(Number(fileIdParam));
+
+      if (isMicrosoft) {
+        if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
+
+        const response = await getMicrosoftItemContentStream(
+          req.user.accessToken,
+          req.user.refreshToken,
+          req.user.id,
+          fileIdParam
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          return res.status(response.status).json({ error: errorText });
+        }
+
+        if (!response.body) {
+          return res.status(500).json({ error: "No se recibió contenido de Microsoft" });
+        }
+
+        const contentType = response.headers.get("content-type") || "application/octet-stream";
+        const contentDisposition = response.headers.get("content-disposition");
+        res.setHeader("Content-Type", contentType);
+        if (contentDisposition) {
+          res.setHeader("Content-Disposition", contentDisposition);
+        }
+
+        await pipeline(response.body, res);
+        return;
+      }
+
+      const fileId = Number(fileIdParam);
       const file = await storage.getFileById(fileId);
       if (!file) {
         return res.status(404).json({ error: "Archivo no encontrado" });
@@ -306,6 +592,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const accessToken = user?.accessToken;
       const refreshToken = user?.refreshToken;
       const folderName = req.body?.name;
+      const parentId = req.body?.parentId;
 
       if (!accessToken || !refreshToken) {
         console.error('❌ No access token or refresh token para usuario:', user?.oid);
@@ -316,7 +603,13 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ error: "El nombre de la carpeta es obligatorio" });
       }
 
-      const createdFolder = await createMicrosoftFolder(accessToken, refreshToken, user.id, folderName.trim());
+      const createdFolder = await createMicrosoftFolder(
+        accessToken,
+        refreshToken,
+        user.id,
+        folderName.trim(),
+        parentId
+      );
       console.log('✅ Carpeta creada en Microsoft:', createdFolder);
       res.status(201).json(createdFolder);
     } catch (e: any) {

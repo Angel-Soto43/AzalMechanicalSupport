@@ -469,29 +469,7 @@ export default function SharedFilesPage() {
         onOpenChange={(open) => !open && setShareFile(null)}
         title={shareFile?.originalName || "Archivo"}
         isFile={!!shareFile}
-        onDownloadFile={
-          shareFile
-            ? () => {
-                const a = document.createElement("a");
-                a.href = `/api/files/${shareFile.id}/download`;
-                a.download = shareFile.originalName;
-                a.click();
-
-                // Log share action
-                fetch("/api/share/log", {
-                  method: "POST",
-                  credentials: "include",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    type: "file",
-                    resourceType: "file",
-                    resourceId: shareFile.id,
-                    resourceName: shareFile.originalName,
-                  }),
-                }).catch(() => {});
-              }
-            : undefined
-        }
+        itemId={shareFile?.id}
       />
     </div>
   );

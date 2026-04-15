@@ -54,7 +54,6 @@ import { useToast } from "@/hooks/use-toast";
 import { PromptDialog } from "@/components/prompt-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ShareDialog } from "@/components/share-dialog";
-import JSZip from "jszip";
 
 export default function FolderPage() {
   const { toast } = useToast();
@@ -126,16 +125,16 @@ export default function FolderPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ 
-        name, 
-        parentId: rawFolderId // 👈 CLAVE: Usamos rawFolderId, no folderId
+      body: JSON.stringify({
+        name,
+        parentId: rawFolderId,
       }),
     });
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({ error: "Error al crear carpeta" }));
       throw new Error(errorData.error || "Error al crear carpeta");
     }
-    loadFolder();
+    await loadFolder();
     queryClient.invalidateQueries({ queryKey: ["/api/folders/root"] });
     toast({ title: "Carpeta creada", description: `"${name}" se creó correctamente` });
   };
@@ -277,49 +276,40 @@ export default function FolderPage() {
   /* ---------------- delete folder (admin only) ---------------- */
 
   const handleDeleteFolderConfirm = async () => {
-    const folder = deleteFolderDialog.folder;
-    if (!folder || !user?.isAdmin) return;
-    try {
-      const res = await fetch(`/api/folders/${folder.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(await res.text());
-      
-      setDeleteFolderDialog({ open: false, folder: null });
-      queryClient.invalidateQueries({ queryKey: ["/api/folders/root"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-      toast({ title: "Carpeta eliminada", description: `"${folder.name}" y su contenido fueron eliminados` });
-      // If the deleted folder is the current folder, navigate to parent or root
-      if (data && folder.id === data.folder.id) {
-        if (data.path && data.path.length > 1) {
-          const parentId = data.path[data.path.length - 2].id;
-          // Verify parent exists before navigating
-          try {
-            const check = await fetch(`/api/folders/${parentId}/content`, { credentials: "include" });
-            if (check.ok) {
-              setLocation(`/folders/${parentId}`);
-            } else {
-              setLocation("/folders");
-            }
-          } catch {
-            setLocation("/folders");
-          }
-        } else {
-          setLocation("/folders");
-        }
-      } else {
-        // Deleted a subfolder or another folder: just refresh current view
-        await loadFolder();
-      }
-    } catch (err: any) {
-      toast({
-        title: "Error al eliminar",
-        description: (err as Error)?.message || "Error",
-        variant: "destructive",
-      });
+  const folder = deleteFolderDialog.folder;
+  if (!folder || !user?.isAdmin) return;
+  try {
+    // 🚀 El backend ahora ya sabe borrar en OneDrive si recibe un ID de texto
+    const res = await fetch(`/api/folders/${folder.id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    
+    if (!res.ok) {
+      const errData = await res.json();
+      throw new Error(errData.error || "Error al eliminar");
     }
-  };
+    
+    setDeleteFolderDialog({ open: false, folder: null });
+    queryClient.invalidateQueries({ queryKey: ["/api/folders/root"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+    toast({ title: "Carpeta eliminada", description: `"${folder.name}" fue eliminada` });
+    
+    // Si borramos la carpeta donde estamos parados, volvemos atrás
+    if (data && folder.id === data.folder.id) {
+      setLocation("/folders");
+    } else {
+      await loadFolder();
+    }
+  } catch (err: any) {
+    toast({
+      title: "Error al eliminar",
+      description: err.message,
+      variant: "destructive",
+    });
+  }
+};
+  
 
   /* ---------------- rename folder (admin only) ---------------- */
 
@@ -351,60 +341,30 @@ export default function FolderPage() {
     }
   };
 
-  /* ---------------- recursive folder download ---------------- */
-
-  const addFolderToZipRecursive = async (
-    zip: JSZip,
-    targetFolderId: number,
-    folderName: string,
-    basePath: string
-  ): Promise<number> => {
-    const contentRes = await fetch(`/api/folders/${targetFolderId}/content`, {
-      credentials: "include",
-    });
-    if (!contentRes.ok) throw new Error("Error al obtener contenido");
-    const content = await contentRes.json();
-    const prefix = basePath ? `${basePath}${folderName}/` : `${folderName}/`;
-    let count = 0;
-
-    const allFiles = content.files ?? [];
-    const latest = allFiles.filter(
-      (f: any) => !allFiles.some((o: any) => o.previousVersionId === f.id)
-    );
-    for (const file of latest) {
-      const res = await fetch(`/api/files/${file.id}/download`, { credentials: "include" });
-      if (!res.ok) continue;
-      const blob = await res.blob();
-      zip.file(prefix + file.originalName, blob);
-      count++;
-    }
-
-    for (const sub of content.folders ?? []) {
-      count += await addFolderToZipRecursive(zip, sub.id, sub.name, prefix);
-    }
-    return count;
-  };
-
   const downloadFolderAsZip = async (targetFolder: any) => {
     try {
-      const zip = new JSZip();
-      const count = await addFolderToZipRecursive(zip, targetFolder.id, targetFolder.name, "");
-      if (count === 0) {
-        toast({
-          title: "Sin archivos",
-          description: "La carpeta no tiene archivos para descargar.",
-          variant: "destructive",
-        });
-        return;
+      const res = await fetch(`/api/folders/${targetFolder.id}/download`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.error || "No se pudo descargar la carpeta");
       }
-      const zipBlob = await zip.generateAsync({ type: "blob" });
-      const url = URL.createObjectURL(zipBlob);
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `${targetFolder.name || "carpeta"}.zip`;
+      document.body.appendChild(a);
       a.click();
+      a.remove();
       URL.revokeObjectURL(url);
-      toast({ title: "Descarga completada", description: `Se descargaron ${count} archivo(s) con estructura intacta` });
+
+      toast({
+        title: "Descarga iniciada",
+        description: `Se descargará la carpeta "${targetFolder.name}" como ZIP.`,
+      });
     } catch (err: any) {
       toast({
         title: "Error al descargar",
@@ -833,64 +793,74 @@ export default function FolderPage() {
 
       <PromptDialog
         open={newFolderDialogOpen}
-        onOpenChange={setNewFolderDialogOpen}
+        onOpenChange={(open) => setNewFolderDialogOpen(open)}
         title="Nueva carpeta"
         description="Introduce el nombre de la nueva carpeta"
         placeholder="Nombre de la carpeta"
         submitLabel="Crear"
-        onSubmit={createFolderWithName}
+        onSubmit={async (name: string) => {
+          await createFolderWithName(name);
+          setNewFolderDialogOpen(false);
+        }}
       />
 
+      <PromptDialog
+        open={renameFolderDialog.open}
+        onOpenChange={(open) => setRenameFolderDialog({ open, folder: open ? renameFolderDialog.folder : null })}
+        title="Renombrar carpeta"
+        description="Introduce el nuevo nombre para la carpeta"
+        placeholder="Nuevo nombre"
+        defaultValue={renameFolderDialog.folder?.name || ""}
+        submitLabel="Renombrar"
+  onSubmit={async (newName: string) => {
+    const folder = renameFolderDialog.folder;
+    if (!folder || !user?.isAdmin) return;
+    setRenameLoading(true);
+    try {
+      // 🚀 DETECCIÓN: Si el ID no es un número, usamos la API de Microsoft
+      const isMs = Number.isNaN(Number(folder.id));
+      const url = isMs ? `/api/folders/${folder.id}` : `/api/folders/${folder.id}`; 
+      // Nota: Aunque la URL sea igual, el backend ahora manejará el String ID correctamente
+
+      const res = await fetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: newName.trim() }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Error al renombrar");
+      }
+      
+      await loadFolder();
+      queryClient.invalidateQueries({ queryKey: ["/api/folders/root"] });
+      toast({ title: "Carpeta renombrada", description: `"${folder.name}" se renombró a "${newName}"` });
+      setRenameFolderDialog({ open: false, folder: null });
+    } catch (err: any) {
+      toast({
+        title: "Error al renombrar",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setRenameLoading(false);
+    }
+  }}
+/>
+
+
       <ShareDialog
-        open={shareDialog.open}
-        onOpenChange={(open) => !open && setShareDialog({ open: false })}
-        title={shareDialog.file?.originalName ?? shareDialog.folder?.name ?? ""}
-        isFile={!!shareDialog.file}
-        isFolder={!!shareDialog.folder}
-        onDownloadFile={
-          shareDialog.file
-            ? () => {
-                const a = document.createElement("a");
-                a.href = `/api/files/${shareDialog.file.id}/download`;
-                a.download = shareDialog.file.originalName;
-                a.click();
-                
-                // Log share action
-                fetch("/api/share/log", {
-                  method: "POST",
-                  credentials: "include",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    type: "file",
-                    resourceType: "file",
-                    resourceId: shareDialog.file.id,
-                    resourceName: shareDialog.file.originalName,
-                  }),
-                }).catch(() => {});
-              }
-            : undefined
-        }
-        onDownloadFolder={
-          shareDialog.folder
-            ? () => {
-                downloadFolderAsZip(shareDialog.folder);
-                
-                // Log share action
-                fetch("/api/share/log", {
-                  method: "POST",
-                  credentials: "include",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    type: "folder",
-                    resourceType: "folder",
-                    resourceId: shareDialog.folder.id,
-                    resourceName: shareDialog.folder.name,
-                  }),
-                }).catch(() => {});
-              }
-            : undefined
-        }
-      />
+  
+  open={shareDialog.open}
+  onOpenChange={(open) => !open && setShareDialog({ open: false })}
+  title={shareDialog.file?.originalName ?? shareDialog.folder?.name ?? ""}
+  isFile={!!shareDialog.file}
+  isFolder={!!shareDialog.folder}
+  itemId={shareDialog.file?.id ?? shareDialog.folder?.id} 
+/>
+    
 
       <ConfirmDialog
         open={deleteFileDialog.open}

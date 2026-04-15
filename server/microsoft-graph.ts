@@ -35,13 +35,22 @@ async function fetchWithTokenRefresh(
 ) {
   let currentToken = accessToken;
   const request = async (token: string): Promise<Response> => {
+    let headers: HeadersInit = {
+      Authorization: `Bearer ${token}`,
+      ...(init.headers || {}),
+    };
+
+    if (init.body != null && !(init.body instanceof FormData)) {
+      const headersMap = headers as Record<string, string>;
+      if (!headersMap["Content-Type"]) {
+        headersMap["Content-Type"] = 'application/json';
+      }
+      headers = headersMap;
+    }
+
     return await fetch(url, {
       ...init,
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        ...(init.headers || {}),
-      },
+      headers,
     });
   };
 
@@ -84,7 +93,7 @@ export async function uploadFileToGraph(
         'Authorization': `Bearer ${currentToken}`,
         'Content-Type': mimeType,
       },
-      body: fileBuffer,
+      body: fileBuffer as unknown as BodyInit,
     });
 
     if (response.status === 401 && refreshToken) {
@@ -172,6 +181,88 @@ export async function createMicrosoftFolder(
   
   const data = await response.json();
   return { id: data.id, name: data.name, source: 'microsoft', webUrl: data.webUrl };
+}
+
+export async function getMicrosoftFolderChildren(
+  accessToken: string,
+  refreshToken: string,
+  userId: number,
+  folderId: string
+) {
+  let items: any[] = [];
+  let nextUrl: string | null = `https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(folderId)}/children?$select=id,name,folder,file,@microsoft.graph.downloadUrl&$top=200`;
+
+  while (nextUrl) {
+    const { response } = await fetchWithTokenRefresh(nextUrl, accessToken, refreshToken, userId);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Error Graph (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json();
+    items = items.concat(data.value || []);
+    nextUrl = data['@odata.nextLink'] || null;
+  }
+
+  return items;
+}
+
+export async function getMicrosoftItemDownloadUrl(
+  accessToken: string,
+  refreshToken: string,
+  userId: number,
+  itemId: string
+) {
+  const { response } = await fetchWithTokenRefresh(
+    `https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(itemId)}?$select=@microsoft.graph.downloadUrl`,
+    accessToken,
+    refreshToken,
+    userId
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Error Graph (${response.status}): ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data['@microsoft.graph.downloadUrl'];
+}
+
+export async function getMicrosoftItemMetadata(
+  accessToken: string,
+  refreshToken: string,
+  userId: number,
+  itemId: string
+) {
+  const { response } = await fetchWithTokenRefresh(
+    `https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(itemId)}`,
+    accessToken,
+    refreshToken,
+    userId,
+    { method: 'GET' }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Error Graph (${response.status}): ${errorText}`);
+  }
+
+  return await response.json();
+}
+
+export async function getMicrosoftItemContentStream(
+  accessToken: string,
+  refreshToken: string,
+  userId: number,
+  itemId: string
+) {
+  const url = `https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(itemId)}/content`;
+  const { response } = await fetchWithTokenRefresh(url, accessToken, refreshToken, userId, {
+    method: 'GET',
+  });
+
+  return response;
 }
 
 export async function getMicrosoftQuota(accessToken: string, refreshToken?: string, userId?: number) {
@@ -275,4 +366,92 @@ export async function updateMicrosoftItemDescription(
     await new Promise(res => setTimeout(res, 2000));
   }
   console.error(`❌ Error Graph guardando metadatos después de ${retries} intentos.`);
+}
+
+export async function renameMicrosoftItem(
+  accessToken: string,
+  refreshToken: string,
+  userId: number,
+  itemId: string,
+  name: string
+) {
+  const { response } = await fetchWithTokenRefresh(
+    `https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(itemId)}`,
+    accessToken,
+    refreshToken,
+    userId,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Error Graph (${response.status}): ${errorText}`);
+  }
+
+  return await response.json();
+}
+
+export async function deleteMicrosoftItem(
+  accessToken: string,
+  refreshToken: string,
+  userId: number,
+  itemId: string
+) {
+  const { response } = await fetchWithTokenRefresh(
+    `https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(itemId)}`,
+    accessToken,
+    refreshToken,
+    userId,
+    {
+      method: 'DELETE',
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Error Graph (${response.status}): ${errorText}`);
+  }
+}
+
+export async function createMicrosoftShareLink(
+  accessToken: string,
+  refreshToken: string,
+  userId: number,
+  itemId: string
+) {
+  const { response } = await fetchWithTokenRefresh(
+    `https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(itemId)}/createLink`,
+    accessToken,
+    refreshToken,
+    userId,
+    {
+      method: 'POST',
+      body: JSON.stringify({ type: 'view', scope: 'anonymous' }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Error Graph (${response.status}): ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data?.link?.webUrl || data?.webUrl;
+}
+
+export async function getMicrosoftFolderZipStream(
+  accessToken: string,
+  refreshToken: string,
+  userId: number,
+  itemId: string
+) {
+  const url = `https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(itemId)}/content?format=zip`;
+  const { response } = await fetchWithTokenRefresh(url, accessToken, refreshToken, userId, {
+    method: 'GET',
+  });
+
+  return response;
 }
