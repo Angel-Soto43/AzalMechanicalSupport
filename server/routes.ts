@@ -68,8 +68,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
       if (!trimmedName) return res.status(400).json({ error: "El nombre es obligatorio" });
 
-      const isMicrosoftParent = parentId != null && Number.isNaN(Number(parentId));
-      if (isMicrosoftParent) {
+      const shouldUseMicrosoft = parentId === undefined || parentId === null || parentId === "" || Number.isNaN(Number(parentId));
+      if (shouldUseMicrosoft) {
         if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
 
         const folderCloud = await createMicrosoftFolder(
@@ -77,7 +77,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           req.user.refreshToken,
           req.user.id,
           trimmedName,
-          parentId
+          parentId && parentId !== "" ? parentId : undefined
         );
 
         await storage.createAuditLog({
@@ -486,6 +486,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       // 2. 🚀 Auditoría: Guardamos el registro
       await storage.createAuditLog({
         userId: req.user.id,
+        correo: req.user.correo || req.user.email || null,
         action: "Eliminar archivo",
         details: `Se eliminó un archivo directamente de OneDrive.`
       });
