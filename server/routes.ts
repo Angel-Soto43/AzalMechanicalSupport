@@ -150,36 +150,30 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.delete("/api/folders/:id", requireAuth, async (req: any, res) => {
     try {
       const folderIdParam = req.params.id;
-      const isMicrosoft = Number.isNaN(Number(folderIdParam));
 
-      if (isMicrosoft) {
-        if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
-        try {
-          await deleteMicrosoftItem(
-            req.user.accessToken,
-            req.user.refreshToken,
-            req.user.id,
-            folderIdParam
-          );
-          return res.status(204).end();
-        } catch (cloudErr: any) {
-          console.error("❌ Error eliminar carpeta de Microsoft:", cloudErr.message || cloudErr);
-          return res.status(500).json({ error: cloudErr.message || "Error al eliminar carpeta de Microsoft" });
-        }
+      if (!req.user.accessToken) {
+        return res.status(401).json({ error: "Sesión de Microsoft expirada" });
       }
 
-      const folderId = Number(folderIdParam);
-      if (Number.isNaN(folderId)) return res.status(400).json({ error: "ID de carpeta inválido" });
+      // 1. Borramos directamente de OneDrive
+      await deleteMicrosoftItem(
+        req.user.accessToken,
+        req.user.refreshToken,
+        req.user.id,
+        folderIdParam
+      );
+      
+      // 2. 🚀 Auditoría: Guardamos el registro
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: "Eliminar carpeta",
+        details: `Se eliminó una carpeta directamente de OneDrive.`
+      });
 
-      const folder = await storage.getFolderById(folderId);
-      if (!folder) return res.status(404).json({ error: "Carpeta no encontrada" });
-      if (folder.userId !== req.user.id) return res.status(403).json({ error: "No autorizado" });
-
-      await storage.deleteFolder(folderId);
-      res.status(204).end();
+      return res.status(204).end();
     } catch (e: any) {
-      console.error("❌ Error Eliminar:", e.message);
-      res.status(500).json({ error: e.message });
+      console.error("❌ Error al eliminar carpeta de Microsoft:", e.message || e);
+      return res.status(500).json({ error: e.message || "Error al eliminar carpeta" });
     }
   });
 
@@ -476,46 +470,33 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.delete("/api/files/:id", requireAuth, async (req: any, res) => {
     try {
       const fileIdParam = req.params.id;
-      const isMicrosoft = Number.isNaN(Number(fileIdParam));
 
-      if (isMicrosoft) {
-        if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
-        await deleteMicrosoftItem(req.user.accessToken, req.user.refreshToken, req.user.id, fileIdParam);
-        return res.status(204).end();
+      if (!req.user.accessToken) {
+        return res.status(401).json({ error: "Sesión de Microsoft expirada" });
       }
 
-      const fileId = Number(fileIdParam);
-      if (Number.isNaN(fileId)) {
-        return res.status(400).json({ error: "ID de archivo inválido" });
-      }
+      // 1. Borramos el archivo directamente de OneDrive
+      await deleteMicrosoftItem(
+        req.user.accessToken,
+        req.user.refreshToken,
+        req.user.id,
+        fileIdParam
+      );
 
-      const file = await storage.getFileById(fileId);
-      if (!file) {
-        return res.status(404).json({ error: "Archivo no encontrado" });
-      }
-      if (file.uploadedBy !== req.user.id && !req.user.isAdmin) {
-        return res.status(403).json({ error: "No autorizado" });
-      }
+      // 2. 🚀 Auditoría: Guardamos el registro
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: "Eliminar archivo",
+        details: `Se eliminó un archivo directamente de OneDrive.`
+      });
 
-      await db
-        .update(files)
-        .set({ isDeleted: true, deletedAt: new Date(), deletedBy: req.user.id })
-        .where(eq(files.id, fileId));
-
-      const filePath = path.join(uploadsDir, file.filename);
-      if (fs.existsSync(filePath)) {
-        await fs.promises.unlink(filePath).catch(() => null);
-      }
-
-      res.status(204).end();
+      return res.status(204).end();
     } catch (e: any) {
-      console.error("❌ Error deleting file:", e.message);
-      res.status(500).json({ error: e.message || "Error al eliminar el archivo" });
+      console.error("❌ Error al eliminar archivo de Microsoft:", e.message || e);
+      return res.status(500).json({ error: e.message || "Error al eliminar archivo" });
     }
   });
 
-  // ☁️ 100% NUBE: SUBIR ARCHIVOS DIRECTO A ONEDRIVE + AUDITORÍA FORZADA
-  // ☁️ 100% NUBE: SUBIR ARCHIVOS DIRECTO A ONEDRIVE + AUDITORÍA FORZADA
   // ☁️ 100% NUBE: SUBIR ARCHIVOS DIRECTO A ONEDRIVE CON METADATOS INFALIBLES
   app.post("/api/files/upload", requireAuth, upload.single("file"), async (req: any, res) => {
   try {

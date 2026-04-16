@@ -194,7 +194,7 @@ export default function AllFilesPage() {
                       <TableCell className="font-medium text-slate-700 dark:text-slate-200">{file.originalName}</TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/30 flex w-fit items-center gap-1.5 font-mono text-[10px]">
-                          <Mail className="h-3 w-3" /> {file.correo || "usuario@azal.com"}
+                          <Mail className="h-3 w-3" /> {file.correo || "Sin correo"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-xs text-slate-500 dark:text-slate-400">

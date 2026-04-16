@@ -309,6 +309,8 @@ export async function getMicrosoftFilesPaginated(accessToken: string, refreshTok
     uploadedAt: item.createdDateTime || new Date().toISOString(),
     mimeType: item.file?.mimeType || 'application/octet-stream',
     source: 'microsoft',
+    // 🚀 NUEVO: Extraemos el correo real del propietario. Si Microsoft lo oculta por privacidad, mostramos su nombre.
+    correo: item.createdBy?.user?.email || item.createdBy?.user?.userPrincipalName || item.createdBy?.user?.displayName || "Sin correo registrado"
   }));
   return { files: transformed, nextLink: data['@odata.nextLink'] || null };
 }
