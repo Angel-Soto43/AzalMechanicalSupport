@@ -14,7 +14,7 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
@@ -163,16 +163,25 @@ export function AppSidebar() {
       <SidebarFooter className="p-4">
         <div className="flex items-center gap-3 mb-3">
           <Avatar className="h-9 w-9 border-2 border-blue-100">
+            {/* 🚀 Mantenemos la foto */}
+            <AvatarImage src={(user as any)?.picture || (user as any)?.photo || (user as any)?.avatarUrl} alt="Foto de perfil" />
+            
+            {/* 🚀 Actualizamos para que las iniciales también usen tu nombre real */}
             <AvatarFallback className="bg-blue-600 text-white text-xs font-bold">
-              {getInitials(user?.displayName || user?.username || "AZ")}
+              {getInitials((user as any)?.fullName || (user as any)?.name || (user as any)?.displayName || (user as any)?.username || "AZ")}
             </AvatarFallback>
           </Avatar>
+          
           <div className="flex flex-col flex-1 min-w-0">
             <span className="text-sm font-semibold truncate">
-              {user?.displayName || user?.username || "Usuario Azal"}
+              {/* 🚀 Añadimos fullName y name, que es donde seguramente está tu nombre "Oscar Rico" */}
+              {(user as any)?.fullName || (user as any)?.name || (user as any)?.displayName || (user as any)?.username || "Usuario"}
             </span>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">
-              {user?.isAdmin ? "Administrador" : "Personal de Soporte"}
+            <span 
+              className="text-[10px] text-muted-foreground truncate" 
+              title={(user as any)?.correo || (user as any)?.email || "Sin correo"}
+            >
+              {(user as any)?.correo || (user as any)?.email || (user as any)?.userPrincipalName || "Sin correo"}
             </span>
           </div>
         </div>

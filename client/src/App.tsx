@@ -23,6 +23,7 @@ import FolderPage from "@/pages/folder-page";
 import FoldersListPage from "@/pages/folders-list-page";
 import TendersPage from "@/pages/TendersPage";
 import AllFilesPage from "@/pages/all-files-page";
+import BackupPage from "@/pages/backup-page";
 //import { ProtectedRoute } from "./lib/protected-route";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
@@ -131,7 +132,13 @@ function Router() {
           </AppLayout>
         </ProtectedRoute>
       </Route>
-
+      <Route path="/backup">
+        <ProtectedRoute>
+          <AppLayout>
+            <BackupPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

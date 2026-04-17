@@ -28,6 +28,7 @@ import { getMicrosoftFiles,
         updateMicrosoftItemContent } from "./microsoft-graph";
 import { requireAuth } from "./auth";
 import { getMicrosoftFilesPaginated } from "./microsoft-graph";
+import { startOfWeek, startOfMonth, startOfYear, subYears, endOfYear } from "date-fns";
 
 const upload = multer({ storage: multer.memoryStorage() });
 const uploadsDir = path.join(process.cwd(), "uploads");
@@ -723,8 +724,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // NUEVO: Obtener archivos combinados (locales + Microsoft)
-  // ☁️ RUTA PAGINADA PARA LA TABLA
   // ☁️ RUTA PAGINADA PARA LA TABLA
   app.get("/api/files-all", requireAuth, async (req: any, res) => {
     try {
@@ -871,6 +870,106 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         usagePercent: 0,
         recentFiles: [],
       });
+    }
+  });
+
+  // 💾 RUTA DE RESPALDOS (BACKUP) DESDE ONEDRIVE (Versión Archiver - Alto Rendimiento)
+  app.get("/api/backup", requireAuth, async (req: any, res) => {
+    try {
+      const { range, start, end } = req.query;
+      const user = req.user;
+
+      if (!user?.accessToken) {
+        return res.status(401).json({ error: "Sesión de Microsoft expirada" });
+      }
+
+      // 1. Calcular las fechas según el botón que presionó el usuario
+      const now = new Date();
+      let startDate: Date;
+      let endDate: Date = now;
+
+      if (range === "week") {
+        startDate = startOfWeek(now, { weekStartsOn: 1 });
+      } else if (range === "month") {
+        startDate = startOfMonth(now);
+      } else if (range === "year") {
+        startDate = startOfYear(now);
+      } else if (range === "lastYear") {
+        startDate = startOfYear(subYears(now, 1));
+        endDate = endOfYear(subYears(now, 1));
+      } else if (range === "custom") {
+        if (!start || !end) return res.status(400).json({ error: "Fechas inválidas" });
+        startDate = new Date(start as string);
+        endDate = new Date(end as string);
+        endDate.setHours(23, 59, 59, 999);
+      } else {
+        return res.status(400).json({ error: "Rango inválido" });
+      }
+
+      console.log(`📦 Iniciando respaldo [${range}]. Desde: ${startDate.toISOString()}`);
+
+      // 2. Obtener TODOS los archivos de Microsoft
+      const allFiles = await getMicrosoftFiles(user.accessToken, user.refreshToken, user.id);
+
+      // 3. Filtrar solo los archivos que caen dentro del rango de fechas
+      const filesToBackup = allFiles.filter((file: any) => {
+        const fileDate = new Date(file.createdDateTime || file.lastModifiedDateTime || 0);
+        return fileDate >= startDate && fileDate <= endDate;
+      });
+
+      if (filesToBackup.length === 0) {
+        return res.status(404).json({ error: "No se encontraron archivos en este rango de fechas" });
+      }
+
+      console.log(`📥 Empaquetando ${filesToBackup.length} archivos...`);
+
+      // 4. Configurar el ZIP usando Archiver (Para manejar GBs sin problemas)
+      const archive = archiver("zip", { zlib: { level: 9 } });
+      const filename = `Respaldo_${range}.zip`;
+      
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+      archive.on("error", (err) => { throw err; });
+      archive.pipe(res);
+
+      // 5. Descargar y transmitir los archivos al ZIP en tiempo real
+      for (const file of filesToBackup) {
+        // Pedimos la URL de descarga directa de Microsoft
+        let downloadUrl = file['@microsoft.graph.downloadUrl'];
+        if (!downloadUrl) {
+          downloadUrl = await getMicrosoftItemDownloadUrl(
+            user.accessToken,
+            user.refreshToken,
+            user.id,
+            file.id
+          );
+        }
+
+        const fileRes = await fetch(downloadUrl);
+        if (fileRes.ok && fileRes.body) {
+          // Inyectamos el archivo directamente al ZIP
+          archive.append(Readable.fromWeb(fileRes.body as any), { name: file.name });
+        }
+      }
+
+      // 6. Cerrar el ZIP y finalizar la descarga
+      await archive.finalize();
+
+      // 🚀 Registrar en auditoría de forma blindada
+      await storage.createAuditLog({
+        userId: user.id,
+        // Buscamos el correo en todos los escondites posibles de la sesión
+        correo: user.correo || user.email || user.username || req.user?.correo || req.user?.email || null,
+        action: "Respaldo generado",
+        details: `Se generó un respaldo de ${filesToBackup.length} archivos (Rango: ${range}).`
+      });
+
+    } catch (error: any) {
+      console.error("❌ Error en backup:", error.message);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Error interno al generar el respaldo" });
+      }
     }
   });
 
