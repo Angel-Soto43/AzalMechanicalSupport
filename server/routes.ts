@@ -600,6 +600,62 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // 👁️ RUTA PARA PREVISUALIZAR ARCHIVOS (PDF e Imágenes dentro del sistema)
+  app.get("/api/files/:id/preview", requireAuth, async (req: any, res) => {
+    try {
+      const fileIdParam = req.params.id;
+      if (!req.user.accessToken) return res.status(401).json({ error: "Sesión expirada" });
+
+      const response = await getMicrosoftItemContentStream(
+        req.user.accessToken,
+        req.user.refreshToken,
+        req.user.id,
+        fileIdParam
+      );
+
+      if (!response.ok) return res.status(response.status).json({ error: await response.text() });
+      if (!response.body) return res.status(500).json({ error: "Sin contenido" });
+
+      const contentType = response.headers.get("content-type") || "application/octet-stream";
+      res.setHeader("Content-Type", contentType);
+      
+      // 🚀 LA MAGIA: 'inline' le dice al navegador que lo dibuje en pantalla, no que lo descargue
+      res.setHeader("Content-Disposition", `inline; filename="preview"`);
+
+      await pipeline(response.body, res);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 🖼️ RUTA PARA GENERAR VISOR INTEGRADO DE OFFICE (PREVIEW NATIVO)
+  app.get("/api/files/:id/embed", requireAuth, async (req: any, res) => {
+    try {
+      const fileIdParam = req.params.id;
+      if (!req.user.accessToken) return res.status(401).json({ error: "Sesión expirada" });
+
+      // Le pedimos a Microsoft un visor temporal para incrustar el archivo
+      const response = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${fileIdParam}/preview`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${req.user.accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      
+      if (data.getUrl) {
+        // Redirigimos el iframe de tu página web hacia el visor seguro de Microsoft
+        return res.redirect(data.getUrl);
+      }
+
+      res.status(404).json({ error: "No se pudo generar la vista previa nativa" });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.get("/api/files", async (_req, res) => {
     try {
       const lista = await storage.getAllFiles();

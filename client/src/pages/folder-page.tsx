@@ -940,7 +940,7 @@ export default function FolderPage() {
               {previewFile?.originalName}
             </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-auto">
+          <div className="flex-1 min-h-0 overflow-auto bg-slate-50 dark:bg-slate-900 rounded-b-lg">
             {previewFile && (() => {
               const mime = previewFile.mimeType || "";
               const previewUrl = `/api/files/${previewFile.id}/preview`;
@@ -951,48 +951,76 @@ export default function FolderPage() {
                 mime.includes("word") || mime.includes("document") ||
                 mime.includes("excel") || mime.includes("spreadsheet") ||
                 mime.includes("powerpoint") || mime.includes("presentation");
+
               if (isPdf) {
                 return (
-                  <>
-                    <Button asChild variant="outline" size="sm" className="mb-2">
-                      <a href={downloadUrl} download target="_self" rel="noopener noreferrer">
-                        <Download className="mr-2 h-4 w-4" />
-                        Descargar
-                      </a>
-                    </Button>
-                    <iframe
-                      src={previewUrl}
-                      title={previewFile.originalName}
-                      className="w-full h-[70vh] border rounded"
-                    />
-                  </>
+                  <div className="flex flex-col h-full">
+                    <div className="p-2 bg-muted flex justify-end">
+                      <Button asChild variant="outline" size="sm">
+                        <a href={downloadUrl} download target="_self" rel="noopener noreferrer">
+                          <Download className="mr-2 h-4 w-4" />
+                          Descargar PDF
+                        </a>
+                      </Button>
+                    </div>
+                    <iframe src={previewUrl} title={previewFile.originalName} className="w-full flex-1 min-h-[70vh] border-0" />
+                  </div>
                 );
               }
               if (isImage) {
                 return (
-                  <>
-                    <Button asChild variant="outline" size="sm" className="mb-2">
+                  <div className="flex flex-col items-center justify-center p-6 h-full space-y-4">
+                    <img src={previewUrl} alt={previewFile.originalName} className="max-w-full max-h-[65vh] object-contain rounded-lg shadow-sm" />
+                    <Button asChild variant="outline" size="sm">
                       <a href={downloadUrl} download target="_self" rel="noopener noreferrer">
                         <Download className="mr-2 h-4 w-4" />
-                        Descargar
+                        Descargar Imagen
                       </a>
                     </Button>
-                    <img
-                      src={previewUrl}
-                      alt={previewFile.originalName}
-                      className="max-w-full max-h-[70vh] object-contain mx-auto"
-                    />
-                  </>
+                  </div>
                 );
               }
+              if (isOffice) {
+                // 🚀 Llamamos a la nueva ruta que nos devuelve el visor de Microsoft
+                const embedUrl = `/api/files/${previewFile.id}/embed`;
+                
+                return (
+                  <div className="flex flex-col h-full">
+                    {/* Barra de herramientas superior */}
+                    <div className="p-2 bg-muted flex items-center justify-between border-b">
+                      <span className="text-sm font-semibold text-muted-foreground ml-2">
+                        Vista previa de Office
+                      </span>
+                      <div className="flex gap-2">
+                        <Button asChild variant="default" size="sm" className="bg-blue-600 hover:bg-blue-700 shadow-sm">
+                          <a href={`/api/files/${previewFile.id}/edit-office`} target="_blank" rel="noopener noreferrer">
+                            <Eye className="mr-2 h-4 w-4" />
+                            Editar en Office Online
+                          </a>
+                        </Button>
+                        <Button asChild variant="outline" size="sm">
+                          <a href={downloadUrl} download target="_self" rel="noopener noreferrer">
+                            <Download className="mr-2 h-4 w-4" />
+                            Descargar
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                    {/* 🚀 El iframe que dibuja el documento */}
+                    <iframe 
+                      src={embedUrl} 
+                      title={previewFile.originalName} 
+                      className="w-full flex-1 min-h-[70vh] border-0 bg-white" 
+                    />
+                  </div>
+                );
+              }
+              // Caso genérico (ZIPs, etc.)
               return (
-                <div className="py-8 text-center text-muted-foreground space-y-4">
-                  {isOffice ? (
-                    <p>Para editar Word, Excel o PowerPoint, descarga el archivo y ábrelo con la aplicación correspondiente.</p>
-                  ) : (
-                    <p>Vista previa no disponible para este tipo de archivo.</p>
-                  )}
-                  <Button asChild variant="outline">
+                <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
+                  <FileIcon mimeType={mime} className="h-16 w-16 text-muted-foreground" />
+                  <p className="text-muted-foreground font-medium">Este formato de archivo no admite vista previa web.</p>
+                  <Button asChild variant="default">
                     <a href={downloadUrl} download target="_self" rel="noopener noreferrer">
                       <Download className="mr-2 h-4 w-4" />
                       Descargar archivo
