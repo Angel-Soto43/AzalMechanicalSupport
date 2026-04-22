@@ -548,53 +548,36 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   }
 });
 
+  // 📥 RUTA PARA DESCARGAR ARCHIVOS (100% Nube Microsoft)
   app.get("/api/files/:id/download", requireAuth, async (req: any, res) => {
     try {
       const fileIdParam = req.params.id;
-      const isMicrosoft = Number.isNaN(Number(fileIdParam));
+      if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
 
-      if (isMicrosoft) {
-        if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
+      const response = await getMicrosoftItemContentStream(
+        req.user.accessToken,
+        req.user.refreshToken,
+        req.user.id,
+        fileIdParam
+      );
 
-        const response = await getMicrosoftItemContentStream(
-          req.user.accessToken,
-          req.user.refreshToken,
-          req.user.id,
-          fileIdParam
-        );
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          return res.status(response.status).json({ error: errorText });
-        }
-
-        if (!response.body) {
-          return res.status(500).json({ error: "No se recibió contenido de Microsoft" });
-        }
-
-        const contentType = response.headers.get("content-type") || "application/octet-stream";
-        const contentDisposition = response.headers.get("content-disposition");
-        res.setHeader("Content-Type", contentType);
-        if (contentDisposition) {
-          res.setHeader("Content-Disposition", contentDisposition);
-        }
-
-        await pipeline(response.body, res);
-        return;
+      if (!response.ok) {
+        const errorText = await response.text();
+        return res.status(response.status).json({ error: errorText });
       }
 
-      const fileId = Number(fileIdParam);
-      const file = await storage.getFileById(fileId);
-      if (!file) {
-        return res.status(404).json({ error: "Archivo no encontrado" });
+      if (!response.body) {
+        return res.status(500).json({ error: "No se recibió contenido de Microsoft" });
       }
 
-      const filePath = path.join(uploadsDir, file.filename);
-      if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ error: "Archivo no disponible en el servidor" });
+      const contentType = response.headers.get("content-type") || "application/octet-stream";
+      const contentDisposition = response.headers.get("content-disposition");
+      res.setHeader("Content-Type", contentType);
+      if (contentDisposition) {
+        res.setHeader("Content-Disposition", contentDisposition);
       }
 
-      res.download(filePath, file.originalName);
+      await pipeline(response.body, res);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
@@ -628,6 +611,28 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // 📝 RUTA PARA EDITAR OFFICE (Redirige al Word/Excel Online oficial de Microsoft)
+  app.get("/api/files/:id/edit-office", requireAuth, async (req: any, res) => {
+    try {
+      const fileIdParam = req.params.id;
+      if (!req.user.accessToken) return res.status(401).json({ error: "Sesión expirada" });
+
+      const metadata = await getMicrosoftItemMetadata(
+        req.user.accessToken,
+        req.user.refreshToken,
+        req.user.id,
+        fileIdParam
+      );
+
+      if (metadata.webUrl) {
+        return res.redirect(metadata.webUrl);
+      }
+      res.status(404).json({ error: "No se encontró el enlace web del archivo" });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // 🖼️ RUTA PARA GENERAR VISOR INTEGRADO DE OFFICE (PREVIEW NATIVO)
   app.get("/api/files/:id/embed", requireAuth, async (req: any, res) => {
     try {
@@ -655,7 +660,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.status(500).json({ error: e.message });
     }
   });
-
+  
   app.get("/api/files", async (_req, res) => {
     try {
       const lista = await storage.getAllFiles();
