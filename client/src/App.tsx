@@ -21,7 +21,7 @@ import UsersPage from "@/pages/users-page";
 import AuditLogsPage from "@/pages/audit-logs-page";
 import FolderPage from "@/pages/folder-page";
 import FoldersListPage from "@/pages/folders-list-page";
-import TendersPage from "@/pages/TendersPage";
+import QuotesPage from "@/pages/quotes-page";
 import AllFilesPage from "@/pages/all-files-page";
 import BackupPage from "@/pages/backup-page";
 //import { ProtectedRoute } from "./lib/protected-route";
@@ -93,10 +93,10 @@ function Router() {
         </ProtectedRoute>
       </Route>
 
-      <Route path="/licitaciones">
+      <Route path="/quotes">
         <ProtectedRoute>
           <AppLayout>
-            <TendersPage />
+            <QuotesPage />
           </AppLayout>
         </ProtectedRoute>
       </Route>

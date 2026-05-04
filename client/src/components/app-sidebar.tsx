@@ -42,8 +42,8 @@ const mainNavItems = [
     icon: FolderOpen,
   },
   {
-    title: "Licitaciones",
-    url: "/licitaciones",
+    title: "Cotizaciones",
+    url: "/quotes",
     icon: FileText,
   },
 ];
@@ -110,7 +110,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel className="flex items-center gap-2 text-blue-600 font-bold">
             <Navigation className="h-3 w-3" />
-            NAVEGACIÓN PRINCIPAL
+            NAVEGACION PRINCIPAL
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -135,7 +135,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel className="flex items-center gap-2">
             <Shield className="h-3 w-3" />
-            ADMINISTRACIÓN
+            ADMINISTRACION
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -192,7 +192,7 @@ export function AppSidebar() {
           disabled={logoutMutation.isPending}
         >
           <LogOut className="h-4 w-4" />
-          {logoutMutation.isPending ? "Saliendo..." : "Cerrar sesión"}
+          {logoutMutation.isPending ? "Logging out..." : "Log Out"}
         </Button>
 
         <div className="mt-4 pt-3 border-t border-sidebar-border text-center">
