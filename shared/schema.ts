@@ -33,6 +33,35 @@ export const licitaciones = pgTable("licitaciones", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const providers = pgTable("providers", {
+  id: serial("id").primaryKey(),
+  companyName: text("company_name").notNull(),
+  legalRepresentative: text("legal_representative").notNull(),
+  phone: text("phone").notNull(),
+  email: text("email").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const quotes = pgTable("quotes", {
+  id: serial("id").primaryKey(),
+  internalFolio: text("internal_folio").notNull().unique(),
+  destinationCompany: text("destination_company").notNull(),
+  quoteDate: text("quote_date").notNull(),
+  commercialTerms: text("commercial_terms").notNull(),
+  providerId: integer("provider_id").references(() => providers.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const quoteItems = pgTable("quote_items", {
+  id: serial("id").primaryKey(),
+  quoteId: integer("quote_id").references(() => quotes.id),
+  description: text("description").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  unit: text("unit").notNull(),
+  unitPrice: integer("unit_price").notNull().default(0),
+  amount: integer("amount").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -79,6 +108,9 @@ export const files = pgTable("files", {
 
 
 export const insertLicitacionSchema = createInsertSchema(licitaciones);
+export const insertProviderSchema = createInsertSchema(providers);
+export const insertQuoteSchema = createInsertSchema(quotes);
+export const insertQuoteItemSchema = createInsertSchema(quoteItems);
 export const insertAuditLogSchema = createInsertSchema(auditLogs);
 export const insertUserSchema = createInsertSchema(users);
 export const insertFileSchema = createInsertSchema(files);
@@ -87,6 +119,12 @@ export const insertFolderSchema = createInsertSchema(folders);
 
 export type Licitacion = typeof licitaciones.$inferSelect;
 export type InsertLicitacion = typeof licitaciones.$inferInsert;
+export type Provider = typeof providers.$inferSelect;
+export type InsertProvider = typeof providers.$inferInsert;
+export type Quote = typeof quotes.$inferSelect;
+export type InsertQuote = typeof quotes.$inferInsert;
+export type QuoteItem = typeof quoteItems.$inferSelect;
+export type InsertQuoteItem = typeof quoteItems.$inferInsert;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
 export type User = typeof users.$inferSelect & { displayName?: string };

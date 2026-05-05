@@ -362,6 +362,204 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // ============== ENDPOINTS PARA PROVEEDORES ==============
+  app.get("/api/providers", requireAuth, async (req: any, res) => {
+    try {
+      const providers = await storage.getProviders();
+      res.json(providers);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get("/api/providers/:id",requireAuth ,async (req: any, res) => {
+    try {
+      const providerId = Number(req.params.id);
+      if (Number.isNaN(providerId)) {
+        return res.status(400).json({ error: "ID de proveedor inválido" });
+      }
+
+      const provider = await storage.getProviderById(providerId);
+      if (!provider) {
+        return res.status(404).json({ error: "Proveedor no encontrado" });
+      }
+
+      res.json(provider);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/providers", requireAuth, async (req: any, res) => {
+    try {
+      const companyName = (req.body.companyName || "").trim();
+      const legalRepresentative = (req.body.legalRepresentative || "").trim();
+      const phone = (req.body.phone || "").trim();
+      const email = (req.body.email || "").trim();
+
+      if (!companyName || !legalRepresentative || !phone || !email) {
+        return res.status(400).json({ error: "Todos los campos del proveedor son requeridos" });
+      }
+
+      const provider = await storage.createProvider({
+        companyName,
+        legalRepresentative,
+        phone,
+        email,
+      });
+
+      res.status(201).json(provider);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.patch("/api/providers/:id", requireAuth, async (req: any, res) => {
+    try {
+      const providerId = Number(req.params.id);
+      if (Number.isNaN(providerId)) {
+        return res.status(400).json({ error: "ID de proveedor inválido" });
+      }
+
+      const updateData: any = {};
+      if (req.body.companyName !== undefined) {
+        updateData.companyName = req.body.companyName.trim();
+      }
+      if (req.body.legalRepresentative !== undefined) {
+        updateData.legalRepresentative = req.body.legalRepresentative.trim();
+      }
+      if (req.body.phone !== undefined) {
+        updateData.phone = req.body.phone.trim();
+      }
+      if (req.body.email !== undefined) {
+        updateData.email = req.body.email.trim();
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ error: "Debe proporcionar al menos un campo para actualizar" });
+      }
+
+      const updated = await storage.updateProvider(providerId, updateData);
+      if (!updated) {
+        return res.status(404).json({ error: "Proveedor no encontrado" });
+      }
+
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete("/api/providers/:id", requireAuth, async (req: any, res) => {
+    try {
+      const providerId = Number(req.params.id);
+      if (Number.isNaN(providerId)) {
+        return res.status(400).json({ error: "ID de proveedor inválido" });
+      }
+
+      const provider = await storage.getProviderById(providerId);
+      if (!provider) {
+        return res.status(404).json({ error: "Proveedor no encontrado" });
+      }
+
+      await storage.deleteProvider(providerId);
+      res.status(204).end();
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ============== ENDPOINTS PARA COTIZACIONES ==============
+ 
+  app.get("/api/quotes",requireAuth, async (req: any, res) => {
+    try {
+      const quotes = await storage.getQuotes();
+      res.json(quotes);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get("/api/quotes/:id", requireAuth,async (req: any, res) => {
+    try {
+      const quoteId = Number(req.params.id);
+      if (Number.isNaN(quoteId)) {
+        return res.status(400).json({ error: "ID de cotización inválido" });
+      }
+
+      const quote = await storage.getQuoteById(quoteId);
+      if (!quote) {
+        return res.status(404).json({ error: "Cotización no encontrada" });
+      }
+
+      const items = await storage.getQuoteItems(quoteId);
+      res.json({ quote, lineItems: items });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/quotes",requireAuth, async (req: any, res) => {
+    try {
+      // Soportar ambos nombres de campos: los del formulario y los canónicos
+      const internalFolio = (req.body.internalFolio || req.body.folio || "").trim();
+      const destinationCompany = (req.body.destinationCompany || req.body.empresaDestino || "").trim();
+      const quoteDate = (req.body.quoteDate || req.body.fecha || "").trim();
+      const commercialTerms = (req.body.commercialTerms || req.body.condiciones || "").trim();
+      const providerId = Number(req.body.providerId || req.body.proveedorId);
+      const lineItems = Array.isArray(req.body.lineItems || req.body.partidas) ? (req.body.lineItems || req.body.partidas) : [];
+
+      if (!internalFolio || !destinationCompany || !quoteDate || !commercialTerms || Number.isNaN(providerId)) {
+        return res.status(400).json({ error: "Todos los campos de la cotización son requeridos: folio, empresaDestino, fecha, condiciones, proveedorId" });
+      }
+
+      if (lineItems.length === 0) {
+        return res.status(400).json({ error: "La cotización debe contener al menos una partida" });
+      }
+
+      // Validar que el proveedor existe
+      const provider = await storage.getProviderById(providerId);
+      if (!provider) {
+        return res.status(400).json({ error: "El proveedor especificado no existe" });
+      }
+
+      const quote = await storage.createQuote({
+        internalFolio,
+        destinationCompany,
+        quoteDate,
+        commercialTerms,
+        providerId,
+      });
+
+      const createdItems = [];
+      for (const item of lineItems) {
+        const description = (item.description || item.descripcion || "").trim();
+        const quantity = Number(item.quantity || item.cantidad || 0);
+        const unit = (item.unit || item.unidad || "").trim();
+        const unitPrice = Number(item.unitPrice || item.precio || 0);
+
+        if (!description || quantity <= 0 || !unit || unitPrice < 0) {
+          continue;
+        }
+
+        const amount = Math.round(quantity * unitPrice);
+        const createdItem = await storage.createQuoteItem({
+          quoteId: quote.id,
+          description,
+          quantity,
+          unit,
+          unitPrice,
+          amount,
+        });
+        createdItems.push(createdItem);
+      }
+
+      res.status(201).json({ quote, lineItems: createdItems });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.get("/api/files/:id/share", requireAuth, async (req: any, res) => {
     try {
       const fileIdParam = req.params.id;
@@ -680,7 +878,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           id: f.id,
           originalName: f.originalName,
           uploadedAt: f.uploadedAt,
-          isDeleted: f.isDeleted,
+          isDeleted: f.isDeleted, 
           size: f.size
         }))
       });

@@ -1,6 +1,9 @@
 import {
   auditLogs, type AuditLog, type InsertAuditLog,
   licitaciones, type Licitacion, type InsertLicitacion,
+  providers, type Provider, type InsertProvider,
+  quotes, type Quote, type InsertQuote,
+  quoteItems, type QuoteItem, type InsertQuoteItem,
   users, files, folders, type Folder, type InsertFolder,
   type User
 } from "@shared/schema";
@@ -16,6 +19,16 @@ export interface IStorage {
   getRecentAuditLogs(limit?: number): Promise<AuditLog[]>;
   getLicitaciones(): Promise<Licitacion[]>;
   createLicitacion(licitacion: InsertLicitacion): Promise<Licitacion>;
+  getProviders(): Promise<Provider[]>;
+  createProvider(provider: InsertProvider): Promise<Provider>;
+  getProviderById(id: number): Promise<Provider | undefined>;
+  updateProvider(id: number, data: Partial<InsertProvider>): Promise<Provider | undefined>;
+  deleteProvider(id: number): Promise<void>;
+  getQuotes(): Promise<Quote[]>;
+  createQuote(quote: InsertQuote): Promise<Quote>;
+  getQuoteById(id: number): Promise<Quote | undefined>;
+  getQuoteItems(quoteId: number): Promise<QuoteItem[]>;
+  createQuoteItem(item: InsertQuoteItem): Promise<QuoteItem>;
 
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: Omit<User, "id" | "createdAt" | "lastLogin">): Promise<User>;
@@ -222,6 +235,51 @@ export class DatabaseStorage implements IStorage {
     return licitacion;
   }
 
+  async getProviders(): Promise<Provider[]> {
+    return await db.select().from(providers).orderBy(desc(providers.createdAt));
+  }
+
+  async createProvider(provider: InsertProvider): Promise<Provider> {
+    const [created] = await db.insert(providers).values(provider).returning();
+    return created;
+  }
+
+  async getProviderById(id: number): Promise<Provider | undefined> {
+    const [provider] = await db.select().from(providers).where(eq(providers.id, id));
+    return provider;
+  }
+
+  async updateProvider(id: number, data: Partial<InsertProvider>): Promise<Provider | undefined> {
+    const [updated] = await db.update(providers).set(data).where(eq(providers.id, id)).returning();
+    return updated;
+  }
+
+  async deleteProvider(id: number): Promise<void> {
+    await db.delete(providers).where(eq(providers.id, id));
+  }
+
+  async getQuotes(): Promise<Quote[]> {
+    return await db.select().from(quotes).orderBy(desc(quotes.id));
+  }
+
+  async createQuote(quote: InsertQuote): Promise<Quote> {
+    const [created] = await db.insert(quotes).values(quote).returning();
+    return created;
+  }
+
+  async getQuoteById(id: number): Promise<Quote | undefined> {
+    const [quote] = await db.select().from(quotes).where(eq(quotes.id, id));
+    return quote;
+  }
+
+  async getQuoteItems(quoteId: number): Promise<QuoteItem[]> {
+    return await db.select().from(quoteItems).where(eq(quoteItems.quoteId, quoteId)).orderBy(desc(quoteItems.id));
+  }
+
+  async createQuoteItem(item: InsertQuoteItem): Promise<QuoteItem> {
+    const [created] = await db.insert(quoteItems).values(item).returning();
+    return created;
+  }
 
   async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
     const [auditLog] = await db.insert(auditLogs).values(log).returning();
