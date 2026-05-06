@@ -7,6 +7,7 @@ import { pipeline } from "stream/promises";
 import archiver from "archiver";
 import multer from "multer";
 import { storage } from "./storage";
+import { amountToSpanishText, convertQuoteItemFromDb, convertQuoteItemsFromDb, fromCents, validateQuoteItems } from "./quotes";
 import { insertLicitacionSchema, files } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -471,16 +472,28 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
   // ============== ENDPOINTS PARA COTIZACIONES ==============
  
-  app.get("/api/quotes",requireAuth, async (req: any, res) => {
+  app.get("/api/quotes", requireAuth, async (req: any, res) => {
     try {
       const quotes = await storage.getQuotes();
-      res.json(quotes);
+      const enriched = await Promise.all(quotes.map(async quote => {
+        const items = await storage.getQuoteItems(quote.id);
+        const totalCents = items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+        const total = fromCents(totalCents);
+        return {
+          ...quote,
+          folio: quote.internalFolio,
+          empresaDestino: quote.destinationCompany,
+          total,
+          totalText: amountToSpanishText(total),
+        };
+      }));
+      res.json(enriched);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
   });
 
-  app.get("/api/quotes/:id", requireAuth,async (req: any, res) => {
+  app.get("/api/quotes/:id",requireAuth,async (req: any, res) => {
     try {
       const quoteId = Number(req.params.id);
       if (Number.isNaN(quoteId)) {
@@ -492,14 +505,46 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(404).json({ error: "Cotización no encontrada" });
       }
 
-      const items = await storage.getQuoteItems(quoteId);
-      res.json({ quote, lineItems: items });
+      const rawItems = await storage.getQuoteItems(quoteId);
+      const lineItems = convertQuoteItemsFromDb(rawItems);
+      const totalCents = rawItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      const total = fromCents(totalCents);
+
+      res.json({
+        quote: {
+          ...quote,
+          folio: quote.internalFolio,
+          empresaDestino: quote.destinationCompany,
+          total,
+          totalText: amountToSpanishText(total),
+        },
+        lineItems,
+      });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
   });
 
-  app.post("/api/quotes",requireAuth, async (req: any, res) => {
+  app.get("/api/quotes/price-history",requireAuth, async (req: any, res) => {
+    try {
+      const description = String(req.query.description || req.query.material || "").trim();
+      if (!description) {
+        return res.status(400).json({ error: "El campo description es requerido para consultar el historial de precios" });
+      }
+
+      const history = await storage.getQuotePriceHistory(description);
+      const normalizedHistory = history.map(item => ({
+        ...item,
+        unitPrice: fromCents(Number(item.unitPrice) || 0),
+        amount: fromCents(Number(item.amount) || 0),
+      }));
+      res.json(normalizedHistory);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/quotes", requireAuth, async (req: any, res) => {
     try {
       // Soportar ambos nombres de campos: los del formulario y los canónicos
       const internalFolio = (req.body.internalFolio || req.body.folio || "").trim();
@@ -513,14 +558,14 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ error: "Todos los campos de la cotización son requeridos: folio, empresaDestino, fecha, condiciones, proveedorId" });
       }
 
-      if (lineItems.length === 0) {
-        return res.status(400).json({ error: "La cotización debe contener al menos una partida" });
-      }
-
-      // Validar que el proveedor existe
       const provider = await storage.getProviderById(providerId);
       if (!provider) {
         return res.status(400).json({ error: "El proveedor especificado no existe" });
+      }
+
+      const validation = validateQuoteItems(lineItems);
+      if (validation.errors.length > 0) {
+        return res.status(400).json({ error: validation.errors.join("; ") });
       }
 
       const quote = await storage.createQuote({
@@ -532,29 +577,29 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       });
 
       const createdItems = [];
-      for (const item of lineItems) {
-        const description = (item.description || item.descripcion || "").trim();
-        const quantity = Number(item.quantity || item.cantidad || 0);
-        const unit = (item.unit || item.unidad || "").trim();
-        const unitPrice = Number(item.unitPrice || item.precio || 0);
-
-        if (!description || quantity <= 0 || !unit || unitPrice < 0) {
-          continue;
-        }
-
-        const amount = Math.round(quantity * unitPrice);
+      for (const item of validation.normalizedItems) {
         const createdItem = await storage.createQuoteItem({
           quoteId: quote.id,
-          description,
-          quantity,
-          unit,
-          unitPrice,
-          amount,
+          description: item.description,
+          quantity: item.quantity,
+          unit: item.unit,
+          unitPrice: item.unitPriceCents,
+          amount: item.amountCents,
         });
-        createdItems.push(createdItem);
+        createdItems.push(convertQuoteItemFromDb(createdItem));
       }
 
-      res.status(201).json({ quote, lineItems: createdItems });
+      const total = fromCents(validation.totalCents);
+      res.status(201).json({
+        quote: {
+          ...quote,
+          folio: quote.internalFolio,
+          empresaDestino: quote.destinationCompany,
+          total,
+          totalText: amountToSpanishText(total),
+        },
+        lineItems: createdItems,
+      });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }

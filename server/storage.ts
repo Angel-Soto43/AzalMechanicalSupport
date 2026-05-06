@@ -29,6 +29,7 @@ export interface IStorage {
   getQuoteById(id: number): Promise<Quote | undefined>;
   getQuoteItems(quoteId: number): Promise<QuoteItem[]>;
   createQuoteItem(item: InsertQuoteItem): Promise<QuoteItem>;
+  getQuotePriceHistory(materialDescription: string): Promise<Array<QuoteItem & { quoteDate: string; internalFolio: string }>>;
 
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: Omit<User, "id" | "createdAt" | "lastLogin">): Promise<User>;
@@ -274,6 +275,26 @@ export class DatabaseStorage implements IStorage {
 
   async getQuoteItems(quoteId: number): Promise<QuoteItem[]> {
     return await db.select().from(quoteItems).where(eq(quoteItems.quoteId, quoteId)).orderBy(desc(quoteItems.id));
+  }
+
+  async getQuotePriceHistory(materialDescription: string): Promise<Array<QuoteItem & { quoteDate: string; internalFolio: string }>> {
+    const allItems = await db.select({
+      id: quoteItems.id,
+      quoteId: quoteItems.quoteId,
+      description: quoteItems.description,
+      quantity: quoteItems.quantity,
+      unit: quoteItems.unit,
+      unitPrice: quoteItems.unitPrice,
+      amount: quoteItems.amount,
+      quoteDate: quotes.quoteDate,
+      internalFolio: quotes.internalFolio,
+    })
+      .from(quoteItems)
+      .innerJoin(quotes, eq(quoteItems.quoteId, quotes.id))
+      .orderBy(desc(quotes.id));
+
+    const normalizedSearch = materialDescription.toLowerCase().trim();
+    return allItems.filter(item => item.description.toLowerCase().includes(normalizedSearch));
   }
 
   async createQuoteItem(item: InsertQuoteItem): Promise<QuoteItem> {
