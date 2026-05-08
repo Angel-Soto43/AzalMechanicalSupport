@@ -6,8 +6,9 @@ import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import archiver from "archiver";
 import multer from "multer";
+import puppeteer from "puppeteer";
 import { storage } from "./storage";
-import { amountToSpanishText, convertQuoteItemFromDb, convertQuoteItemsFromDb, fromCents, validateQuoteItems } from "./quotes";
+import { amountToSpanishText, convertQuoteItemFromDb, convertQuoteItemsFromDb, fromCents, validateQuoteItems, generateQuoteHTML } from "./quotes";
 import { insertLicitacionSchema, files } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -519,6 +520,71 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           totalText: amountToSpanishText(total),
         },
         lineItems,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get("/api/quotes/:id/pdf", requireAuth, async (req: any, res) => {
+    try {
+      const quoteId = Number(req.params.id);
+      if (Number.isNaN(quoteId)) {
+        return res.status(400).json({ error: "ID de cotización inválido" });
+      }
+
+      const quote = await storage.getQuoteById(quoteId);
+      if (!quote) {
+        return res.status(404).json({ error: "Cotización no encontrada" });
+      }
+
+      const provider = await storage.getProviderById(quote.providerId);
+      if (!provider || !quote.providerId) {
+        return res.status(404).json({ error: "Proveedor no encontrado" });
+      }
+
+      const rawItems = await storage.getQuoteItems(quoteId);
+      const lineItems = convertQuoteItemsFromDb(rawItems);
+
+      const html = generateQuoteHTML({
+        folio: quote.internalFolio,
+        empresaDestino: quote.destinationCompany,
+        quoteDate: quote.quoteDate,
+        commercialTerms: quote.commercialTerms,
+      }, provider, lineItems);
+
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-gpu'
+        ]
+      });
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
+        preferCSSPageSize: true
+      });
+      await browser.close();
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="Cotizacion_${quote.internalFolio}.pdf"`);
+      res.send(pdfBuffer);
+
+      // Registrar en auditoría
+      await storage.createAuditLog({
+        correo: req.user.correo || req.user.email || null,
+        action: "Generar PDF de cotización",
+        details: `Se generó el PDF para la cotización ${quote.internalFolio}`
       });
     } catch (e: any) {
       res.status(500).json({ error: e.message });

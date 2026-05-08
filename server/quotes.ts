@@ -200,3 +200,166 @@ export function amountToSpanishText(amount: number): string {
   const capitalizedWords = integerWords.charAt(0).toUpperCase() + integerWords.slice(1);
   return `${capitalizedWords} ${pesosText} ${String(centavos).padStart(2, "0")}/100 M.N.`;
 }
+
+export function generateQuoteHTML(quote: any, provider: any, lineItems: any[]): string {
+  const totalCents = lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const total = fromCents(totalCents);
+  const totalText = amountToSpanishText(total);
+
+  const itemsHTML = lineItems.map(item => `
+    <tr>
+      <td style="border: 1px solid #000; padding: 8px; text-align: center; font-size: 12px;">${item.quantity}</td>
+      <td style="border: 1px solid #000; padding: 8px; font-size: 12px;">${item.unit}</td>
+      <td style="border: 1px solid #000; padding: 8px; font-size: 12px;">${item.description}</td>
+      <td style="border: 1px solid #000; padding: 8px; text-align: right; font-size: 12px;">$${item.unitPrice.toFixed(2)}</td>
+      <td style="border: 1px solid #000; padding: 8px; text-align: right; font-size: 12px;">$${item.amount.toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Cotización ${quote.folio}</title>
+      <style>
+        body {
+          font-family: 'Times New Roman', Times, serif;
+          margin: 0;
+          padding: 20px;
+          font-size: 12px;
+          line-height: 1.4;
+        }
+        .header {
+          text-align: center;
+          margin-bottom: 30px;
+          border-bottom: 2px solid #000;
+          padding-bottom: 10px;
+        }
+        .header h1 {
+          margin: 0;
+          font-size: 24px;
+          font-weight: bold;
+        }
+        .header p {
+          margin: 5px 0;
+          font-size: 14px;
+        }
+        .quote-info {
+          margin-bottom: 20px;
+          display: flex;
+          justify-content: space-between;
+        }
+        .info-section {
+          width: 48%;
+        }
+        .info-section h3 {
+          margin: 0 0 10px 0;
+          font-size: 14px;
+          border-bottom: 1px solid #000;
+          padding-bottom: 5px;
+        }
+        .info-section p {
+          margin: 3px 0;
+        }
+        .commercial-terms {
+          margin-bottom: 20px;
+        }
+        .commercial-terms h3 {
+          margin: 0 0 10px 0;
+          font-size: 14px;
+          border-bottom: 1px solid #000;
+          padding-bottom: 5px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 20px;
+          font-size: 12px;
+        }
+        th {
+          border: 1px solid #000;
+          padding: 8px;
+          background-color: #f0f0f0;
+          font-weight: bold;
+          text-align: center;
+        }
+        td {
+          border: 1px solid #000;
+          padding: 8px;
+        }
+        .total-section {
+          text-align: right;
+          margin-top: 20px;
+          font-weight: bold;
+        }
+        .total-section p {
+          margin: 5px 0;
+          font-size: 14px;
+        }
+        .footer {
+          margin-top: 40px;
+          text-align: center;
+          font-size: 10px;
+          border-top: 1px solid #000;
+          padding-top: 10px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>HGW Mechanical Support</h1>
+        <p>Cotización de Servicios Mecánicos</p>
+      </div>
+
+      <div class="quote-info">
+        <div class="info-section">
+          <h3>Información de la Cotización</h3>
+          <p><strong>Folio:</strong> ${quote.folio}</p>
+          <p><strong>Fecha:</strong> ${quote.quoteDate}</p>
+          <p><strong>Empresa Destino:</strong> ${quote.empresaDestino}</p>
+        </div>
+        <div class="info-section">
+          <h3>Información del Proveedor</h3>
+          <p><strong>Empresa:</strong> ${provider.companyName}</p>
+          <p><strong>Representante Legal:</strong> ${provider.legalRepresentative}</p>
+          <p><strong>Teléfono:</strong> ${provider.phone}</p>
+          <p><strong>Email:</strong> ${provider.email}</p>
+        </div>
+      </div>
+
+      <div class="commercial-terms">
+        <h3>Condiciones Comerciales</h3>
+        <p>${quote.commercialTerms}</p>
+      </div>
+
+      <h3 style="border-bottom: 1px solid #000; padding-bottom: 5px;">Partidas de la Cotización</h3>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 10%;">Cantidad</th>
+            <th style="width: 15%;">Unidad</th>
+            <th style="width: 45%;">Descripción</th>
+            <th style="width: 15%;">Precio Unitario</th>
+            <th style="width: 15%;">Importe</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHTML}
+        </tbody>
+      </table>
+
+      <div class="total-section">
+        <p><strong>Total: $${total.toFixed(2)} MXN</strong></p>
+        <p><strong>Cantidad en letra: ${totalText}</strong></p>
+      </div>
+
+      <div class="footer">
+        <p>HGW Mechanical Support - Cotización generada automáticamente el ${new Date().toLocaleDateString('es-ES')}</p>
+        <p>Esta cotización es válida por 30 días a partir de la fecha de emisión</p>
+      </div>
+    </body>
+    </html>
+  `;
+}
