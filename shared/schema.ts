@@ -1,4 +1,4 @@
-import { pgTable, text, varchar, timestamp, integer, serial, boolean, bigint } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, serial, boolean, bigint, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -46,8 +46,18 @@ export const quotes = pgTable("quotes", {
   id: serial("id").primaryKey(),
   internalFolio: text("internal_folio").notNull().unique(),
   destinationCompany: text("destination_company").notNull(),
+  requisitionNumber: text("requisition_number").notNull(),
+  projectTitle: text("project_title").notNull(),
   quoteDate: text("quote_date").notNull(),
   commercialTerms: text("commercial_terms").notNull(),
+  validityDays: integer("validity_days").notNull().default(120),
+  paymentDays: integer("payment_days").notNull().default(0),
+  deliveryTime: text("delivery_time").notNull().default(""),
+  manufacturingTime: text("manufacturing_time").notNull().default(""),
+  guaranteeMonths: integer("guarantee_months").notNull().default(0),
+  compliancePercentage: numeric("compliance_percentage", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  deliveryPlace: text("delivery_place").notNull().default(""),
+  contactPerson: text("contact_person").notNull().default(""),
   providerId: integer("provider_id").references(() => providers.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -58,6 +68,9 @@ export const quoteItems = pgTable("quote_items", {
   description: text("description").notNull(),
   quantity: integer("quantity").notNull().default(1),
   unit: text("unit").notNull(),
+  unitMeasure: text("unit_measure").notNull().default(""),
+  techRequirements: text("tech_requirements").notNull().default(""),
+  versionReference: text("version_reference").notNull().default(""),
   unitPrice: integer("unit_price").notNull().default(0),
   amount: integer("amount").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),

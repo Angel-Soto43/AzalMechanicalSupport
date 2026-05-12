@@ -486,6 +486,16 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           empresaDestino: quote.destinationCompany,
           total,
           totalText: amountToSpanishText(total),
+          requisitionNumber: quote.requisitionNumber,
+          projectTitle: quote.projectTitle,
+          validityDays: quote.validityDays,
+          paymentDays: quote.paymentDays,
+          deliveryTime: quote.deliveryTime,
+          manufacturingTime: quote.manufacturingTime,
+          guaranteeMonths: quote.guaranteeMonths,
+          compliancePercentage: quote.compliancePercentage,
+          deliveryPlace: quote.deliveryPlace,
+          contactPerson: quote.contactPerson,
         };
       }));
       res.json(enriched);
@@ -518,6 +528,16 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           empresaDestino: quote.destinationCompany,
           total,
           totalText: amountToSpanishText(total),
+          requisitionNumber: quote.requisitionNumber,
+          projectTitle: quote.projectTitle,
+          validityDays: quote.validityDays,
+          paymentDays: quote.paymentDays,
+          deliveryTime: quote.deliveryTime,
+          manufacturingTime: quote.manufacturingTime,
+          guaranteeMonths: quote.guaranteeMonths,
+          compliancePercentage: quote.compliancePercentage,
+          deliveryPlace: quote.deliveryPlace,
+          contactPerson: quote.contactPerson,
         },
         lineItems,
       });
@@ -538,8 +558,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(404).json({ error: "Cotización no encontrada" });
       }
 
-      const provider = await storage.getProviderById(quote.providerId);
-      if (!provider || !quote.providerId) {
+      if (!quote.providerId) {
+        return res.status(404).json({ error: "Proveedor no encontrado" });
+      }
+      const provider = await storage.getProviderById(Number(quote.providerId));
+      if (!provider) {
         return res.status(404).json({ error: "Proveedor no encontrado" });
       }
 
@@ -551,6 +574,16 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         empresaDestino: quote.destinationCompany,
         quoteDate: quote.quoteDate,
         commercialTerms: quote.commercialTerms,
+        requisitionNumber: quote.requisitionNumber,
+        projectTitle: quote.projectTitle,
+        validityDays: quote.validityDays,
+        paymentDays: quote.paymentDays,
+        deliveryTime: quote.deliveryTime,
+        manufacturingTime: quote.manufacturingTime,
+        guaranteeMonths: quote.guaranteeMonths,
+        compliancePercentage: Number(quote.compliancePercentage) || 0,
+        deliveryPlace: quote.deliveryPlace,
+        contactPerson: quote.contactPerson,
       }, provider, lineItems);
 
       const browser = await puppeteer.launch({
@@ -613,15 +646,30 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.post("/api/quotes", requireAuth, async (req: any, res) => {
     try {
       // Soportar ambos nombres de campos: los del formulario y los canónicos
-      const internalFolio = (req.body.internalFolio || req.body.folio || "").trim();
-      const destinationCompany = (req.body.destinationCompany || req.body.empresaDestino || "").trim();
-      const quoteDate = (req.body.quoteDate || req.body.fecha || "").trim();
-      const commercialTerms = (req.body.commercialTerms || req.body.condiciones || "").trim();
+      const internalFolio = (req.body.internalFolio || req.body.folio || "").toString().trim();
+      const destinationCompany = (req.body.destinationCompany || req.body.empresaDestino || "").toString().trim();
+      const requisitionNumber = (req.body.requisitionNumber || req.body.requisicion || "").toString().trim();
+      const projectTitle = (req.body.projectTitle || req.body.proyecto || "").toString().trim();
+      const quoteDate = (req.body.quoteDate || req.body.fecha || "").toString().trim();
+      const commercialTerms = (req.body.commercialTerms || req.body.condiciones || "").toString().trim();
+      const validityDaysRaw = Number(req.body.validityDays ?? req.body.diasValidez ?? 120);
+      const paymentDaysRaw = Number(req.body.paymentDays ?? req.body.diasPago ?? 0);
+      const deliveryTime = (req.body.deliveryTime || req.body.tiempoEntrega || "").toString().trim();
+      const manufacturingTime = (req.body.manufacturingTime || req.body.tiempoFabricacion || "").toString().trim();
+      const guaranteeMonthsRaw = Number(req.body.guaranteeMonths ?? req.body.garantiaMeses ?? 0);
+      const compliancePercentageRaw = Number(req.body.compliancePercentage ?? req.body.porcentajeCumplimiento ?? 0);
+      const deliveryPlace = (req.body.deliveryPlace || req.body.lugarEntrega || "").toString().trim();
+      const contactPerson = (req.body.contactPerson || req.body.contacto || req.body.personaContacto || "").toString().trim();
       const providerId = Number(req.body.providerId || req.body.proveedorId);
       const lineItems = Array.isArray(req.body.lineItems || req.body.partidas) ? (req.body.lineItems || req.body.partidas) : [];
 
-      if (!internalFolio || !destinationCompany || !quoteDate || !commercialTerms || Number.isNaN(providerId)) {
-        return res.status(400).json({ error: "Todos los campos de la cotización son requeridos: folio, empresaDestino, fecha, condiciones, proveedorId" });
+      const validityDays = Number.isFinite(validityDaysRaw) && Number.isInteger(validityDaysRaw) && validityDaysRaw > 0 ? validityDaysRaw : 120;
+      const paymentDays = Number.isFinite(paymentDaysRaw) && Number.isInteger(paymentDaysRaw) && paymentDaysRaw >= 0 ? paymentDaysRaw : 0;
+      const guaranteeMonths = Number.isFinite(guaranteeMonthsRaw) && Number.isInteger(guaranteeMonthsRaw) && guaranteeMonthsRaw >= 0 ? guaranteeMonthsRaw : 0;
+      const compliancePercentage = Number.isFinite(compliancePercentageRaw) && compliancePercentageRaw >= 0 ? compliancePercentageRaw : 0;
+
+      if (!internalFolio || !destinationCompany || !requisitionNumber || !projectTitle || !quoteDate || !commercialTerms || !deliveryPlace || !contactPerson || Number.isNaN(providerId)) {
+        return res.status(400).json({ error: "Todos los campos de la cotización son requeridos: folio, empresaDestino, requisicion, proyecto, fecha, condiciones, lugarEntrega, contacto y proveedorId" });
       }
 
       const provider = await storage.getProviderById(providerId);
@@ -637,8 +685,18 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const quote = await storage.createQuote({
         internalFolio,
         destinationCompany,
+        requisitionNumber,
+        projectTitle,
         quoteDate,
         commercialTerms,
+        validityDays,
+        paymentDays,
+        deliveryTime,
+        manufacturingTime,
+        guaranteeMonths,
+        compliancePercentage: compliancePercentage.toFixed(2),
+        deliveryPlace,
+        contactPerson,
         providerId,
       });
 
@@ -649,6 +707,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           description: item.description,
           quantity: item.quantity,
           unit: item.unit,
+          unitMeasure: item.unitMeasure,
+          techRequirements: item.techRequirements,
+          versionReference: item.versionReference,
           unitPrice: item.unitPriceCents,
           amount: item.amountCents,
         });

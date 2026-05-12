@@ -2,6 +2,9 @@ export interface RawQuoteLineItem {
   description: string;
   quantity: number;
   unit: string;
+  unitMeasure?: string;
+  techRequirements?: string;
+  versionReference?: string;
   unitPrice: number;
   amount?: number;
 }
@@ -10,6 +13,9 @@ export interface NormalizedQuoteLineItem {
   description: string;
   quantity: number;
   unit: string;
+  unitMeasure: string;
+  techRequirements: string;
+  versionReference: string;
   unitPriceCents: number;
   amountCents: number;
 }
@@ -42,6 +48,9 @@ export function validateQuoteItems(items: any[]): { normalizedItems: NormalizedQ
     const description = (rawItem.description || rawItem.descripcion || "").toString().trim();
     const quantity = Number(rawItem.quantity || rawItem.cantidad || 0);
     const unit = (rawItem.unit || rawItem.unidad || "").toString().trim();
+    const unitMeasure = (rawItem.unitMeasure || rawItem.medidaUnidad || "").toString().trim() || unit;
+    const techRequirements = (rawItem.techRequirements || rawItem.requisitosTecnicos || "").toString().trim();
+    const versionReference = (rawItem.versionReference || rawItem.referenciaVersion || "").toString().trim();
     const unitPriceValue = Number(rawItem.unitPrice || rawItem.precio || 0);
     const providedAmountValue = rawItem.amount !== undefined ? Number(rawItem.amount) : undefined;
 
@@ -80,6 +89,9 @@ export function validateQuoteItems(items: any[]): { normalizedItems: NormalizedQ
       description,
       quantity: quantityRounded,
       unit,
+      unitMeasure,
+      techRequirements,
+      versionReference,
       unitPriceCents,
       amountCents,
     });
@@ -202,19 +214,31 @@ export function amountToSpanishText(amount: number): string {
 }
 
 export function generateQuoteHTML(quote: any, provider: any, lineItems: any[]): string {
-  const totalCents = lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const total = fromCents(totalCents);
+  const total = lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const totalText = amountToSpanishText(total);
+  const validityDays = Number.isFinite(Number(quote.validityDays)) && Number(quote.validityDays) > 0 ? Number(quote.validityDays) : 120;
+  const paymentDays = Number.isFinite(Number(quote.paymentDays)) && Number(quote.paymentDays) >= 0 ? Number(quote.paymentDays) : 0;
+  const guaranteeMonths = Number.isFinite(Number(quote.guaranteeMonths)) && Number(quote.guaranteeMonths) >= 0 ? Number(quote.guaranteeMonths) : 0;
+  const compliancePercentage = Number.isFinite(Number(quote.compliancePercentage)) ? Number(quote.compliancePercentage) : 0;
 
-  const itemsHTML = lineItems.map(item => `
-    <tr>
-      <td style="border: 1px solid #000; padding: 8px; text-align: center; font-size: 12px;">${item.quantity}</td>
-      <td style="border: 1px solid #000; padding: 8px; font-size: 12px;">${item.unit}</td>
-      <td style="border: 1px solid #000; padding: 8px; font-size: 12px;">${item.description}</td>
-      <td style="border: 1px solid #000; padding: 8px; text-align: right; font-size: 12px;">$${item.unitPrice.toFixed(2)}</td>
-      <td style="border: 1px solid #000; padding: 8px; text-align: right; font-size: 12px;">$${item.amount.toFixed(2)}</td>
-    </tr>
-  `).join('');
+  const formatMoney = (value: number) => value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const itemsHTML = lineItems.map((item: any) => {
+    const unitMeasure = item.unitMeasure || item.unit || "";
+    const techRequirements = item.techRequirements ? `<div style="margin-top:6px;font-size:11px;"><strong>Requisitos técnicos:</strong> ${item.techRequirements}</div>` : "";
+    const versionReference = item.versionReference ? `<div style="margin-top:4px;font-size:11px;"><strong>Versión/Referencia:</strong> ${item.versionReference}</div>` : "";
+
+    return `
+      <tr>
+        <td style="border: 1px solid #000; padding: 8px; text-align: center; font-size: 12px;">${item.quantity}</td>
+        <td style="border: 1px solid #000; padding: 8px; font-size: 12px;">${item.unit}</td>
+        <td style="border: 1px solid #000; padding: 8px; font-size: 12px;">${unitMeasure}</td>
+        <td style="border: 1px solid #000; padding: 8px; font-size: 12px;">${item.description}${techRequirements}${versionReference}</td>
+        <td style="border: 1px solid #000; padding: 8px; text-align: right; font-size: 12px;">$${formatMoney(Number(item.unitPrice || 0))}</td>
+        <td style="border: 1px solid #000; padding: 8px; text-align: right; font-size: 12px;">$${formatMoney(Number(item.amount || 0))}</td>
+      </tr>
+    `;
+  }).join('');
 
   return `
     <!DOCTYPE html>
@@ -250,9 +274,12 @@ export function generateQuoteHTML(quote: any, provider: any, lineItems: any[]): 
           margin-bottom: 20px;
           display: flex;
           justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
         }
         .info-section {
           width: 48%;
+          min-width: 280px;
         }
         .info-section h3 {
           margin: 0 0 10px 0;
@@ -263,10 +290,12 @@ export function generateQuoteHTML(quote: any, provider: any, lineItems: any[]): 
         .info-section p {
           margin: 3px 0;
         }
-        .commercial-terms {
+        .commercial-terms,
+        .delivery-contact {
           margin-bottom: 20px;
         }
-        .commercial-terms h3 {
+        .commercial-terms h3,
+        .delivery-contact h3 {
           margin: 0 0 10px 0;
           font-size: 14px;
           border-bottom: 1px solid #000;
@@ -288,6 +317,7 @@ export function generateQuoteHTML(quote: any, provider: any, lineItems: any[]): 
         td {
           border: 1px solid #000;
           padding: 8px;
+          vertical-align: top;
         }
         .total-section {
           text-align: right;
@@ -318,6 +348,8 @@ export function generateQuoteHTML(quote: any, provider: any, lineItems: any[]): 
           <h3>Información de la Cotización</h3>
           <p><strong>Folio:</strong> ${quote.folio}</p>
           <p><strong>Fecha:</strong> ${quote.quoteDate}</p>
+          <p><strong>Requisición:</strong> ${quote.requisitionNumber || '-'}</p>
+          <p><strong>Proyecto:</strong> ${quote.projectTitle || '-'}</p>
           <p><strong>Empresa Destino:</strong> ${quote.empresaDestino}</p>
         </div>
         <div class="info-section">
@@ -331,7 +363,19 @@ export function generateQuoteHTML(quote: any, provider: any, lineItems: any[]): 
 
       <div class="commercial-terms">
         <h3>Condiciones Comerciales</h3>
-        <p>${quote.commercialTerms}</p>
+        <p><strong>Condiciones:</strong> ${quote.commercialTerms}</p>
+        <p><strong>Validez:</strong> ${validityDays} días</p>
+        <p><strong>Días de pago:</strong> ${paymentDays}</p>
+        <p><strong>Tiempo de entrega:</strong> ${quote.deliveryTime || '-'}</p>
+        <p><strong>Tiempo de fabricación:</strong> ${quote.manufacturingTime || '-'}</p>
+        <p><strong>Garantía:</strong> ${guaranteeMonths} meses</p>
+        <p><strong>Cumplimiento:</strong> ${compliancePercentage.toFixed(2)}%</p>
+      </div>
+
+      <div class="delivery-contact">
+        <h3>Datos de Entrega y Contacto</h3>
+        <p><strong>Lugar de entrega:</strong> ${quote.deliveryPlace || '-'}</p>
+        <p><strong>Contacto:</strong> ${quote.contactPerson || '-'}</p>
       </div>
 
       <h3 style="border-bottom: 1px solid #000; padding-bottom: 5px;">Partidas de la Cotización</h3>
@@ -340,9 +384,10 @@ export function generateQuoteHTML(quote: any, provider: any, lineItems: any[]): 
           <tr>
             <th style="width: 10%;">Cantidad</th>
             <th style="width: 15%;">Unidad</th>
-            <th style="width: 45%;">Descripción</th>
-            <th style="width: 15%;">Precio Unitario</th>
-            <th style="width: 15%;">Importe</th>
+            <th style="width: 15%;">Medida</th>
+            <th style="width: 35%;">Descripción</th>
+            <th style="width: 12%;">Precio Unitario</th>
+            <th style="width: 13%;">Importe</th>
           </tr>
         </thead>
         <tbody>
@@ -351,13 +396,13 @@ export function generateQuoteHTML(quote: any, provider: any, lineItems: any[]): 
       </table>
 
       <div class="total-section">
-        <p><strong>Total: $${total.toFixed(2)} MXN</strong></p>
-        <p><strong>Cantidad en letra: ${totalText}</strong></p>
+        <p><strong>Total: $${formatMoney(total)} MXN</strong></p>
+        <p><strong>Cantidad en letra:</strong> ${totalText}</p>
       </div>
 
       <div class="footer">
         <p>HGW Mechanical Support - Cotización generada automáticamente el ${new Date().toLocaleDateString('es-ES')}</p>
-        <p>Esta cotización es válida por 30 días a partir de la fecha de emisión</p>
+        <p>Validez de la cotización: ${validityDays} días a partir de la fecha de emisión.</p>
       </div>
     </body>
     </html>
