@@ -2,13 +2,11 @@ import { pgTable, text, varchar, timestamp, integer, serial, boolean, bigint, nu
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-
 export const session = pgTable("session", {
   sid: varchar("sid").primaryKey(),
   sess: text("sess").notNull(),
   expire: timestamp("expire").notNull(),
 });
-
 
 export const auditLogs = pgTable("audit_logs", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -20,7 +18,6 @@ export const auditLogs = pgTable("audit_logs", {
   userAgent: text("user_agent"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
-
 
 export const licitaciones = pgTable("licitaciones", {
   id: serial("id").primaryKey(),
@@ -36,6 +33,13 @@ export const licitaciones = pgTable("licitaciones", {
 export const providers = pgTable("providers", {
   id: serial("id").primaryKey(),
   companyName: text("company_name").notNull(),
+  
+  // 🚀 NUEVOS CAMPOS DEL PROVEEDOR
+  businessActivity: text("business_activity").notNull().default(""), 
+  legalAddress: text("legal_address").notNull().default(""), 
+  rfc: text("rfc").notNull().default(""), 
+  website: text("website").default(""), 
+  
   legalRepresentative: text("legal_representative").notNull(),
   phone: text("phone").notNull(),
   email: text("email").notNull(),
@@ -58,6 +62,18 @@ export const quotes = pgTable("quotes", {
   compliancePercentage: numeric("compliance_percentage", { precision: 10, scale: 2 }).notNull().default("0.00"),
   deliveryPlace: text("delivery_place").notNull().default(""),
   contactPerson: text("contact_person").notNull().default(""),
+  
+  // 🚀 NUEVOS CAMPOS DE LA COTIZACIÓN (PDF)
+  complianceWarranty: integer("compliance_warranty").notNull().default(0),
+  goodsOrigin: text("goods_origin").notNull().default(""),
+  providerNationality: text("provider_nationality").notNull().default(""),
+  experienceYears: integer("experience_years").notNull().default(0),
+  specialtyYears: integer("specialty_years").notNull().default(0),
+  similarContracts: integer("similar_contracts").notNull().default(0),
+  bankName: text("bank_name").notNull().default(""),
+  bankAccount: text("bank_account").notNull().default(""),
+  bankBeneficiary: text("bank_beneficiary").notNull().default(""),
+
   providerId: integer("provider_id").references(() => providers.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -71,6 +87,10 @@ export const quoteItems = pgTable("quote_items", {
   unitMeasure: text("unit_measure").notNull().default(""),
   techRequirements: text("tech_requirements").notNull().default(""),
   versionReference: text("version_reference").notNull().default(""),
+  
+  // 🚀 NUEVO CAMPO DE LA PARTIDA (PDF)
+  reqDate: text("req_date").notNull().default(""), 
+
   unitPrice: integer("unit_price").notNull().default(0),
   amount: integer("amount").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -80,17 +100,15 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   fullName: text("full_name").notNull(),
   correo: text("correo").notNull().unique(),
-  password: text("password").notNull(),
-  isAdmin: boolean("is_admin").default(false).notNull(),
+  
+  // 🚀 ADIÓS DEUDA TÉCNICA: Se eliminó password, is_admin, failedLoginAttempts y lockedUntil
+  
   isActive: boolean("is_active").default(true).notNull(),
-  failedLoginAttempts: integer("failed_login_attempts").default(0).notNull(),
-  lockedUntil: timestamp("locked_until"),
   lastLogin: timestamp("last_login"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
 });
-
 
 export const folders = pgTable("folders", {
   id: serial("id").primaryKey(),
@@ -99,7 +117,6 @@ export const folders = pgTable("folders", {
   userId: integer("user_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-
 
 export const files = pgTable("files", {
   id: serial("id").primaryKey(),
@@ -119,7 +136,6 @@ export const files = pgTable("files", {
   deletedBy: integer("deleted_by").references(() => users.id),
 });
 
-
 export const insertLicitacionSchema = createInsertSchema(licitaciones);
 export const insertProviderSchema = createInsertSchema(providers);
 export const insertQuoteSchema = createInsertSchema(quotes);
@@ -128,7 +144,6 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs);
 export const insertUserSchema = createInsertSchema(users);
 export const insertFileSchema = createInsertSchema(files);
 export const insertFolderSchema = createInsertSchema(folders);
-
 
 export type Licitacion = typeof licitaciones.$inferSelect;
 export type InsertLicitacion = typeof licitaciones.$inferInsert;
@@ -144,7 +159,6 @@ export type User = typeof users.$inferSelect & { displayName?: string };
 export type File = typeof files.$inferSelect;
 export type Folder = typeof folders.$inferSelect;
 export type InsertFolder = typeof folders.$inferInsert;
-
 
 export const loginSchema = z.object({ username: z.string(), password: z.string() });
 export type LoginInput = z.infer<typeof loginSchema>;

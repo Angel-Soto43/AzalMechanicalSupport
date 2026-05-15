@@ -16,7 +16,7 @@ interface LineItem {
   description: string;
   techRequirements: string;
   versionReference: string;
-  reqDate: string; // NUEVO: Fecha del requerimiento
+  reqDate: string;
   quantity: number;
   unitMeasure: string;
   unitPrice: number;
@@ -53,7 +53,6 @@ export default function QuotesPage() {
     paymentDays: 17,
     contactPerson: "Tte. Cor. Ing. Ind. Omar Luna Ramírez",
     commercialTerms: "Precios en Moneda Nacional. IVA Incluido.",
-    // NUEVOS CAMPOS DEL PDF:
     goodsOrigin: "Nacional",
     providerNationality: "mexicana",
     manufacturingTime: "2 meses",
@@ -83,10 +82,45 @@ export default function QuotesPage() {
     setLineItems(lineItems.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
 
+  // ================= MUTACIÓN: GUARDAR PROVEEDOR =================
+  const vendorMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/providers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(vendorData),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Error al guardar el proveedor");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/providers"] });
+      toast({ title: "¡Proveedor Guardado!", description: "El proveedor se registró correctamente." });
+      setIsVendorModalOpen(false);
+      // Limpiamos el formulario para el siguiente
+      setVendorData({
+        companyName: "", businessActivity: "", legalAddress: "", phone: "", rfc: "", legalRep: "", email: "", website: ""
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  });
+
+  // ================= MUTACIÓN: GUARDAR COTIZACIÓN =================
+  // ================= MUTACIÓN: GUARDAR COTIZACIÓN =================
   const quoteMutation = useMutation({
     mutationFn: async () => {
+      // 🚀 1. Buscamos el nombre de la empresa destino según el proveedor que seleccionaste
+      const selectedVendor = vendors.find(v => v.id.toString() === selectedVendorId);
+
       const payload = {
         internalFolio: quoteData.folio,
+        // 🚀 2. AQUÍ ESTÁ LA MAGIA: Ya agregamos la Empresa Destino al paquete
+        destinationCompany: selectedVendor ? selectedVendor.companyName : "Sin Asignar", 
         requisitionNumber: quoteData.requisitionNumber,
         projectTitle: quoteData.projectTitle,
         quoteDate: quoteData.date,
@@ -114,23 +148,39 @@ export default function QuotesPage() {
           versionReference: item.versionReference,
           reqDate: item.reqDate,
           quantity: item.quantity,
+          unit: item.unitMeasure, // 🚀 LA SOLUCIÓN: Le pasamos el dato al backend con el nombre que exige
           unitMeasure: item.unitMeasure,
           unitPrice: item.unitPrice
         }))
       };
+
       const res = await fetch("/api/quotes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
+      // 🚀 3. EL ESCUDO: Si el backend marca error, detenemos todo y lo mostramos en pantalla
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Error al generar la cotización");
+      }
+
       return res.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
       toast({ title: "¡Éxito!", description: "Cotización generada correctamente." });
       setIsQuoteModalOpen(false);
-      window.open(`/api/quotes/${data.id || data.quote?.id}/pdf`, '_blank');
+      // Solo abrimos el PDF si realmente existe el ID
+      if (data.id || data.quote?.id) {
+        window.open(`/api/quotes/${data.id || data.quote?.id}/pdf`, '_blank');
+      }
     },
+    onError: (error: any) => {
+      // Si falta un campo, te saldrá un cuadrito rojo avisándote exactamente qué falta
+      toast({ title: "Error en el formulario", description: error.message, variant: "destructive" });
+    }
   });
 
   return (
@@ -163,7 +213,14 @@ export default function QuotesPage() {
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t mt-2">
                 <Button variant="ghost" onClick={() => setIsVendorModalOpen(false)}>Cancelar</Button>
-                <Button className="bg-[#1E40AF] text-white hover:bg-blue-800">Guardar Proveedor</Button>
+                {/* 🚀 EL BOTÓN YA ESTÁ CONECTADO A LA MUTACIÓN */}
+                <Button 
+                  className="bg-[#1E40AF] text-white hover:bg-blue-800" 
+                  onClick={() => vendorMutation.mutate()}
+                  disabled={vendorMutation.isPending}
+                >
+                  {vendorMutation.isPending ? "Guardando..." : "Guardar Proveedor"}
+                </Button>
               </div>
             </DialogContent>
           </Dialog>

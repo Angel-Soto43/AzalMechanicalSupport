@@ -395,19 +395,31 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.post("/api/providers", requireAuth, async (req: any, res) => {
     try {
       const companyName = (req.body.companyName || "").trim();
-      const legalRepresentative = (req.body.legalRepresentative || "").trim();
+      const businessActivity = (req.body.businessActivity || "").trim();
+      const legalAddress = (req.body.legalAddress || "").trim();
+      const rfc = (req.body.rfc || "").trim();
+      
+      // 🚀 Aquí arreglamos el problema: ahora acepta 'legalRep' del frontend
+      const legalRepresentative = (req.body.legalRep || req.body.legalRepresentative || "").trim();
+      
       const phone = (req.body.phone || "").trim();
       const email = (req.body.email || "").trim();
+      const website = (req.body.website || "").trim();
 
       if (!companyName || !legalRepresentative || !phone || !email) {
-        return res.status(400).json({ error: "Todos los campos del proveedor son requeridos" });
+        return res.status(400).json({ error: "Razón social, representante, teléfono y correo son obligatorios" });
       }
 
+      // 🚀 Ahora sí mandamos TODOS los campos a la base de datos
       const provider = await storage.createProvider({
         companyName,
+        businessActivity,
+        legalAddress,
+        rfc,
         legalRepresentative,
         phone,
         email,
+        website,
       });
 
       res.status(201).json(provider);
@@ -569,21 +581,16 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const rawItems = await storage.getQuoteItems(quoteId);
       const lineItems = convertQuoteItemsFromDb(rawItems);
 
+      // Calculamos el total para mandarlo en texto (Ej. "CIENTO VEINTIDOS MIL...")
+      const totalCents = rawItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      const total = fromCents(totalCents);
+      const totalText = amountToSpanishText(total);
+
       const html = generateQuoteHTML({
+        ...quote, // 🚀 Mandamos TODA la base de datos de golpe
         folio: quote.internalFolio,
         empresaDestino: quote.destinationCompany,
-        quoteDate: quote.quoteDate,
-        commercialTerms: quote.commercialTerms,
-        requisitionNumber: quote.requisitionNumber,
-        projectTitle: quote.projectTitle,
-        validityDays: quote.validityDays,
-        paymentDays: quote.paymentDays,
-        deliveryTime: quote.deliveryTime,
-        manufacturingTime: quote.manufacturingTime,
-        guaranteeMonths: quote.guaranteeMonths,
-        compliancePercentage: Number(quote.compliancePercentage) || 0,
-        deliveryPlace: quote.deliveryPlace,
-        contactPerson: quote.contactPerson,
+        totalText: totalText 
       }, provider, lineItems);
 
       const browser = await puppeteer.launch({
@@ -595,12 +602,15 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           '--disable-accelerated-2d-canvas',
           '--no-first-run',
           '--no-zygote',
-          '--single-process',
+          // 🚀 BORRAMOS '--single-process' QUE ERA EL CAUSANTE DEL CRASH
           '--disable-gpu'
         ]
       });
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'networkidle0' });
+      
+      // 🚀 CAMBIAMOS 'networkidle0' a 'networkidle2' Y LE DAMOS UN TIMEOUT
+      await page.setContent(html, { waitUntil: 'networkidle2', timeout: 30000 });
+      
       const pdfBuffer = await page.pdf({
         format: 'A4',
         printBackground: true,
@@ -611,7 +621,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="Cotizacion_${quote.internalFolio}.pdf"`);
-      res.send(pdfBuffer);
+      
+      // 🚀 LA SOLUCIÓN: Convertimos el formato moderno a un archivo binario tradicional
+      res.send(Buffer.from(pdfBuffer));
 
       // Registrar en auditoría
       await storage.createAuditLog({
@@ -663,13 +675,24 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const providerId = Number(req.body.providerId || req.body.proveedorId);
       const lineItems = Array.isArray(req.body.lineItems || req.body.partidas) ? (req.body.lineItems || req.body.partidas) : [];
 
+      // 🚀 NUEVOS CAMPOS DEL PDF: Atrapando los datos de la plantilla
+      const goodsOrigin = (req.body.goodsOrigin || "").toString().trim();
+      const providerNationality = (req.body.providerNationality || "").toString().trim();
+      const complianceWarranty = Number(req.body.complianceWarranty) || 0;
+      const experienceYears = Number(req.body.experienceYears) || 0;
+      const specialtyYears = Number(req.body.specialtyYears) || 0;
+      const similarContracts = Number(req.body.similarContracts) || 0;
+      const bankName = (req.body.bankName || "").toString().trim();
+      const bankAccount = (req.body.bankAccount || "").toString().trim();
+      const bankBeneficiary = (req.body.bankBeneficiary || "").toString().trim();
+
       const validityDays = Number.isFinite(validityDaysRaw) && Number.isInteger(validityDaysRaw) && validityDaysRaw > 0 ? validityDaysRaw : 120;
       const paymentDays = Number.isFinite(paymentDaysRaw) && Number.isInteger(paymentDaysRaw) && paymentDaysRaw >= 0 ? paymentDaysRaw : 0;
       const guaranteeMonths = Number.isFinite(guaranteeMonthsRaw) && Number.isInteger(guaranteeMonthsRaw) && guaranteeMonthsRaw >= 0 ? guaranteeMonthsRaw : 0;
       const compliancePercentage = Number.isFinite(compliancePercentageRaw) && compliancePercentageRaw >= 0 ? compliancePercentageRaw : 0;
 
       if (!internalFolio || !destinationCompany || !requisitionNumber || !projectTitle || !quoteDate || !commercialTerms || !deliveryPlace || !contactPerson || Number.isNaN(providerId)) {
-        return res.status(400).json({ error: "Todos los campos de la cotización son requeridos: folio, empresaDestino, requisicion, proyecto, fecha, condiciones, lugarEntrega, contacto y proveedorId" });
+        return res.status(400).json({ error: "Todos los campos principales de la cotización son requeridos." });
       }
 
       const provider = await storage.getProviderById(providerId);
@@ -682,6 +705,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ error: validation.errors.join("; ") });
       }
 
+      // 🚀 Guardando la Cabecera de la Cotización con TODOS los campos
       const quote = await storage.createQuote({
         internalFolio,
         destinationCompany,
@@ -698,10 +722,23 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         deliveryPlace,
         contactPerson,
         providerId,
+        goodsOrigin,
+        providerNationality,
+        complianceWarranty,
+        experienceYears,
+        specialtyYears,
+        similarContracts,
+        bankName,
+        bankAccount,
+        bankBeneficiary
       });
 
+      // 🚀 Guardando el Detalle (Partidas) incluyendo la nueva Fecha del requerimiento
       const createdItems = [];
-      for (const item of validation.normalizedItems) {
+      for (let i = 0; i < validation.normalizedItems.length; i++) {
+        const item = validation.normalizedItems[i];
+        const rawItem = lineItems[i]; 
+        
         const createdItem = await storage.createQuoteItem({
           quoteId: quote.id,
           description: item.description,
@@ -710,6 +747,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           unitMeasure: item.unitMeasure,
           techRequirements: item.techRequirements,
           versionReference: item.versionReference,
+          reqDate: (rawItem.reqDate || "").toString().trim(), // <-- Aquí atrapamos la fecha de la tabla
           unitPrice: item.unitPriceCents,
           amount: item.amountCents,
         });
