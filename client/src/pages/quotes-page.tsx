@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Users, FileText, MapPin, Clock, Award, Building } from "lucide-react";
+import { Plus, Trash2, Users, FileText, MapPin, Clock, Award, Building, Folder } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -71,8 +71,96 @@ export default function QuotesPage() {
 
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
 
-  const { data: vendors = [] } = useQuery<any[]>({ queryKey: ["/api/providers"] });
-  const { data: quotes = [], isLoading: loadingQuotes } = useQuery<any[]>({ queryKey: ["/api/quotes"] });
+  // Estados para selector de carpetas después de generar PDF
+  const [selectFolderModalOpen, setSelectFolderModalOpen] = useState(false);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<number | null>(null);
+  const [rootFolders, setRootFolders] = useState<any[]>([]);
+  const [subfolders, setSubfolders] = useState<any[]>([]);
+  const [currentPathBreadcrumbs, setCurrentPathBreadcrumbs] = useState<any[]>([]);
+  const [selectedFolder, setSelectedFolder] = useState<any | null>(null);
+  const [savingPdf, setSavingPdf] = useState(false);
+
+  useEffect(() => {
+    if (!selectFolderModalOpen) return;
+    loadRootFolders();
+  }, [selectFolderModalOpen]);
+
+  async function loadRootFolders() {
+    try {
+      const [localRes, msRes] = await Promise.all([
+        fetch('/api/folders', { credentials: 'include' }),
+        fetch('/api/microsoft-folders', { credentials: 'include' }),
+      ]);
+      const locals = localRes.ok ? await localRes.json() : [];
+      const mss = msRes.ok ? await msRes.json() : [];
+      setRootFolders([...locals.map((f:any)=> ({...f, source: 'local'})), ...mss.map((f:any)=>({...f, source: 'microsoft'}))]);
+      setSubfolders([]);
+      setCurrentPathBreadcrumbs([]);
+      setSelectedFolder(null);
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'No se pudieron cargar carpetas', variant: 'destructive' });
+    }
+  }
+
+  async function enterFolder(folder: any) {
+    try {
+      const isMicrosoft = folder.source === 'microsoft' || Number.isNaN(Number(folder.id));
+      const endpoint = isMicrosoft ? `/api/microsoft-folders/${folder.id}/content` : `/api/folders/${folder.id}/content`;
+      const res = await fetch(endpoint, { credentials: 'include' });
+      if (!res.ok) throw new Error('Error al cargar carpeta');
+      const data = await res.json();
+      const foldersList = data.folders || [];
+      setSubfolders(foldersList.map((f:any)=> ({...f, source: isMicrosoft ? 'microsoft' : 'local'})));
+      setCurrentPathBreadcrumbs(data.path || [{ id: folder.id, name: folder.name }]);
+      setSelectedFolder({ id: folder.id, source: isMicrosoft ? 'microsoft' : 'local', name: folder.name });
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'No se pudo abrir la carpeta', variant: 'destructive' });
+    }
+  }
+
+  async function savePdfToSelectedFolder() {
+    if (!selectedFolder || !selectedQuoteId) return;
+    setSavingPdf(true);
+    try {
+      const res = await fetch(`/api/quotes/${selectedQuoteId}/pdf/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ folderId: String(selectedFolder.id) })
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(()=>({ error: 'Error al guardar PDF' }));
+        throw new Error(body.error || 'Error al guardar PDF');
+      }
+      const data = await res.json();
+      toast({ title: 'PDF guardado', description: `PDF guardado correctamente en la carpeta. (${data.fileName})` });
+      setSelectFolderModalOpen(false);
+      setSelectedFolder(null);
+      setSelectedQuoteId(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/files-all'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/files/recent'] });
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'No se pudo guardar el PDF', variant: 'destructive' });
+    } finally {
+      setSavingPdf(false);
+    }
+  }
+
+  // ================= 🚀 CONSULTAS EN TIEMPO REAL (POLLING AUTOMÁTICO) =================
+  
+  // Sincroniza la lista de proveedores automáticamente cada 2 segundos
+  const { data: vendors = [] } = useQuery<any[]>({ 
+    queryKey: ["/api/providers"],
+    refetchInterval: 2000,
+    refetchIntervalInBackground: true
+  });
+
+  // Sincroniza el historial de cotizaciones automáticamente cada 2 segundos
+  const { data: quotes = [], isLoading: loadingQuotes } = useQuery<any[]>({ 
+    queryKey: ["/api/quotes"],
+    refetchInterval: 2000,
+    refetchIntervalInBackground: true
+  });
 
   const addLineItem = () => {
     setLineItems([...lineItems, { id: Date.now(), description: "", techRequirements: "", versionReference: "", reqDate: "", quantity: 1, unitMeasure: "Kilogramo", unitPrice: 0 }]);
@@ -100,7 +188,6 @@ export default function QuotesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/providers"] });
       toast({ title: "¡Proveedor Guardado!", description: "El proveedor se registró correctamente." });
       setIsVendorModalOpen(false);
-      // Limpiamos el formulario para el siguiente
       setVendorData({
         companyName: "", businessActivity: "", legalAddress: "", phone: "", rfc: "", legalRep: "", email: "", website: ""
       });
@@ -111,15 +198,12 @@ export default function QuotesPage() {
   });
 
   // ================= MUTACIÓN: GUARDAR COTIZACIÓN =================
-  // ================= MUTACIÓN: GUARDAR COTIZACIÓN =================
   const quoteMutation = useMutation({
     mutationFn: async () => {
-      // 🚀 1. Buscamos el nombre de la empresa destino según el proveedor que seleccionaste
       const selectedVendor = vendors.find(v => v.id.toString() === selectedVendorId);
 
       const payload = {
         internalFolio: quoteData.folio,
-        // 🚀 2. AQUÍ ESTÁ LA MAGIA: Ya agregamos la Empresa Destino al paquete
         destinationCompany: selectedVendor ? selectedVendor.companyName : "Sin Asignar", 
         requisitionNumber: quoteData.requisitionNumber,
         projectTitle: quoteData.projectTitle,
@@ -148,7 +232,7 @@ export default function QuotesPage() {
           versionReference: item.versionReference,
           reqDate: item.reqDate,
           quantity: item.quantity,
-          unit: item.unitMeasure, // 🚀 LA SOLUCIÓN: Le pasamos el dato al backend con el nombre que exige
+          unit: item.unitMeasure, 
           unitMeasure: item.unitMeasure,
           unitPrice: item.unitPrice
         }))
@@ -160,7 +244,6 @@ export default function QuotesPage() {
         body: JSON.stringify(payload),
       });
 
-      // 🚀 3. EL ESCUDO: Si el backend marca error, detenemos todo y lo mostramos en pantalla
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || "Error al generar la cotización");
@@ -172,13 +255,14 @@ export default function QuotesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
       toast({ title: "¡Éxito!", description: "Cotización generada correctamente." });
       setIsQuoteModalOpen(false);
-      // Solo abrimos el PDF si realmente existe el ID
-      if (data.id || data.quote?.id) {
-        window.open(`/api/quotes/${data.id || data.quote?.id}/pdf`, '_blank');
+      // Abrir modal para seleccionar carpeta destino y guardar PDF
+      const generatedId = data.id || data.quote?.id;
+      if (generatedId) {
+        setSelectedQuoteId(generatedId);
+        setSelectFolderModalOpen(true);
       }
     },
     onError: (error: any) => {
-      // Si falta un campo, te saldrá un cuadrito rojo avisándote exactamente qué falta
       toast({ title: "Error en el formulario", description: error.message, variant: "destructive" });
     }
   });
@@ -213,7 +297,6 @@ export default function QuotesPage() {
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t mt-2">
                 <Button variant="ghost" onClick={() => setIsVendorModalOpen(false)}>Cancelar</Button>
-                {/* 🚀 EL BOTÓN YA ESTÁ CONECTADO A LA MUTACIÓN */}
                 <Button 
                   className="bg-[#1E40AF] text-white hover:bg-blue-800" 
                   onClick={() => vendorMutation.mutate()}
@@ -221,6 +304,53 @@ export default function QuotesPage() {
                 >
                   {vendorMutation.isPending ? "Guardando..." : "Guardar Proveedor"}
                 </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* MODAL: Seleccionar carpeta destino y guardar PDF */}
+          <Dialog open={selectFolderModalOpen} onOpenChange={setSelectFolderModalOpen}>
+            <DialogContent className="sm:max-w-3xl bg-card text-foreground">
+              <DialogHeader>
+                <DialogTitle className="border-b border-border pb-4 text-lg">Seleccionar carpeta destino</DialogTitle>
+              </DialogHeader>
+
+              <div className="p-4">
+                <div className="flex gap-4">
+                  <div className="w-1/2">
+                    <h4 className="text-sm font-semibold mb-2">Raíz</h4>
+                    <div className="space-y-2 max-h-72 overflow-y-auto">
+                      <button className="w-full text-left p-2 border rounded hover:bg-slate-50" onClick={() => loadRootFolders()}>
+                        Cargar carpetas
+                      </button>
+                      {(rootFolders || []).map((f: any) => (
+                        <div key={f.id} className={`p-2 border rounded cursor-pointer ${selectedFolder?.id === f.id ? 'bg-slate-100' : ''}`} onClick={() => enterFolder(f)}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2"><Folder /> <span className="font-medium">{f.name}</span></div>
+                            <div className="text-xs text-slate-500">{f.source === 'microsoft' ? 'OneDrive' : 'Local'}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="w-1/2">
+                    <h4 className="text-sm font-semibold mb-2">Contenido</h4>
+                    <div className="space-y-2 max-h-72 overflow-y-auto">
+                      <div className="text-xs text-slate-500 mb-2">{currentPathBreadcrumbs.map((b: any) => b.name).join(' / ')}</div>
+                      {(subfolders || []).map((sf: any) => (
+                        <div key={sf.id} className={`p-2 border rounded cursor-pointer ${selectedFolder?.id === sf.id ? 'bg-slate-100' : ''}`} onClick={() => enterFolder(sf)}>
+                          <div className="flex items-center gap-2"><Folder /> <span className="font-medium">{sf.name}</span></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-4">
+                  <Button variant="ghost" onClick={() => { setSelectFolderModalOpen(false); setSelectedFolder(null); }}>Cancelar</Button>
+                  <Button className="bg-[#1E40AF] text-white" onClick={() => savePdfToSelectedFolder()} disabled={!selectedFolder || savingPdf}>{savingPdf ? 'Guardando...' : 'Guardar PDF aquí'}</Button>
+                </div>
               </div>
             </DialogContent>
           </Dialog>

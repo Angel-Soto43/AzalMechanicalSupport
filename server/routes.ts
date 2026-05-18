@@ -38,6 +38,62 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+// 🚀 CORREGIDO: Se limpian los márgenes manuales para respetar el resguardo CSS nativo de Azal
+async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[]) {
+  const html = generateQuoteHTML({
+    ...quote,
+    folio: quote.internalFolio,
+    destinationCompany: quote.destinationCompany,
+    totalText: quote.totalText
+  }, provider, lineItems);
+
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--no-zygote',
+      '--disable-gpu'
+    ]
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle2', timeout: 30000 });
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' }, // Obliga a usar el padding real del CSS
+      preferCSSPageSize: true
+    });
+    return pdfBuffer;
+  } finally {
+    await browser.close();
+  }
+}
+
+function sanitizeFileName(value: string) {
+  return value
+    .replace(/\s+/g, '_')
+    .replace(/[^a-zA-Z0-9_\-.]/g, '')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function buildQuotePdfFileName(quote: any) {
+  const folio = quote.internalFolio || `Q${quote.id}`;
+  const cliente = quote.destinationCompany || quote.projectTitle || 'PropuestaEconomica';
+  const fecha = quote.quoteDate ? new Date(quote.quoteDate).toISOString().split('T')[0] : '';
+  const safeCliente = sanitizeFileName(cliente);
+  const safeFolio = sanitizeFileName(folio);
+  const safeFecha = sanitizeFileName(fecha);
+  const filename = `COT-${safeFolio}_${safeCliente}${safeFecha ? `_${safeFecha}` : ''}.pdf`;
+  return filename.replace(/__+/g, '_');
+}
+
 export async function registerRoutes(app: Express, httpServer: Server): Promise<Server> {
 
   // Configuración de cabeceras para todas las peticiones /api
@@ -46,9 +102,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     next();
   });
-
-  // Microsoft auth routes are handled in server/auth.ts (Passport + OIDC).
-  // Dejar este bloque vacío aquí para evitar rutas duplicadas / conflicto de flujo.
 
   // --- GESTIÓN DE CARPETAS Y ARCHIVOS ---
   app.get("/api/folders", requireAuth, async (req: any, res) => {
@@ -61,8 +114,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-
-  // ☁️ RUTA EXCLUSIVA DE ONEDRIVE
   // ☁️ RUTA EXCLUSIVA DE ONEDRIVE
   app.post("/api/folders", requireAuth, async (req: any, res) => {
     try {
@@ -107,7 +158,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.status(201).json(folder);
     } catch (e: any) {
       console.error("❌ Error en Microsoft Graph:", e.message);
-      // 🛡️ CORRECCIÓN: Pasamos el mensaje real para que aparezca en pantalla si falla
       res.status(500).json({ error: e.message || "Error al crear la carpeta en OneDrive" });
     }
   });
@@ -158,7 +208,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(401).json({ error: "Sesión de Microsoft expirada" });
       }
 
-      // 1. Borramos directamente de OneDrive
       await deleteMicrosoftItem(
         req.user.accessToken,
         req.user.refreshToken,
@@ -166,7 +215,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         folderIdParam
       );
       
-      // 2. 🚀 Auditoría: Guardamos el registro
       await storage.createAuditLog({
         userId: req.user.id,
         action: "Eliminar carpeta",
@@ -217,9 +265,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
 
         const archive = archiver("zip", { zlib: { level: 9 } });
-        archive.on("error", (err) => {
-          throw err;
-        });
+        archive.on("error", (err) => { throw err; });
         archive.pipe(res);
 
         const addMicrosoftFolderToArchive = async (currentFolderId: string, currentPath: string) => {
@@ -284,10 +330,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.setHeader("Content-Type", "application/zip");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
 
-      archive.on("error", (err) => {
-        throw err;
-      });
-
+      archive.on("error", (err) => { throw err; });
       archive.pipe(res);
 
       const addFolderToArchive = async (currentFolderId: number, currentPath: string) => {
@@ -374,7 +417,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  app.get("/api/providers/:id",requireAuth ,async (req: any, res) => {
+  app.get("/api/providers/:id", requireAuth, async (req: any, res) => {
     try {
       const providerId = Number(req.params.id);
       if (Number.isNaN(providerId)) {
@@ -398,10 +441,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const businessActivity = (req.body.businessActivity || "").trim();
       const legalAddress = (req.body.legalAddress || "").trim();
       const rfc = (req.body.rfc || "").trim();
-      
-      // 🚀 Aquí arreglamos el problema: ahora acepta 'legalRep' del frontend
       const legalRepresentative = (req.body.legalRep || req.body.legalRepresentative || "").trim();
-      
       const phone = (req.body.phone || "").trim();
       const email = (req.body.email || "").trim();
       const website = (req.body.website || "").trim();
@@ -410,7 +450,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ error: "Razón social, representante, teléfono y correo son obligatorios" });
       }
 
-      // 🚀 Ahora sí mandamos TODOS los campos a la base de datos
       const provider = await storage.createProvider({
         companyName,
         businessActivity,
@@ -483,8 +522,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // ============== ENDPOINTS PARA COTIZACIONES ==============
- 
+  // ============== GESTIÓN DE PDFS Y COTIZACIONES (CORREGIDO) ==============
   app.get("/api/quotes", requireAuth, async (req: any, res) => {
     try {
       const quotes = await storage.getQuotes();
@@ -516,7 +554,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  app.get("/api/quotes/:id",requireAuth,async (req: any, res) => {
+  app.get("/api/quotes/:id", requireAuth, async (req: any, res) => {
     try {
       const quoteId = Number(req.params.id);
       if (Number.isNaN(quoteId)) {
@@ -558,6 +596,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // 🚀 CORREGIDO: Se limpian los márgenes manuales para respetar el resguardo CSS nativo de Azal
   app.get("/api/quotes/:id/pdf", requireAuth, async (req: any, res) => {
     try {
       const quoteId = Number(req.params.id);
@@ -581,15 +620,14 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const rawItems = await storage.getQuoteItems(quoteId);
       const lineItems = convertQuoteItemsFromDb(rawItems);
 
-      // Calculamos el total para mandarlo en texto (Ej. "CIENTO VEINTIDOS MIL...")
       const totalCents = rawItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
       const total = fromCents(totalCents);
       const totalText = amountToSpanishText(total);
 
       const html = generateQuoteHTML({
-        ...quote, // 🚀 Mandamos TODA la base de datos de golpe
+        ...quote,
         folio: quote.internalFolio,
-        empresaDestino: quote.destinationCompany,
+        destinationCompany: quote.destinationCompany,
         totalText: totalText 
       }, provider, lineItems);
 
@@ -602,19 +640,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           '--disable-accelerated-2d-canvas',
           '--no-first-run',
           '--no-zygote',
-          // 🚀 BORRAMOS '--single-process' QUE ERA EL CAUSANTE DEL CRASH
           '--disable-gpu'
         ]
       });
       const page = await browser.newPage();
       
-      // 🚀 CAMBIAMOS 'networkidle0' a 'networkidle2' Y LE DAMOS UN TIMEOUT
       await page.setContent(html, { waitUntil: 'networkidle2', timeout: 30000 });
       
       const pdfBuffer = await page.pdf({
         format: 'A4',
         printBackground: true,
-        margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
+        margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' }, // Se limpia para activar el margin @page del CSS
         preferCSSPageSize: true
       });
       await browser.close();
@@ -622,10 +658,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="Cotizacion_${quote.internalFolio}.pdf"`);
       
-      // 🚀 LA SOLUCIÓN: Convertimos el formato moderno a un archivo binario tradicional
       res.send(Buffer.from(pdfBuffer));
 
-      // Registrar en auditoría
       await storage.createAuditLog({
         correo: req.user.correo || req.user.email || null,
         action: "Generar PDF de cotización",
@@ -636,11 +670,85 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  app.get("/api/quotes/price-history",requireAuth, async (req: any, res) => {
+  app.post("/api/quotes/:id/pdf/save", requireAuth, async (req: any, res) => {
+    try {
+      const quoteId = Number(req.params.id);
+      if (Number.isNaN(quoteId)) {
+        return res.status(400).json({ error: "ID de cotización inválido" });
+      }
+
+      const { folderId } = req.body;
+      if (!folderId || typeof folderId !== 'string') {
+        return res.status(400).json({ error: "El folderId es obligatorio" });
+      }
+
+      const isMicrosoftId = Number.isNaN(Number(folderId));
+      if (!isMicrosoftId) {
+        return res.status(400).json({ error: "ID de carpeta de OneDrive inválido" });
+      }
+
+      const quote = await storage.getQuoteById(quoteId);
+      if (!quote) {
+        return res.status(404).json({ error: "Cotización no encontrada" });
+      }
+
+      if (!quote.providerId) {
+        return res.status(404).json({ error: "Proveedor no encontrado" });
+      }
+
+      const provider = await storage.getProviderById(Number(quote.providerId));
+      if (!provider) {
+        return res.status(404).json({ error: "Proveedor no encontrado" });
+      }
+
+      const rawItems = await storage.getQuoteItems(quoteId);
+      const lineItems = convertQuoteItemsFromDb(rawItems);
+      const totalCents = rawItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      const total = fromCents(totalCents);
+      const totalText = amountToSpanishText(total);
+
+      const quoteWithText = {
+        ...quote,
+        folio: quote.internalFolio,
+        destinationCompany: quote.destinationCompany,
+        totalText,
+      };
+
+      const pdfBuffer = await generateQuotePdfBuffer(quoteWithText, provider, lineItems);
+      const fileName = buildQuotePdfFileName(quoteWithText);
+
+      const uploadResult = await uploadFileToGraph(
+        req.user.accessToken,
+        req.user.refreshToken,
+        req.user.id,
+        pdfBuffer,
+        fileName,
+        'application/pdf',
+        folderId
+      );
+
+      await storage.createAuditLog({
+        correo: req.user.correo || req.user.email || null,
+        action: "Guardar PDF de cotización en carpeta",
+        details: `Se guardó el PDF ${fileName} en la carpeta de OneDrive ${folderId}`
+      });
+
+      return res.status(200).json({
+        success: true,
+        fileName,
+        savedTo: folderId,
+        uploadResult,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get("/api/quotes/price-history", requireAuth, async (req: any, res) => {
     try {
       const description = String(req.query.description || req.query.material || "").trim();
       if (!description) {
-        return res.status(400).json({ error: "El campo description es requerido para consultar el historial de precios" });
+        return res.status(400).json({ error: "El campo description es requerido" });
       }
 
       const history = await storage.getQuotePriceHistory(description);
@@ -657,7 +765,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
   app.post("/api/quotes", requireAuth, async (req: any, res) => {
     try {
-      // Soportar ambos nombres de campos: los del formulario y los canónicos
       const internalFolio = (req.body.internalFolio || req.body.folio || "").toString().trim();
       const destinationCompany = (req.body.destinationCompany || req.body.empresaDestino || "").toString().trim();
       const requisitionNumber = (req.body.requisitionNumber || req.body.requisicion || "").toString().trim();
@@ -675,7 +782,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const providerId = Number(req.body.providerId || req.body.proveedorId);
       const lineItems = Array.isArray(req.body.lineItems || req.body.partidas) ? (req.body.lineItems || req.body.partidas) : [];
 
-      // 🚀 NUEVOS CAMPOS DEL PDF: Atrapando los datos de la plantilla
       const goodsOrigin = (req.body.goodsOrigin || "").toString().trim();
       const providerNationality = (req.body.providerNationality || "").toString().trim();
       const complianceWarranty = Number(req.body.complianceWarranty) || 0;
@@ -705,7 +811,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ error: validation.errors.join("; ") });
       }
 
-      // 🚀 Guardando la Cabecera de la Cotización con TODOS los campos
       const quote = await storage.createQuote({
         internalFolio,
         destinationCompany,
@@ -733,7 +838,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         bankBeneficiary
       });
 
-      // 🚀 Guardando el Detalle (Partidas) incluyendo la nueva Fecha del requerimiento
       const createdItems = [];
       for (let i = 0; i < validation.normalizedItems.length; i++) {
         const item = validation.normalizedItems[i];
@@ -747,7 +851,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           unitMeasure: item.unitMeasure,
           techRequirements: item.techRequirements,
           versionReference: item.versionReference,
-          reqDate: (rawItem.reqDate || "").toString().trim(), // <-- Aquí atrapamos la fecha de la tabla
+          reqDate: (rawItem.reqDate || "").toString().trim(),
           unitPrice: item.unitPriceCents,
           amount: item.amountCents,
         });
@@ -884,7 +988,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(401).json({ error: "Sesión de Microsoft expirada" });
       }
 
-      // 1. Borramos el archivo directamente de OneDrive
       await deleteMicrosoftItem(
         req.user.accessToken,
         req.user.refreshToken,
@@ -892,7 +995,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         fileIdParam
       );
 
-      // 2. 🚀 Auditoría: Guardamos el registro
       await storage.createAuditLog({
         userId: req.user.id,
         correo: req.user.correo || req.user.email || null,
@@ -907,56 +1009,51 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // ☁️ 100% NUBE: SUBIR ARCHIVOS DIRECTO A ONEDRIVE CON METADATOS INFALIBLES
   app.post("/api/files/upload", requireAuth, upload.single("file"), async (req: any, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-    
-    const user = req.user;
-    const relativePath = req.body.relativePath || ""; 
-    const parentId = req.body.folderId || req.body.parentId; 
-    
-    const contractId = (req.body.contractId || "").trim();
-    const supplier = (req.body.supplier || "").trim();
-    
-    // 🚀 ESTRATEGIA INFALIBLE: Incorporar los datos en el nombre del archivo
-    const originalName = req.file.originalname;
-    let finalFileName = originalName;
-    
-    if (contractId || supplier) {
-      // Crea un nombre tipo: "[CONT-123] [Cliente XYZ] Informe.pdf"
-      const safeContract = contractId || "SinID";
-      const safeSupplier = supplier || "SinCliente";
-      finalFileName = `[${safeContract}] [${safeSupplier}] ${originalName}`;
+    try {
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+      
+      const user = req.user;
+      const relativePath = req.body.relativePath || ""; 
+      const parentId = req.body.folderId || req.body.parentId; 
+      
+      const contractId = (req.body.contractId || "").trim();
+      const supplier = (req.body.supplier || "").trim();
+      
+      const originalName = req.file.originalname;
+      let finalFileName = originalName;
+      
+      if (contractId || supplier) {
+        const safeContract = contractId || "SinID";
+        const safeSupplier = supplier || "SinCliente";
+        finalFileName = `[${safeContract}] [${safeSupplier}] ${originalName}`;
+      }
+
+      const targetPath = relativePath ? relativePath.replace(originalName, finalFileName) : finalFileName;
+
+      const result = await uploadFileToGraph(
+        user.accessToken,
+        user.refreshToken,
+        user.id,
+        req.file.buffer,
+        targetPath,
+        req.file.mimetype,
+        parentId
+      );
+
+      await storage.createAuditLog({
+          correo: user.correo || null,
+          action: "Subida nube",
+          details: `Archivo subido: ${finalFileName}`
+      });
+
+      res.json(result);
+    } catch (e: any) {
+      console.error("❌ Error en subida:", e.message);
+      res.status(500).json({ error: e.message || "Error al subir el archivo" });
     }
+  });
 
-    // Si viene de una carpeta (subida masiva), reemplazamos el nombre original por el nuevo
-    const targetPath = relativePath ? relativePath.replace(originalName, finalFileName) : finalFileName;
-
-    const result = await uploadFileToGraph(
-      user.accessToken,
-      user.refreshToken,
-      user.id,
-      req.file.buffer,
-      targetPath,
-      req.file.mimetype,
-      parentId
-    );
-
-    await storage.createAuditLog({
-        correo: user.correo || null,
-        action: "Subida nube",
-        details: `Archivo subido: ${finalFileName}`
-    });
-
-    res.json(result);
-  } catch (e: any) {
-    console.error("❌ Error en subida:", e.message);
-    res.status(500).json({ error: e.message || "Error al subir el archivo" });
-  }
-});
-
-  // 📥 RUTA PARA DESCARGAR ARCHIVOS (100% Nube Microsoft)
   app.get("/api/files/:id/download", requireAuth, async (req: any, res) => {
     try {
       const fileIdParam = req.params.id;
@@ -991,7 +1088,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // 👁️ RUTA PARA PREVISUALIZAR ARCHIVOS (PDF e Imágenes dentro del sistema)
   app.get("/api/files/:id/preview", requireAuth, async (req: any, res) => {
     try {
       const fileIdParam = req.params.id;
@@ -1009,8 +1105,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
       const contentType = response.headers.get("content-type") || "application/octet-stream";
       res.setHeader("Content-Type", contentType);
-      
-      // 🚀 LA MAGIA: 'inline' le dice al navegador que lo dibuje en pantalla, no que lo descargue
       res.setHeader("Content-Disposition", `inline; filename="preview"`);
 
       await pipeline(response.body, res);
@@ -1019,7 +1113,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // 📝 RUTA PARA EDITAR OFFICE (Redirige al Word/Excel Online oficial de Microsoft)
   app.get("/api/files/:id/edit-office", requireAuth, async (req: any, res) => {
     try {
       const fileIdParam = req.params.id;
@@ -1041,13 +1134,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // 🖼️ RUTA PARA GENERAR VISOR INTEGRADO DE OFFICE (PREVIEW NATIVO)
   app.get("/api/files/:id/embed", requireAuth, async (req: any, res) => {
     try {
       const fileIdParam = req.params.id;
       if (!req.user.accessToken) return res.status(401).json({ error: "Sesión expirada" });
 
-      // Le pedimos a Microsoft un visor temporal para incrustar el archivo
       const response = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${fileIdParam}/preview`, {
         method: 'POST',
         headers: {
@@ -1059,7 +1150,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const data = await response.json();
       
       if (data.getUrl) {
-        // Redirigimos el iframe de tu página web hacia el visor seguro de Microsoft
         return res.redirect(data.getUrl);
       }
 
@@ -1078,7 +1168,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // DEBUG: Ver archivos locales
   app.get("/api/debug/files", async (_req, res) => {
     try {
       const localFiles = await storage.getAllFiles();
@@ -1097,31 +1186,23 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // NUEVO: Obtener archivos de Microsoft Drive del usuario autenticado
   app.get("/api/microsoft-files", requireAuth, async (req: any, res) => {
     try {
       const user = req.user;
       const accessToken = user?.accessToken;
       const refreshToken = user?.refreshToken;
 
-      console.log('📍 /api/microsoft-files - Usuario:', user?.oid, 'Token disponible:', !!accessToken);
-
       if (!accessToken || !refreshToken) {
-        console.error('❌ No access token or refresh token para usuario:', user?.oid);
         return res.status(401).json({ error: "No access token or refresh token available" });
       }
 
       const microsoftFiles = await getMicrosoftFiles(accessToken, refreshToken, user.id);
-      console.log('✅ Archivos obtenidos de Microsoft:', microsoftFiles?.length || 0);
-      
       res.json(microsoftFiles || []);
     } catch (e: any) {
-      console.error('❌ Error en /api/microsoft-files:', e.message);
       res.status(500).json({ error: e.message });
     }
   });
 
-  // Obtener carpetas de Microsoft
   app.get("/api/microsoft-folders", requireAuth, async (req: any, res) => {
     try {
       const user = req.user;
@@ -1129,25 +1210,20 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const refreshToken = user?.refreshToken;
 
       if (!accessToken || !refreshToken) {
-        console.error('❌ No access token or refresh token para usuario:', user?.oid);
         return res.status(401).json({ error: "No access token or refresh token available" });
       }
 
       const microsoftFolders = await getMicrosoftFolders(accessToken, refreshToken, user.id);
-      console.log('✅ Carpetas obtenidas de Microsoft:', microsoftFolders?.length || 0);
-      
       res.json(microsoftFolders || []);
     } catch (e: any) {
-      console.error('❌ Error en /api/microsoft-folders:', e.message);
       res.status(500).json({ error: e.message });
     }
   });
 
-  // NUEVO: Ver el contenido de una subcarpeta específica en Microsoft
   app.get("/api/microsoft-folders/:id/content", requireAuth, async (req: any, res) => {
     try {
       const user = req.user;
-      const folderId = req.params.id; // En Microsoft el ID es un String
+      const folderId = req.params.id;
 
       if (!user?.accessToken) {
         return res.status(401).json({ error: "No access token" });
@@ -1156,7 +1232,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const data = await getMicrosoftFolderContent(user.accessToken, user.refreshToken, user.id, folderId);
       res.json(data);
     } catch (e: any) {
-      console.error('❌ Error en /api/microsoft-folders/:id/content:', e.message);
       res.status(500).json({ error: e.message });
     }
   });
@@ -1170,7 +1245,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const parentId = req.body?.parentId;
 
       if (!accessToken || !refreshToken) {
-        console.error('❌ No access token or refresh token para usuario:', user?.oid);
         return res.status(401).json({ error: "No access token or refresh token available" });
       }
 
@@ -1185,25 +1259,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         folderName.trim(),
         parentId
       );
-      console.log('✅ Carpeta creada en Microsoft:', createdFolder);
       res.status(201).json(createdFolder);
     } catch (e: any) {
-      console.error('❌ Error en POST /api/microsoft-folders:', e.message || e);
       res.status(500).json({ error: e.message || 'Error interno al crear carpeta en OneDrive' });
     }
   });
 
-  // ☁️ RUTA PAGINADA PARA LA TABLA
   app.get("/api/files-all", requireAuth, async (req: any, res) => {
     try {
-      console.log(`\n📍 LLAMADA A /api/files-all RECIBIDA. Frontend conectado con éxito.`);
       const user = req.user;
       const accessToken = user?.accessToken;
       const refreshToken = user?.refreshToken;
-      
-      if (!accessToken) {
-        console.error("⚠️ Alerta: No se encontró accessToken para este usuario.");
-      }
 
       const cursor = req.query.cursor as string; 
       let localFiles: any[] = [];
@@ -1215,9 +1281,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       let microsoftData = { files: [], nextLink: null };
 
       if (accessToken && refreshToken) {
-        console.log(`🔍 Pidiendo archivos a Microsoft (Cursor: ${cursor ? 'Siguiente Página' : 'Página 1'})...`);
         microsoftData = await getMicrosoftFilesPaginated(accessToken, refreshToken, user.id, cursor);
-        console.log(`✅ Se enviarán ${microsoftData.files.length} archivos a la tabla.`);
       }
 
       res.json({
@@ -1226,12 +1290,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       });
 
     } catch (e: any) {
-      console.error('❌ Error en /api/files-all:', e.message);
       res.status(500).json({ error: e.message });
     }
   });
 
-  // NUEVO: Obtener información de almacenamiento de Microsoft
   app.get("/api/microsoft-quota", requireAuth, async (req: any, res) => {
     try {
       const user = req.user;
@@ -1250,26 +1312,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // 📁 NUEVO: Ver el contenido de una subcarpeta específica en Microsoft
-  app.get("/api/microsoft-folders/:id/content", requireAuth, async (req: any, res) => {
-    try {
-      const user = req.user;
-      const folderId = req.params.id; // En Microsoft el ID es un String
-
-      if (!user?.accessToken) {
-        return res.status(401).json({ error: "No hay una sesión activa de Microsoft" });
-      }
-
-      console.log(`📂 Escaneando subcarpeta de OneDrive: ${folderId}`);
-      const data = await getMicrosoftFolderContent(user.accessToken, user.refreshToken, user.id, folderId);
-      res.json(data);
-    } catch (e: any) {
-      console.error('❌ Error cargando subcarpeta de Microsoft:', e.message);
-      res.status(500).json({ error: "No se pudo obtener el contenido de la carpeta en OneDrive" });
-    }
-  });
-
-  // Dashboard: Información 100% Exclusiva y Precisa de OneDrive
   app.get("/api/dashboard", requireAuth, async (req: any, res) => {
     try {
       const user = req.user;
@@ -1277,7 +1319,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const refreshToken = user?.refreshToken;
       const userId = user?.id;
 
-      // 🚀 Hacemos un solo escaneo masivo (Más rápido y eficiente)
       const microsoftFiles = accessToken && refreshToken
         ? await getMicrosoftFiles(accessToken, refreshToken, userId)
         : [];
@@ -1286,24 +1327,20 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         ? await getMicrosoftQuota(accessToken, refreshToken, userId)
         : { used: 0, total: 5 * 1024 * 1024 * 1024 };
 
-      // 1. Conteo total
       const fileCount = microsoftFiles.length;
-      
-      // 2. Filtro estricto y preciso de los últimos 7 días
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
       const recentFiles = microsoftFiles
         .filter((file: any) => {
-           // Checamos la fecha real del archivo
            const fileDate = new Date(file.createdDateTime || file.lastModifiedDateTime || 0);
            return fileDate >= sevenDaysAgo;
         })
         .sort((a: any, b: any) => {
            const dateA = new Date(a.lastModifiedDateTime || a.createdDateTime || 0).getTime();
            const dateB = new Date(b.lastModifiedDateTime || b.createdDateTime || 0).getTime();
-           return dateB - dateA; // Ordenamos del más nuevo al más viejo
+           return dateB - dateA;
         })
-        .slice(0, 10) // Tomamos el Top 10
+        .slice(0, 10)
         .map((item: any) => {
           const fecha = item.createdDateTime || item.lastModifiedDateTime || new Date().toISOString();
           return {
@@ -1318,7 +1355,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           };
         });
 
-      // 3. Cálculos de almacenamiento
       const storageUsed = quota.used || 0;
       const storageTotal = quota.total || 5 * 1024 * 1024 * 1024;
       const usagePercent = storageTotal > 0 ? Math.round((storageUsed / storageTotal) * 100) : 0;
@@ -1328,10 +1364,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         storageUsed,
         storageTotal,
         usagePercent,
-        recentFiles, // Ahora sí, precisión milimétrica 🎯
+        recentFiles,
       });
     } catch (e: any) {
-      console.error('❌ Error en /api/dashboard:', e.message);
       res.json({
         fileCount: 0,
         storageUsed: 0,
@@ -1342,7 +1377,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // 💾 RUTA DE RESPALDOS (BACKUP) DESDE ONEDRIVE (Versión Archiver - Alto Rendimiento)
   app.get("/api/backup", requireAuth, async (req: any, res) => {
     try {
       const { range, start, end } = req.query;
@@ -1352,7 +1386,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(401).json({ error: "Sesión de Microsoft expirada" });
       }
 
-      // 1. Calcular las fechas según el botón que presionó el usuario
       const now = new Date();
       let startDate: Date;
       let endDate: Date = now;
@@ -1375,12 +1408,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ error: "Rango inválido" });
       }
 
-      console.log(`📦 Iniciando respaldo [${range}]. Desde: ${startDate.toISOString()}`);
-
-      // 2. Obtener TODOS los archivos de Microsoft
       const allFiles = await getMicrosoftFiles(user.accessToken, user.refreshToken, user.id);
 
-      // 3. Filtrar solo los archivos que caen dentro del rango de fechas
       const filesToBackup = allFiles.filter((file: any) => {
         const fileDate = new Date(file.createdDateTime || file.lastModifiedDateTime || 0);
         return fileDate >= startDate && fileDate <= endDate;
@@ -1390,9 +1419,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(404).json({ error: "No se encontraron archivos en este rango de fechas" });
       }
 
-      console.log(`📥 Empaquetando ${filesToBackup.length} archivos...`);
-
-      // 4. Configurar el ZIP usando Archiver (Para manejar GBs sin problemas)
       const archive = archiver("zip", { zlib: { level: 9 } });
       const filename = `Respaldo_${range}.zip`;
       
@@ -1402,9 +1428,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       archive.on("error", (err) => { throw err; });
       archive.pipe(res);
 
-      // 5. Descargar y transmitir los archivos al ZIP en tiempo real
       for (const file of filesToBackup) {
-        // Pedimos la URL de descarga directa de Microsoft
         let downloadUrl = file['@microsoft.graph.downloadUrl'];
         if (!downloadUrl) {
           downloadUrl = await getMicrosoftItemDownloadUrl(
@@ -1417,37 +1441,28 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
         const fileRes = await fetch(downloadUrl);
         if (fileRes.ok && fileRes.body) {
-          // Inyectamos el archivo directamente al ZIP
           archive.append(Readable.fromWeb(fileRes.body as any), { name: file.name });
         }
       }
 
-      // 6. Cerrar el ZIP y finalizar la descarga
       await archive.finalize();
 
-      // 🚀 Registrar en auditoría de forma blindada
       await storage.createAuditLog({
         userId: user.id,
-        // Buscamos el correo en todos los escondites posibles de la sesión
         correo: user.correo || user.email || user.username || req.user?.correo || req.user?.email || null,
         action: "Respaldo generado",
         details: `Se generó un respaldo de ${filesToBackup.length} archivos (Rango: ${range}).`
       });
 
     } catch (error: any) {
-      console.error("❌ Error en backup:", error.message);
       if (!res.headersSent) {
         res.status(500).json({ error: "Error interno al generar el respaldo" });
       }
     }
   });
 
-// --- AUDITORÍA Y ESTADÍSTICAS ---
-  
-  // 1. Ruta de Logs: Con requireAuth para que reconozca tu sesión de danmen27@outlook.com
   app.get("/api/audit-logs", requireAuth, async (req: any, res) => {
     try {
-      // Traemos los 100 más recientes. Esto debería incluir los tuyos y los de sistema.
       const logs = await storage.getRecentAuditLogs(100);
       res.json(logs || []);
     } catch (e: any) {
@@ -1455,7 +1470,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // 2. Ruta de Estadísticas: También con requireAuth
   app.get("/api/stats", requireAuth, async (req: any, res) => {
     try {
       const licitaciones = await storage.getLicitaciones();
