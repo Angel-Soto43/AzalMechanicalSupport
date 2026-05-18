@@ -38,7 +38,7 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// 🚀 CORREGIDO: Se limpian los márgenes manuales para respetar el resguardo CSS nativo de Azal
+// 🚀 INYECCIÓN DE IMÁGENES Y MÁRGENES SEGUROS CORREGIDOS
 async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[]) {
   const html = generateQuoteHTML({
     ...quote,
@@ -47,16 +47,30 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
     totalText: quote.totalText
   }, provider, lineItems);
 
+  let headerBase64 = '';
+  let footerBase64 = '';
+  const headerPath = path.join(process.cwd(), 'server', 'assets', 'encabezado.png');
+  const footerPath = path.join(process.cwd(), 'server', 'assets', 'pie.png');
+
+  if (fs.existsSync(headerPath)) {
+    headerBase64 = `data:image/png;base64,${fs.readFileSync(headerPath).toString('base64')}`;
+  }
+  if (fs.existsSync(footerPath)) {
+    footerBase64 = `data:image/png;base64,${fs.readFileSync(footerPath).toString('base64')}`;
+  }
+
+  const dateParts = (quote.quoteDate || "").split('-');
+  let formattedDate = "";
+  if (dateParts.length === 3) {
+    const quoteDateObj = new Date(Number(dateParts[0]), Number(dateParts[1]) - 1, Number(dateParts[2]));
+    formattedDate = quoteDateObj.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
   const browser = await puppeteer.launch({
     headless: true,
     args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--no-first-run',
-      '--no-zygote',
-      '--disable-gpu'
+      '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas', '--no-first-run', '--no-zygote', '--disable-gpu'
     ]
   });
 
@@ -66,8 +80,27 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
-      margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' }, // Obliga a usar el padding real del CSS
-      preferCSSPageSize: true
+      displayHeaderFooter: true,
+      // 🚀 Agregamos <style> internos y position: absolute para forzarlas a tocar las orillas
+      headerTemplate: `
+        <style>html, body { margin: 0; padding: 0; }</style>
+        <div style="position: absolute; top: 0; left: 0; width: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; -webkit-print-color-adjust: exact;">
+          ${headerBase64 ? `<img src="${headerBase64}" style="width: 100%; height: auto; display: block;" />` : ''}
+          <div style="position: absolute; right: 45px; bottom: 15px; text-align: right; font-size: 10px; color: #7f8c8d; line-height: 1.3;">
+            Nicolás Romero, Estado de México<br>
+            a ${formattedDate}
+          </div>
+        </div>
+      `,
+      footerTemplate: `
+        <style>html, body { margin: 0; padding: 0; }</style>
+        <div style="position: absolute; bottom: 0; left: 0; width: 100%; margin: 0; padding: 0; display: flex; justify-content: center; align-items: flex-end; -webkit-print-color-adjust: exact;">
+          ${footerBase64 ? `<img src="${footerBase64}" style="width: 100%; height: auto; display: block;" />` : ''}
+        </div>
+      `,
+      // 🚀 AUMENTAMOS EL MARGEN SUPERIOR A 270px PARA EMPUJAR EL TEXTO HACIA ABAJO
+      margin: { top: '270px', right: '0px', bottom: '150px', left: '0px' },
+      preferCSSPageSize: false
     });
     return pdfBuffer;
   } finally {
@@ -624,40 +657,18 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const total = fromCents(totalCents);
       const totalText = amountToSpanishText(total);
 
-      const html = generateQuoteHTML({
+      const quoteWithText = {
         ...quote,
         folio: quote.internalFolio,
         destinationCompany: quote.destinationCompany,
         totalText: totalText 
-      }, provider, lineItems);
+      };
 
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu'
-        ]
-      });
-      const page = await browser.newPage();
-      
-      await page.setContent(html, { waitUntil: 'networkidle2', timeout: 30000 });
-      
-      const pdfBuffer = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' }, // Se limpia para activar el margin @page del CSS
-        preferCSSPageSize: true
-      });
-      await browser.close();
+      // 🚀 Llamamos a la función maestra que acabamos de crear arriba
+      const pdfBuffer = await generateQuotePdfBuffer(quoteWithText, provider, lineItems);
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="Cotizacion_${quote.internalFolio}.pdf"`);
-      
       res.send(Buffer.from(pdfBuffer));
 
       await storage.createAuditLog({
