@@ -23,6 +23,20 @@ interface LineItem {
   unitPrice: number;
 }
 
+const unitMeasureAbbreviations: Record<string, string> = {
+  kilogramo: "KG",
+  pieza: "PZA",
+  metro: "M",
+  litro: "LT",
+  unidad: "UND",
+};
+
+const normalizeUnitMeasure = (value: string) => {
+  if (!value || typeof value !== "string") return "";
+  const normalized = value.trim().toLowerCase();
+  return unitMeasureAbbreviations[normalized] || value;
+};
+
 export default function QuotesPage() {
   const { toast } = useToast();
   
@@ -67,7 +81,7 @@ export default function QuotesPage() {
   });
 
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: 1, description: "", techRequirements: "", versionReference: "", reqDate: "", quantity: 1, unitMeasure: "Kilogramo", unitPrice: 0 }
+    { id: 1, description: "", techRequirements: "", versionReference: "", reqDate: "", quantity: 1, unitMeasure: "KG", unitPrice: 0 }
   ]);
 
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
@@ -161,11 +175,12 @@ export default function QuotesPage() {
   });
 
   const addLineItem = () => {
-    setLineItems([...lineItems, { id: Date.now(), description: "", techRequirements: "", versionReference: "", reqDate: "", quantity: 1, unitMeasure: "Kilogramo", unitPrice: 0 }]);
+    setLineItems([...lineItems, { id: Date.now(), description: "", techRequirements: "", versionReference: "", reqDate: "", quantity: 1, unitMeasure: "KG", unitPrice: 0 }]);
   };
 
   const updateLineItem = (id: number, field: keyof LineItem, value: any) => {
-    setLineItems(lineItems.map(item => item.id === id ? { ...item, [field]: value } : item));
+    const cellValue = field === 'unitMeasure' ? normalizeUnitMeasure(value) : value;
+    setLineItems(lineItems.map(item => item.id === id ? { ...item, [field]: cellValue } : item));
   };
 
   // ================= MUTACIÓN: GUARDAR PROVEEDOR =================
@@ -492,8 +507,8 @@ export default function QuotesPage() {
                         <TableHead className="text-white w-12 text-center font-bold text-xs">#</TableHead>
                         <TableHead className="text-white font-bold text-xs">Descripción / Espec. Técnica</TableHead>
                         <TableHead className="text-white font-bold text-xs">Req. Técnicos / Versión / Fecha</TableHead>
-                        <TableHead className="text-white w-20 font-bold text-xs">Cant.</TableHead>
-                        <TableHead className="text-white w-24 font-bold text-xs">U.M.</TableHead>
+                        <TableHead className="text-white w-28 text-center font-bold text-xs">Cant.</TableHead>
+                        <TableHead className="text-white w-20 font-bold text-xs">U.M.</TableHead>
                         <TableHead className="text-white w-32 font-bold text-xs">P. Unitario</TableHead>
                         <TableHead className="text-white w-12"></TableHead>
                       </TableRow>
@@ -510,8 +525,8 @@ export default function QuotesPage() {
                               <Input className="text-[10px] h-6 w-1/2" placeholder="Fecha: 04/JUN/24" value={item.reqDate} onChange={e => updateLineItem(item.id, 'reqDate', e.target.value)} />
                             </div>
                           </TableCell>
-                          <TableCell><Input className="text-xs" type="number" value={item.quantity} onChange={e => updateLineItem(item.id, 'quantity', Number(e.target.value))} /></TableCell>
-                          <TableCell><Input className="text-xs" placeholder="Kilogramo" value={item.unitMeasure} onChange={e => updateLineItem(item.id, 'unitMeasure', e.target.value)} /></TableCell>
+                          <TableCell><Input className="text-xs w-20 min-w-[5rem]" type="number" value={item.quantity} onChange={e => updateLineItem(item.id, 'quantity', Number(e.target.value))} /></TableCell>
+                          <TableCell><Input className="text-xs w-20 min-w-[5rem] uppercase" placeholder="Ej. KG" value={item.unitMeasure} onChange={e => updateLineItem(item.id, 'unitMeasure', e.target.value)} /></TableCell>
                           <TableCell><Input className="text-xs" type="number" value={item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', Number(e.target.value))} /></TableCell>
                           <TableCell><Button variant="ghost" size="icon" onClick={() => setLineItems(lineItems.filter(i => i.id !== item.id))} className="text-red-500 hover:bg-red-50"><Trash2 size={16}/></Button></TableCell>
                         </TableRow>
@@ -627,7 +642,7 @@ export default function QuotesPage() {
                                   versionReference: li.versionReference || "",
                                   reqDate: li.reqDate || "",
                                   quantity: Number(li.quantity || 1),
-                                  unitMeasure: li.unitMeasure || li.unit || "Kilogramo",
+                                  unitMeasure: normalizeUnitMeasure(li.unitMeasure || li.unit || "Kilogramo"),
                                   unitPrice: Number(li.unitPrice || 0)
                                 })));
                               }
