@@ -81,7 +81,6 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
       format: 'A4',
       printBackground: true,
       displayHeaderFooter: true,
-      // 🚀 Agregamos <style> internos y position: absolute para forzarlas a tocar las orillas
       headerTemplate: `
         <style>html, body { margin: 0; padding: 0; }</style>
         <div style="position: absolute; top: 0; left: 0; width: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; -webkit-print-color-adjust: exact;">
@@ -98,7 +97,6 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
           ${footerBase64 ? `<img src="${footerBase64}" style="width: 100%; height: auto; display: block;" />` : ''}
         </div>
       `,
-      // 🚀 AUMENTAMOS EL MARGEN SUPERIOR A 270px PARA EMPUJAR EL TEXTO HACIA ABAJO
       margin: { top: '270px', right: '0px', bottom: '150px', left: '0px' },
       preferCSSPageSize: false
     });
@@ -657,18 +655,40 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const total = fromCents(totalCents);
       const totalText = amountToSpanishText(total);
 
-      const quoteWithText = {
+      const html = generateQuoteHTML({
         ...quote,
         folio: quote.internalFolio,
         destinationCompany: quote.destinationCompany,
         totalText: totalText 
-      };
+      }, provider, lineItems);
 
-      // 🚀 Llamamos a la función maestra que acabamos de crear arriba
-      const pdfBuffer = await generateQuotePdfBuffer(quoteWithText, provider, lineItems);
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--disable-gpu'
+        ]
+      });
+      const page = await browser.newPage();
+      
+      await page.setContent(html, { waitUntil: 'networkidle2', timeout: 30000 });
+      
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' }, // Se limpia para activar el margin @page del CSS
+        preferCSSPageSize: true
+      });
+      await browser.close();
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="Cotizacion_${quote.internalFolio}.pdf"`);
+      
       res.send(Buffer.from(pdfBuffer));
 
       await storage.createAuditLog({
@@ -1508,6 +1528,65 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.status(201).json(nueva);
     } catch (e: any) {
       res.status(400).json({ error: e.message });
+    }
+  });
+
+  // 🚀 NUEVA RUTA INTEGRADA: Permite borrar una cotización del historial por su ID
+  app.delete("/api/quotes/:id", requireAuth, async (req: any, res) => {
+    try {
+      const quoteId = Number(req.params.id);
+      if (Number.isNaN(quoteId)) {
+        return res.status(400).json({ error: "ID de cotización inválido" });
+      }
+
+      const quote = await storage.getQuoteById(quoteId);
+      if (!quote) {
+        return res.status(404).json({ error: "Cotización no encontrada" });
+      }
+
+      // Borra el registro de la base de datos local (Neon)
+      await storage.deleteQuote?.(quoteId);
+
+      // Guardar el registro en la auditoría del sistema
+      await storage.createAuditLog({
+        correo: req.user.correo || req.user.email || null,
+        action: "Eliminar cotización",
+        details: `Se eliminó la cotización con folio ${quote.internalFolio || quote.folio} del historial.`
+      });
+
+      res.status(204).end();
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Error al eliminar el registro" });
+    }
+  });
+  // 🚀 ENDPOINT DE ELIMINACIÓN: Borra la cotización del historial localmente
+  app.delete("/api/quotes/:id", requireAuth, async (req: any, res) => {
+    try {
+      const quoteId = Number(req.params.id);
+      if (Number.isNaN(quoteId)) {
+        return res.status(400).json({ error: "ID de cotización inválido" });
+      }
+
+      const quote = await storage.getQuoteById(quoteId);
+      if (!quote) {
+        return res.status(404).json({ error: "Cotización no encontrada" });
+      }
+
+      // 1. Borramos el registro físico de la base de datos local (Neon/Drizzle)
+      await storage.deleteQuote?.(quoteId);
+
+      // 2. Registramos el movimiento en la auditoría general del sistema
+      await storage.createAuditLog({
+        correo: req.user.correo || req.user.email || null,
+        action: "Eliminar cotización",
+        details: `Se eliminó la cotización con folio ${quote.internalFolio || quote.folio} del historial.`
+      });
+
+      // 3. Respondemos con éxito sin contenido (204 No Content)
+      res.status(204).end();
+    } catch (e: any) {
+      console.error("❌ Error al eliminar cotización:", e.message || e);
+      res.status(500).json({ error: e.message || "Error interno al eliminar el registro" });
     }
   });
 

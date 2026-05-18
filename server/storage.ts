@@ -24,9 +24,12 @@ export interface IStorage {
   getProviderById(id: number): Promise<Provider | undefined>;
   updateProvider(id: number, data: Partial<InsertProvider>): Promise<Provider | undefined>;
   deleteProvider(id: number): Promise<void>;
+  
+  // Métodos de Cotizaciones
   getQuotes(): Promise<Quote[]>;
   createQuote(quote: InsertQuote): Promise<Quote>;
   getQuoteById(id: number): Promise<Quote | undefined>;
+  deleteQuote(id: number): Promise<void>; // 🚀 INTERFAZ DECLARADA CON ÉXITO
   getQuoteItems(quoteId: number): Promise<QuoteItem[]>;
   createQuoteItem(item: InsertQuoteItem): Promise<QuoteItem>;
   getQuotePriceHistory(materialDescription: string): Promise<Array<QuoteItem & { quoteDate: string; internalFolio: string }>>;
@@ -57,7 +60,6 @@ export class DatabaseStorage implements IStorage {
   constructor() {
     this.sessionStore = new PostgresSessionStore({ pool, createTableIfMissing: true });
   }
-
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.correo, email));
@@ -271,6 +273,12 @@ export class DatabaseStorage implements IStorage {
   async getQuoteById(id: number): Promise<Quote | undefined> {
     const [quote] = await db.select().from(quotes).where(eq(quotes.id, id));
     return quote;
+  }
+
+  // 🚀 IMPLEMENTACIÓN NATIVA DE BORRADO DE COTIZACIÓN ASOCIADA
+  async deleteQuote(id: number): Promise<void> {
+    await db.delete(quoteItems).where(eq(quoteItems.quoteId, id));
+    await db.delete(quotes).where(eq(quotes.id, id));
   }
 
   async getQuoteItems(quoteId: number): Promise<QuoteItem[]> {

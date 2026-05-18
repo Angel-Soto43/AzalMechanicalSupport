@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Users, FileText, MapPin, Clock, Award, Building, Folder } from "lucide-react";
+import { Plus, Trash2, Users, FileText, Clock, Award, Building, Folder, MoreVertical, Download, Edit3 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -147,15 +148,12 @@ export default function QuotesPage() {
   }
 
   // ================= 🚀 CONSULTAS EN TIEMPO REAL (POLLING AUTOMÁTICO) =================
-  
-  // Sincroniza la lista de proveedores automáticamente cada 2 segundos
   const { data: vendors = [] } = useQuery<any[]>({ 
     queryKey: ["/api/providers"],
     refetchInterval: 2000,
     refetchIntervalInBackground: true
   });
 
-  // Sincroniza el historial de cotizaciones automáticamente cada 2 segundos
   const { data: quotes = [], isLoading: loadingQuotes } = useQuery<any[]>({ 
     queryKey: ["/api/quotes"],
     refetchInterval: 2000,
@@ -255,7 +253,6 @@ export default function QuotesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
       toast({ title: "¡Éxito!", description: "Cotización generada correctamente." });
       setIsQuoteModalOpen(false);
-      // Abrir modal para seleccionar carpeta destino y guardar PDF
       const generatedId = data.id || data.quote?.id;
       if (generatedId) {
         setSelectedQuoteId(generatedId);
@@ -551,23 +548,121 @@ export default function QuotesPage() {
           </CardHeader>
           <CardContent className="p-0">
             <Table>
-              <TableHeader><TableRow className="bg-slate-50">
-                <TableHead className="px-6 py-3 text-xs font-bold uppercase">Folio</TableHead>
-                <TableHead className="px-6 py-3 text-xs font-bold uppercase">Requisición</TableHead>
-                <TableHead className="px-6 py-3 text-xs font-bold uppercase">Empresa Destino</TableHead>
-                <TableHead className="px-6 py-3 text-xs font-bold uppercase text-right">Monto Total</TableHead>
-                <TableHead className="px-6 py-3 text-xs font-bold uppercase text-center">Estado</TableHead>
-              </TableRow></TableHeader>
+              <TableHeader>
+                <TableRow className="bg-slate-50">
+                  <TableHead className="px-6 py-3 text-xs font-bold uppercase">Folio</TableHead>
+                  <TableHead className="px-6 py-3 text-xs font-bold uppercase">Requisición</TableHead>
+                  <TableHead className="px-6 py-3 text-xs font-bold uppercase">Empresa Destino</TableHead>
+                  <TableHead className="px-6 py-3 text-xs font-bold uppercase text-right">Monto Total</TableHead>
+                  <TableHead className="px-6 py-3 text-xs font-bold uppercase text-center">Estado</TableHead>
+                  {/* 🚀 NUEVA COLUMNA DE ACCIONES */}
+                  <TableHead className="px-6 py-3 text-xs font-bold uppercase text-center">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
               <TableBody>
-                {loadingQuotes ? <TableRow><TableCell colSpan={5} className="text-center py-10">Cargando...</TableCell></TableRow> :
-                 quotes.length === 0 ? <TableRow><TableCell colSpan={5} className="text-center py-10 text-slate-400">No hay registros aún.</TableCell></TableRow> :
+                {loadingQuotes ? <TableRow><TableCell colSpan={6} className="text-center py-10">Cargando...</TableCell></TableRow> :
+                 quotes.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-10 text-slate-400">No hay registros aún.</TableCell></TableRow> :
                  quotes.map(q => (
                   <TableRow key={q.id} className="hover:bg-slate-50 transition-colors">
                     <TableCell className="px-6 py-4 font-mono text-xs font-bold text-blue-700">{q.internalFolio || q.folio}</TableCell>
                     <TableCell className="px-6 py-4 text-xs text-slate-600">{q.requisitionNumber || 'N/A'}</TableCell>
                     <TableCell className="px-6 py-4 text-sm font-medium">{q.destinationCompany || 'Sin asignar'}</TableCell>
                     <TableCell className="px-6 py-4 text-right font-bold text-sm">${Number(q.total || 0).toLocaleString()}</TableCell>
-                    <TableCell className="px-6 py-4 text-center"><Badge className="bg-emerald-100 text-emerald-700 border-none text-[10px] font-bold">COMPLETADO</Badge></TableCell>
+                    <TableCell className="px-6 py-4 text-center">
+                      <Badge className="bg-emerald-100 text-emerald-700 border-none text-[10px] font-bold">COMPLETADO</Badge>
+                    </TableCell>
+                    
+                    {/* 🚀 EL BOTÓN DESPLEGABLE INTERACTIVO DE TRES PUNTITOS */}
+                    <TableCell className="px-6 py-4 text-center">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-slate-100">
+                            <MoreVertical size={16} className="text-slate-500" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-white shadow-lg border rounded-lg p-1 min-w-[150px] z-50">
+                          
+                          {/* ACCIÓN 1: DESCARGAR PDF */}
+                          <DropdownMenuItem 
+                            onClick={() => window.open(`/api/quotes/${q.id}/pdf`, '_blank')}
+                            className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 rounded hover:bg-slate-100 cursor-pointer"
+                          >
+                            <Download size={14} className="text-blue-600" />
+                            <span>Descargar PDF</span>
+                          </DropdownMenuItem>
+
+                          {/* ACCIÓN 2: EDITAR Y VOLVER A MAPEAR AL MODAL */}
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setQuoteData({
+                                folio: q.internalFolio || q.folio || "",
+                                requisitionNumber: q.requisitionNumber || "",
+                                projectTitle: q.projectTitle || "",
+                                date: q.quoteDate || new Date().toISOString().split('T')[0],
+                                deliveryLocation: q.deliveryPlace || "Campo Militar No. 25-E, Oriental, Puebla",
+                                deliveryTime: q.deliveryTime || "3 meses posteriores al fallo",
+                                warrantyMonths: Number(q.guaranteeMonths || 12),
+                                validityDays: Number(q.validityDays || 120),
+                                paymentDays: Number(q.paymentDays || 17),
+                                contactPerson: q.contactPerson || "Tte. Cor. Ing. Ind. Omar Luna Ramírez",
+                                commercialTerms: q.commercialTerms || "Precios en Moneda Nacional. IVA Incluido.",
+                                goodsOrigin: q.goodsOrigin || "Nacional",
+                                providerNationality: q.providerNationality || "mexicana",
+                                manufacturingTime: q.manufacturingTime || "2 meses",
+                                complianceWarranty: Number(q.complianceWarranty || 10),
+                                experienceYears: Number(q.experienceYears || 5),
+                                specialtyYears: Number(q.specialtyYears || 5),
+                                similarContracts: Number(q.similarContracts || 3),
+                                bankName: q.bankName || "GRUPO FINANCIERO INBURSA",
+                                bankAccount: q.bankAccount || "000",
+                                bankBeneficiary: q.bankBeneficiary || "Azal"
+                              });
+                              setSelectedVendorId(q.providerId?.toString() || "");
+                              
+                              if (q.lineItems && q.lineItems.length > 0) {
+                                setLineItems(q.lineItems.map((li: any, idx: number) => ({
+                                  id: li.id || idx,
+                                  description: li.description || "",
+                                  techRequirements: li.techRequirements || "",
+                                  versionReference: li.versionReference || "",
+                                  reqDate: li.reqDate || "",
+                                  quantity: Number(li.quantity || 1),
+                                  unitMeasure: li.unitMeasure || li.unit || "Kilogramo",
+                                  unitPrice: Number(li.unitPrice || 0)
+                                })));
+                              }
+                              setIsQuoteModalOpen(true);
+                            }}
+                            className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 rounded hover:bg-slate-100 cursor-pointer"
+                          >
+                            <Edit3 size={14} className="text-emerald-600" />
+                            <span>Editar</span>
+                          </DropdownMenuItem>
+
+                          {/* ACCIÓN 3: ELIMINAR COTIZACIÓN DEL HISTORIAL */}
+                          <DropdownMenuItem 
+                            onClick={async () => {
+                              if (confirm(`¿Estás seguro de que deseas eliminar la cotización ${q.internalFolio || q.folio}?`)) {
+                                try {
+                                  const res = await fetch(`/api/quotes/${q.id}`, { method: "DELETE" });
+                                  if (!res.ok) throw new Error("No se pudo eliminar el registro de la API");
+                                  
+                                  queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+                                  toast({ title: "¡Eliminado!", description: "La cotización se quitó del historial con éxito." });
+                                } catch (err: any) {
+                                  toast({ title: "Error", description: err.message, variant: "destructive" });
+                                }
+                              }
+                            }}
+                            className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 rounded hover:bg-red-50 cursor-pointer"
+                          >
+                            <Trash2 size={14} />
+                            <span>Eliminar</span>
+                          </DropdownMenuItem>
+
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
