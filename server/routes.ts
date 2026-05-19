@@ -38,7 +38,7 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// 🚀 INYECCIÓN DE IMÁGENES Y MÁRGENES SEGUROS CORREGIDOS
+// 🚀 FUNCIÓN MAESTRA: INYECCIÓN DE IMÁGENES AL BORDE DE LA HOJA
 async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[]) {
   const html = generateQuoteHTML({
     ...quote,
@@ -97,6 +97,7 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
           ${footerBase64 ? `<img src="${footerBase64}" style="width: 100%; height: auto; display: block;" />` : ''}
         </div>
       `,
+      // 🚀 MÁRGENES DERECHO E IZQUIERDO EN 0 PARA QUE LA IMAGEN TOQUE EL BORDE
       margin: { top: '270px', right: '0px', bottom: '150px', left: '0px' },
       preferCSSPageSize: false
     });
@@ -127,7 +128,6 @@ function buildQuotePdfFileName(quote: any) {
 
 export async function registerRoutes(app: Express, httpServer: Server): Promise<Server> {
 
-  // Configuración de cabeceras para todas las peticiones /api
   app.use("/api", (req, res, next) => {
     res.setHeader("Content-Type", "application/json");
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
@@ -145,7 +145,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // ☁️ RUTA EXCLUSIVA DE ONEDRIVE
   app.post("/api/folders", requireAuth, async (req: any, res) => {
     try {
       const { name, parentId } = req.body;
@@ -553,7 +552,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // ============== GESTIÓN DE PDFS Y COTIZACIONES (CORREGIDO) ==============
+  // ============== GESTIÓN DE PDFS Y COTIZACIONES ==============
   app.get("/api/quotes", requireAuth, async (req: any, res) => {
     try {
       const quotes = await storage.getQuotes();
@@ -627,7 +626,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // 🚀 CORREGIDO: Se limpian los márgenes manuales para respetar el resguardo CSS nativo de Azal
+  // 🚀 AQUÍ ESTABA EL ERROR: RUTA DE GENERACIÓN QUE LLAMA A LA FUNCIÓN MAESTRA
   app.get("/api/quotes/:id/pdf", requireAuth, async (req: any, res) => {
     try {
       const quoteId = Number(req.params.id);
@@ -655,36 +654,15 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const total = fromCents(totalCents);
       const totalText = amountToSpanishText(total);
 
-      const html = generateQuoteHTML({
+      const quoteWithText = {
         ...quote,
         folio: quote.internalFolio,
         destinationCompany: quote.destinationCompany,
         totalText: totalText 
-      }, provider, lineItems);
+      };
 
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu'
-        ]
-      });
-      const page = await browser.newPage();
-      
-      await page.setContent(html, { waitUntil: 'networkidle2', timeout: 30000 });
-      
-      const pdfBuffer = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' }, // Se limpia para activar el margin @page del CSS
-        preferCSSPageSize: true
-      });
-      await browser.close();
+      // 🚀 SE USA LA FUNCIÓN MAESTRA GENERATORPDFBUFFER QUE INYECTA LAS IMÁGENES
+      const pdfBuffer = await generateQuotePdfBuffer(quoteWithText, provider, lineItems);
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="Cotizacion_${quote.internalFolio}.pdf"`);
@@ -1531,7 +1509,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // 🚀 NUEVA RUTA INTEGRADA: Permite borrar una cotización del historial por su ID
   app.delete("/api/quotes/:id", requireAuth, async (req: any, res) => {
     try {
       const quoteId = Number(req.params.id);
@@ -1544,10 +1521,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(404).json({ error: "Cotización no encontrada" });
       }
 
-      // Borra el registro de la base de datos local (Neon)
       await storage.deleteQuote?.(quoteId);
 
-      // Guardar el registro en la auditoría del sistema
       await storage.createAuditLog({
         correo: req.user.correo || req.user.email || null,
         action: "Eliminar cotización",
@@ -1557,36 +1532,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.status(204).end();
     } catch (e: any) {
       res.status(500).json({ error: e.message || "Error al eliminar el registro" });
-    }
-  });
-  // 🚀 ENDPOINT DE ELIMINACIÓN: Borra la cotización del historial localmente
-  app.delete("/api/quotes/:id", requireAuth, async (req: any, res) => {
-    try {
-      const quoteId = Number(req.params.id);
-      if (Number.isNaN(quoteId)) {
-        return res.status(400).json({ error: "ID de cotización inválido" });
-      }
-
-      const quote = await storage.getQuoteById(quoteId);
-      if (!quote) {
-        return res.status(404).json({ error: "Cotización no encontrada" });
-      }
-
-      // 1. Borramos el registro físico de la base de datos local (Neon/Drizzle)
-      await storage.deleteQuote?.(quoteId);
-
-      // 2. Registramos el movimiento en la auditoría general del sistema
-      await storage.createAuditLog({
-        correo: req.user.correo || req.user.email || null,
-        action: "Eliminar cotización",
-        details: `Se eliminó la cotización con folio ${quote.internalFolio || quote.folio} del historial.`
-      });
-
-      // 3. Respondemos con éxito sin contenido (204 No Content)
-      res.status(204).end();
-    } catch (e: any) {
-      console.error("❌ Error al eliminar cotización:", e.message || e);
-      res.status(500).json({ error: e.message || "Error interno al eliminar el registro" });
     }
   });
 

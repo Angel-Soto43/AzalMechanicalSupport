@@ -59,6 +59,7 @@ export default function QuotesPage() {
   const [quoteData, setQuoteData] = useState({
     folio: "",
     requisitionNumber: "",
+    destinationCompany: "", // 🚀 AQUÍ AGREGAMOS EL CLIENTE DESTINO
     projectTitle: "",
     date: new Date().toISOString().split('T')[0],
     deliveryLocation: "Campo Militar No. 25-E, Oriental, Puebla",
@@ -213,11 +214,10 @@ export default function QuotesPage() {
   // ================= MUTACIÓN: GUARDAR COTIZACIÓN =================
   const quoteMutation = useMutation({
     mutationFn: async () => {
-      const selectedVendor = vendors.find(v => v.id.toString() === selectedVendorId);
-
       const payload = {
         internalFolio: quoteData.folio,
-        destinationCompany: selectedVendor ? selectedVendor.companyName : "Sin Asignar", 
+        // 🚀 AQUÍ ENVIAMOS EL CLIENTE REAL DESDE EL FORMULARIO
+        destinationCompany: quoteData.destinationCompany || "Sin Asignar", 
         requisitionNumber: quoteData.requisitionNumber,
         projectTitle: quoteData.projectTitle,
         quoteDate: quoteData.date,
@@ -393,6 +393,11 @@ export default function QuotesPage() {
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Número de Requisición</label>
                       <Input placeholder="Ej. FP06-R003-01/2026" value={quoteData.requisitionNumber} onChange={e => setQuoteData({...quoteData, requisitionNumber: e.target.value})} />
+                    </div>
+                    {/* 🚀 AQUÍ ESTÁ EL NUEVO CUADRO DE TEXTO PARA EL CLIENTE */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Empresa Destino / Cliente</label>
+                      <Input placeholder="Ej. Secretaría de la Defensa Nacional" value={quoteData.destinationCompany} onChange={e => setQuoteData({...quoteData, destinationCompany: e.target.value})} />
                     </div>
                   </div>
                   <div className="space-y-4">
@@ -570,7 +575,6 @@ export default function QuotesPage() {
                   <TableHead className="px-6 py-3 text-xs font-bold uppercase">Empresa Destino</TableHead>
                   <TableHead className="px-6 py-3 text-xs font-bold uppercase text-right">Monto Total</TableHead>
                   <TableHead className="px-6 py-3 text-xs font-bold uppercase text-center">Estado</TableHead>
-                  {/* 🚀 NUEVA COLUMNA DE ACCIONES */}
                   <TableHead className="px-6 py-3 text-xs font-bold uppercase text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -587,7 +591,6 @@ export default function QuotesPage() {
                       <Badge className="bg-emerald-100 text-emerald-700 border-none text-[10px] font-bold">COMPLETADO</Badge>
                     </TableCell>
                     
-                    {/* 🚀 EL BOTÓN DESPLEGABLE INTERACTIVO DE TRES PUNTITOS */}
                     <TableCell className="px-6 py-4 text-center">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -597,7 +600,6 @@ export default function QuotesPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-white shadow-lg border rounded-lg p-1 min-w-[150px] z-50">
                           
-                          {/* ACCIÓN 1: DESCARGAR PDF */}
                           <DropdownMenuItem 
                             onClick={() => window.open(`/api/quotes/${q.id}/pdf`, '_blank')}
                             className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 rounded hover:bg-slate-100 cursor-pointer"
@@ -606,11 +608,12 @@ export default function QuotesPage() {
                             <span>Descargar PDF</span>
                           </DropdownMenuItem>
 
-                          {/* ACCIÓN 2: EDITAR Y VOLVER A MAPEAR AL MODAL */}
+                          {/* 🚀 AQUÍ TAMBIÉN AGREGAMOS QUE CARGUE EL CLIENTE AL EDITAR */}
                           <DropdownMenuItem 
                             onClick={() => {
                               setQuoteData({
                                 folio: q.internalFolio || q.folio || "",
+                                destinationCompany: q.destinationCompany || "",
                                 requisitionNumber: q.requisitionNumber || "",
                                 projectTitle: q.projectTitle || "",
                                 date: q.quoteDate || new Date().toISOString().split('T')[0],
@@ -654,7 +657,6 @@ export default function QuotesPage() {
                             <span>Editar</span>
                           </DropdownMenuItem>
 
-                          {/* ACCIÓN 3: ELIMINAR COTIZACIÓN DEL HISTORIAL */}
                           <DropdownMenuItem 
                             onClick={async () => {
                               if (confirm(`¿Estás seguro de que deseas eliminar la cotización ${q.internalFolio || q.folio}?`)) {

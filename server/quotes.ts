@@ -243,35 +243,34 @@ export function generateQuoteHTML(quote: any, provider: any, items: any[]) {
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(amount);
   };
 
+  const nombreEmpresa = provider.companyName || 'Azal Mechanical Supports, S.A. de C.V.';
+  const nombreCliente = quote.destinationCompany || 'NOMBRE DEL CLIENTE Y/O EMPRESA';
+
   return `
     <!DOCTYPE html>
     <html lang="es">
     <head>
       <meta charset="UTF-8">
       <style>
-        /* 🚀 EL SECRETO: Le damos 45px de padding a los lados AL TEXTO, para poder dejar la hoja en 0px */
         body { margin: 0; padding: 0 45px; font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #000000; line-height: 1.45; background: #ffffff; }
-        
         .attention-block { margin-top: 10px; margin-bottom: 25px; font-size: 10pt; line-height: 1.4; color: #555; text-align: left; }
         .attention-title { font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
-        
         .header-title { text-align: center; margin-bottom: 20px; font-size: 11pt; }
         .title { font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
         .subtitle { font-weight: bold; text-decoration: underline; }
-
-        /* TABLA CALCADA A TU IMAGEN */
         table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 9pt; }
         th, td { border: 1px solid #000; padding: 6px 4px; text-align: center; vertical-align: middle; }
         th { background-color: #555ee6; color: white; font-weight: bold; font-size: 8.5pt; text-transform: uppercase; }
-        
         .text-left { text-align: left; }
         .text-right { text-align: right; }
         .bold { font-weight: bold; }
         .section-title { font-weight: bold; text-decoration: underline; margin-top: 20px; margin-bottom: 5px; }
-        .list-no-bullet { list-style-type: none; padding-left: 0; margin-top: 5px; }
-        .list-no-bullet li { margin-bottom: 5px; text-align: justify; }
         
-        /* ESCUDO PARA LA FIRMA */
+        /* 🚀 CLASE ÚNICA DE VIÑETAS PARA PUNTOS PRIMARIOS */
+        .list-bullet { list-style-type: disc; padding-left: 25px; margin-top: 5px; }
+        .list-bullet li { margin-bottom: 8px; text-align: justify; }
+        
+        .text-center-total { text-align: center; font-weight: bold; text-transform: uppercase; margin-bottom: 20px; font-size: 10pt; }
         .professional-signature-section { margin-top: 50px; margin-bottom: 10px; text-align: center; page-break-inside: avoid; }
         .signature-title-label { font-size: 10pt; font-weight: bold; letter-spacing: 0.1em; margin-bottom: 45px; }
         .signature-solid-line { width: 250px; height: 1px; background: #000000; margin: 0 auto 8px auto; }
@@ -280,12 +279,6 @@ export function generateQuoteHTML(quote: any, provider: any, items: any[]) {
       </style>
     </head>
     <body>
-      <div class="attention-block">
-        <div class="attention-title">ATENCIÓN:</div>
-        <div>C. Tte. Cor. Inf.</div>
-        <div>Vicente Herrera Valdez,</div>
-        <div>Jefe de I.M. de la Dir. Gral. Ind. Mil.</div>
-      </div>
 
       <div class="header-title">
         <div class="title">PROPUESTA ECONÓMICA</div>
@@ -338,41 +331,44 @@ export function generateQuoteHTML(quote: any, provider: any, items: any[]) {
         </tbody>
       </table>
 
-      <div class="bold" style="text-transform: uppercase; margin-bottom: 20px;">
-        ${totalEnTexto}
+      <div class="text-center-total">
+        ${totalEnTexto} IVA INCLUIDO.
       </div>
 
       <div class="section-title">CONDICIONES COMERCIALES:</div>
-      <ul class="list-no-bullet">
+      <ul class="list-bullet">
         <li><span class="bold">Precios en Moneda Nacional.</span></li>
         <li><span class="bold">Vigencia de la cotización:</span> ${quote.validityDays || 120} días.</li>
         <li><span class="bold">Origen de los bienes:</span> ${quote.goodsOrigin || 'Nacional'}.</li>
         <li><span class="bold">Nacionalidad del proveedor:</span> ${quote.providerNationality || 'mexicana'}.</li>
         <li><span class="bold">Condiciones de pago:</span> Mi representada tiene considerado que el pago será a los ${quote.paymentDays || 17} días hábiles posteriores a la entrega de la factura, previa entrega de los bienes a satisfacción del Área requirente. Así mismo, el pago será mediante transferencia electrónica.</li>
-        <li><span class="bold">Tiempo de entrega:</span> ${provider.companyName || 'Azal Mechanical Supports S.A. de C.V.'}, realizará la entrega de los bienes requeridos y documentación completa a partir del día natural siguiente a la comunicación del fallo y a más tardar ${quote.deliveryTime || '3 meses'} posteriores a referido evento.</li>
-        <li><span class="bold">Lugar de la entrega:</span> ${provider.companyName || 'Azal Mechanical Supports S.A. de C.V.'}, entregará los bienes en las instalaciones que a continuación se indica:<br>
-        ${quote.deliveryPlace || 'Subdirección de Almacenes de la Dirección General de Industria Militar.'}</li>
-        <li><span class="bold">Contacto:</span> ${quote.contactPerson || 'Tte. Cor. Ing. Ind. Omar Luna Ramírez'}</li>
+        <li><span class="bold">Tiempo de entrega:</span> ${nombreEmpresa} realizará la entrega de los bienes requeridos y documentación completa a partir del día natural siguiente a la comunicación del fallo y a más tardar ${quote.deliveryTime || '3 meses'} posteriores a referido evento.</li>
+        <li><span class="bold">Lugar de la entrega:</span> ${nombreEmpresa}, entregará los bienes en las instalaciones que a continuación se indica: ${quote.deliveryPlace || 'UBICACIÓN DE LA EMPRESA Y/O CLIENTE.'}</li>
+        <li><span class="bold">Contacto:</span> ${quote.contactPerson || 'Contacto del cliente'}</li>
         <li><span class="bold">Tiempo de fabricación:</span> ${quote.manufacturingTime || '2 meses'}.</li>
       </ul>
 
-      <div style="text-align: justify; margin-bottom: 10px;">
-        La responsabilidad de <span class="bold">${provider.companyName || 'Azal Mechanical Supports, S.A. de C.V.'}</span>, en relación con esta garantía consistirá en que este, sin ningún costo para la “Secretaría de la Defensa Nacional”, reemplazará los “bienes”, en un plazo no mayor a 30 días hábiles conforme a los términos y condiciones para su aplicación.
-      </div>
+      <ul class="list-bullet">
+        <li>La responsabilidad de <span class="bold">${nombreEmpresa}</span>, en relación con esta garantía consistirá en que este, sin ningún costo para la “${nombreCliente}”, reemplazará los “bienes”, en un plazo no mayor a 30 días hábiles conforme a los términos y condiciones para su aplicación.</li>
+        <div class="section-title">Garantía de calidad:</div>
+        <li> </span> ${nombreEmpresa}, deberá entregar por escrito una garantía de calidad contra defectos de fabricación y/o vicios ocultos que especifique que el “bien”, que oferta es nuevo de fábrica, que está libre de defectos y en buenas condiciones, conforme a las especificaciones técnicas del fabricante, la cual deberá responder de los defectos de fabricación y/o vicios ocultos que llegue a presentar el “bien”, por un plazo de <span class="bold">${quote.guaranteeMonths || 12} (doce) meses</span>, a partir de la expedición del acta de aceptación que formule con motivo de la entrega y recepción definitiva del “bien” a plena y entera satisfacción de la ${nombreCliente}.</li>
+        <li>Esta garantía de calidad contra defectos de fabricación y/o vicios ocultos se cancelará una vez que haya fenecido el plazo estipulado en el inciso anterior a partir de la fecha de entrega total del “bien” y a entera satisfacción de la ${nombreCliente}.</li>
+        <li>Para la aplicación de dicha garantía <span class="bold">${nombreEmpresa}</span>, en cualquier caso, de desperfecto que presente o daños que sufran “los bienes” adquiridos serán remplazados al 100% sin costo para la ${nombreCliente}.</li>
+        <li>La reposición de los “bienes” con defectos de fabricación y/o vicios ocultos, se realizará en el lugar indicado en el apartado Ubicación del lugar donde se realizará la Entrega de los Bienes; para lo cual <span class="bold">${nombreEmpresa}</span> deberá establecer coordinación con el contacto especificado.</li>
+        <li><span class="bold">${nombreEmpresa}</span> deberá recoger los “bienes” que presenten defectos de fabricación y/o vicios ocultos en el lugar indicado en el inciso anterior, sin costo adicional para la “${nombreCliente}”.</li>
+        <li>La responsabilidad de <span class="bold">${nombreEmpresa}</span>, en relación con esta garantía consistirá en que este, sin ningún costo para la “${nombreCliente}”, reemplazará el “bien” que resulte defectuoso y en un plazo no mayor a 30 días hábiles.</li>
+        <li><span class="bold">${nombreEmpresa}</span> cumplirá con las condiciones de entrega conforme a el Anexo Administrativo.</li>
+        <li><span class="bold">${nombreEmpresa}</span> cumple con los atributos, normas, garantías y documentación indicada en el Anexo “C”, así como en el Anexo Administrativo y Anexo Técnico.</li>
+        <li>Mi representada(o) cuenta con la capacidad técnica para el suministro de los bienes requeridos.</li>
+        <li><span class="bold">El porcentaje de garantía de cumplimiento será del:</span> ${quote.complianceWarranty || 10}%</li>
+        <li>Mi representada se encuentra inscrita en el Sistema Compras MX y Registro Único de Proveedores y de Contratistas (RUPC).</li>
+        <li><span class="bold">Años de experiencia en el mercado:</span> ${quote.experienceYears || 5}</li>
+        <li><span class="bold">Años de especialidad en el mercado:</span> ${quote.specialtyYears || 5}</li>
+        <li><span class="bold">Número de contratos afines de los servicios a adquirir o contratar:</span> ${quote.similarContracts || 3}</li>
+      </ul>
 
-      <div class="bold" style="margin-bottom: 5px;">Garantía de calidad:</div>
-      <div style="text-align: justify; margin-bottom: 15px;">
-        <span class="bold">${provider.companyName || 'Azal Mechanical Supports S.A. de C.V.'}</span>, deberá entregar por escrito una garantía de calidad contra defectos de fabricación y/o vicios ocultos que especifique que el “bien”, que oferta es nuevo de fábrica, que está libre de defectos y en buenas condiciones... por un plazo de <span class="bold">${quote.guaranteeMonths || 12} meses</span>, a partir de la expedición del acta de aceptación...
-        <br><br>
-        Mi representada se encuentra inscrita en el Sistema Compras MX y Registro Único de Proveedores y de Contratistas (RUPC).<br>
-        <span class="bold">El porcentaje de garantía de cumplimiento será del:</span> ${quote.complianceWarranty || 10}%<br>
-        <span class="bold">Años de experiencia en el mercado:</span> ${quote.experienceYears || 5}<br>
-        <span class="bold">Años de especialidad en el mercado:</span> ${quote.specialtyYears || 5}<br>
-        <span class="bold">Número de contratos afines:</span> ${quote.similarContracts || 3}
-      </div>
-
-      <ul class="list-no-bullet">
-        <li><span class="bold">Razón social:</span> ${provider.companyName || 'Azal Mechanical Supports, S.A. de C.V.'}</li>
+      <ul class="list-bullet">
+        <li><span class="bold">Razón social:</span> ${nombreEmpresa}</li>
         <li><span class="bold">Objeto social o actividad que desarrolla:</span> ${provider.businessActivity || ''}</li>
         <li><span class="bold">Domicilio legal:</span> ${provider.legalAddress || ''}</li>
         <li><span class="bold">Teléfono:</span> ${provider.phone || ''}</li>
@@ -382,11 +378,11 @@ export function generateQuoteHTML(quote: any, provider: any, items: any[]) {
         <li><span class="bold">Página web:</span> ${provider.website || ''}</li>
       </ul>
 
-      <ul class="list-no-bullet">
+      <ul class="list-bullet">
         <li><span class="bold">Forma de pago:</span> Transferencia Electrónica.</li>
-        <li><span class="bold">Nombre del banco:</span> ${quote.bankName || ''}</li>
-        <li><span class="bold">Clabe Interbancaria:</span> ${quote.bankAccount || ''}</li>
-        <li><span class="bold">Beneficiario de la cuenta:</span> ${quote.bankBeneficiary || ''}</li>
+        <li><span class="bold">Nombre del banco:</span> ${quote.bankName || 'GRUPO FINANCIERO INBURSA'}</li>
+        <li><span class="bold">Clabe Interbancaria:</span> ${quote.bankAccount || '000'}</li>
+        <li><span class="bold">Beneficiario de la cuenta:</span> ${quote.bankBeneficiary || nombreEmpresa}</li>
       </ul>
 
       <div style="text-align: justify; margin-top: 15px; margin-bottom: 30px;">
