@@ -92,7 +92,7 @@ export default function FoldersListPage() {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-3 text-slate-900 dark:text-slate-100">
-            <Folder className="h-8 w-8 text-blue-600" />
+            <Folder className="h-8 w-8 dark:text-yellow-400" style={{ color: '#facc15' }} />
             Gestión de Archivos
           </h1>
           <p className="text-slate-500 font-medium italic">Administra tus carpetas de OneDrive</p>

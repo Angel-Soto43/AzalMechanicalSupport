@@ -70,7 +70,7 @@ export default function QuotesPage() {
     contactPerson: "Tte. Cor. Ing. Ind. Omar Luna Ramírez",
     commercialTerms: "Precios en Moneda Nacional. IVA Incluido.",
     goodsOrigin: "Nacional",
-    providerNationality: "mexicana",
+    providerNationality: "Mexicana",
     manufacturingTime: "2 meses",
     complianceWarranty: 10,
     experienceYears: 5,
@@ -84,6 +84,7 @@ export default function QuotesPage() {
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { id: 1, description: "", techRequirements: "", versionReference: "", reqDate: "", quantity: 1, unitMeasure: "KG", unitPrice: 0 }
   ]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
 
@@ -173,6 +174,21 @@ export default function QuotesPage() {
     queryKey: ["/api/quotes"],
     refetchInterval: 2000,
     refetchIntervalInBackground: true
+  });
+
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredQuotes = quotes.filter((q) => {
+    if (!normalizedSearch) return true;
+    const searchFields = [
+      q.internalFolio,
+      q.folio,
+      q.requisitionNumber,
+      q.destinationCompany,
+      q.total?.toString(),
+    ];
+    return searchFields.some((field) =>
+      field?.toString().toLowerCase().includes(normalizedSearch)
+    );
   });
 
   const addLineItem = () => {
@@ -280,16 +296,26 @@ export default function QuotesPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <main className="flex-1 p-8 max-w-7xl mx-auto w-full space-y-6">
+    <div className="min-h-screen bg-slate-50 flex flex-col dark:bg-[linear-gradient(180deg,#0B132B_0%,#1C2541_100%)]">
+      <main className="flex-1 p-6 flex flex-col gap-6 w-full">
         
         {/* BOTONERA SUPERIOR */}
-        <div className="flex justify-end gap-3">
+        <div className="flex items-center justify-end gap-4 w-full">
+          <div className="w-44 min-w-0">
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por Folio, Requisición, Empresa o Monto"
+              className="min-w-0 bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 shadow-sm transition duration-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-200/60 dark:bg-[rgba(28,37,65,0.72)] dark:border-[rgba(0,180,216,0.22)] dark:text-[#E0FBFC] dark:placeholder:text-slate-500 dark:shadow-[0_0_24px_rgba(0,180,216,0.12)] dark:backdrop-blur-xl dark:focus:border-cyan-400 dark:focus:ring-cyan-400/25"
+            />
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-3">
           
           {/* MODAL: NUEVO PROVEEDOR */}
           <Dialog open={isVendorModalOpen} onOpenChange={setIsVendorModalOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="bg-white border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm px-6">
+              <Button variant="outline" className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white shadow-sm px-6">
                 <Users className="mr-2 h-4 w-4" /> Nuevo Proveedor
               </Button>
             </DialogTrigger>
@@ -370,13 +396,13 @@ export default function QuotesPage() {
           {/* MODAL: NUEVA PROPUESTA ECONÓMICA */}
           <Dialog open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-[#1E40AF] hover:bg-blue-900 text-white shadow-md px-6 font-semibold">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white shadow-md px-6 font-semibold">
                 <Plus className="mr-2 h-4 w-4" /> Nueva Propuesta Económica
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-7xl h-[95vh] overflow-y-auto shadow-2xl">
+            <DialogContent className="max-w-7xl h-[95vh] overflow-y-auto shadow-2xl dark:bg-slate-950 dark:backdrop-blur-md">
               <DialogHeader>
-                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                <DialogTitle className="text-xl font-bold flex items-center gap-2 dark:text-white">
                   <FileText className="text-blue-600" /> Detalle de la Propuesta (Planilla Oficial)
                 </DialogTitle>
               </DialogHeader>
@@ -384,128 +410,128 @@ export default function QuotesPage() {
               <div className="space-y-6 py-4">
                 
                 {/* 1. DATOS GENERALES */}
-                <div className="grid grid-cols-2 gap-6 p-4 bg-slate-50 border rounded-xl">
+                <div className="grid grid-cols-2 gap-6 p-4 bg-slate-50 dark:bg-slate-900/60 dark:backdrop-blur-md border rounded-xl">
                   <div className="space-y-4">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Folio Interno AZAL</label>
-                      <Input placeholder="Ej. AZAL-2026-001" value={quoteData.folio} onChange={e => setQuoteData({...quoteData, folio: e.target.value})} />
+                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. AZAL-2026-001" value={quoteData.folio} onChange={e => setQuoteData({...quoteData, folio: e.target.value})} />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Número de Requisición</label>
-                      <Input placeholder="Ej. FP06-R003-01/2026" value={quoteData.requisitionNumber} onChange={e => setQuoteData({...quoteData, requisitionNumber: e.target.value})} />
+                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. FP06-R003-01/2026" value={quoteData.requisitionNumber} onChange={e => setQuoteData({...quoteData, requisitionNumber: e.target.value})} />
                     </div>
                     {/* 🚀 AQUÍ ESTÁ EL NUEVO CUADRO DE TEXTO PARA EL CLIENTE */}
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Empresa Destino / Cliente</label>
-                      <Input placeholder="Ej. Secretaría de la Defensa Nacional" value={quoteData.destinationCompany} onChange={e => setQuoteData({...quoteData, destinationCompany: e.target.value})} />
+                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Secretaría de la Defensa Nacional" value={quoteData.destinationCompany} onChange={e => setQuoteData({...quoteData, destinationCompany: e.target.value})} />
                     </div>
                   </div>
                   <div className="space-y-4">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Empresa / Proveedor</label>
                       <Select onValueChange={setSelectedVendorId} value={selectedVendorId}>
-                        <SelectTrigger className="bg-white"><SelectValue placeholder="Seleccione Proveedor" /></SelectTrigger>
-                        <SelectContent>
-                          {vendors.map(v => <SelectItem key={v.id} value={v.id.toString()}>{v.companyName}</SelectItem>)}
+                        <SelectTrigger className="bg-white dark:bg-slate-900/60 dark:text-white border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400"><SelectValue placeholder="Seleccione Proveedor" /></SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-slate-900/95 dark:text-white">
+                          {vendors.map(v => <SelectItem key={v.id} value={v.id.toString()} className="dark:text-white dark:hover:bg-slate-800">{v.companyName}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Objeto de Adquisición</label>
-                      <Input placeholder="Ej. Adquisición de diversos Aluminios" value={quoteData.projectTitle} onChange={e => setQuoteData({...quoteData, projectTitle: e.target.value})} />
+                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Adquisición de diversos Aluminios" value={quoteData.projectTitle} onChange={e => setQuoteData({...quoteData, projectTitle: e.target.value})} />
                     </div>
                   </div>
                 </div>
 
                 {/* 2. CONDICIONES COMERCIALES */}
-                <div className="grid grid-cols-4 gap-4 p-4 border rounded-xl bg-white shadow-sm">
-                  <div className="col-span-4 mb-2 border-b pb-2"><h3 className="text-sm font-bold text-slate-700 flex items-center gap-2"><Clock size={16}/> Condiciones Comerciales y Entrega</h3></div>
+                <div className="grid grid-cols-4 gap-4 p-4 border rounded-xl bg-white shadow-sm dark:bg-slate-900/60 dark:backdrop-blur-md">
+                  <div className="col-span-2 mb-2 border-b pb-2"><h3 className="text-sm font-bold text-slate-700 dark:text-white flex items-center gap-2"><Clock size={16}/> Condiciones Comerciales y Entrega</h3></div>
                   
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Vigencia (Días)</label>
-                    <Input type="number" value={quoteData.validityDays} onChange={e => setQuoteData({...quoteData, validityDays: Number(e.target.value)})} />
+                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.validityDays} onChange={e => setQuoteData({...quoteData, validityDays: Number(e.target.value)})} />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Días para Pago</label>
-                    <Input type="number" value={quoteData.paymentDays} onChange={e => setQuoteData({...quoteData, paymentDays: Number(e.target.value)})} />
+                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.paymentDays} onChange={e => setQuoteData({...quoteData, paymentDays: Number(e.target.value)})} />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Garantía Calidad (Meses)</label>
-                    <Input type="number" value={quoteData.warrantyMonths} onChange={e => setQuoteData({...quoteData, warrantyMonths: Number(e.target.value)})} />
+                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.warrantyMonths} onChange={e => setQuoteData({...quoteData, warrantyMonths: Number(e.target.value)})} />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Fecha Emisión</label>
-                    <Input type="date" value={quoteData.date} onChange={e => setQuoteData({...quoteData, date: e.target.value})} />
+                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="date" value={quoteData.date} onChange={e => setQuoteData({...quoteData, date: e.target.value})} />
                   </div>
 
                   <div className="col-span-2 space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Lugar de Entrega</label>
-                    <Input value={quoteData.deliveryLocation} onChange={e => setQuoteData({...quoteData, deliveryLocation: e.target.value})} />
+                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" value={quoteData.deliveryLocation} onChange={e => setQuoteData({...quoteData, deliveryLocation: e.target.value})} />
                   </div>
                   <div className="col-span-2 space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Persona de Contacto</label>
-                    <Input value={quoteData.contactPerson} onChange={e => setQuoteData({...quoteData, contactPerson: e.target.value})} />
+                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" value={quoteData.contactPerson} onChange={e => setQuoteData({...quoteData, contactPerson: e.target.value})} />
                   </div>
 
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Tiempo Fabricación</label>
-                    <Input placeholder="Ej. 2 meses" value={quoteData.manufacturingTime} onChange={e => setQuoteData({...quoteData, manufacturingTime: e.target.value})} />
+                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. 2 meses" value={quoteData.manufacturingTime} onChange={e => setQuoteData({...quoteData, manufacturingTime: e.target.value})} />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Origen de Bienes</label>
-                    <Input placeholder="Ej. Nacional" value={quoteData.goodsOrigin} onChange={e => setQuoteData({...quoteData, goodsOrigin: e.target.value})} />
+                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Nacional" value={quoteData.goodsOrigin} onChange={e => setQuoteData({...quoteData, goodsOrigin: e.target.value})} />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Nacionalidad Prov.</label>
-                    <Input placeholder="Ej. mexicana" value={quoteData.providerNationality} onChange={e => setQuoteData({...quoteData, providerNationality: e.target.value})} />
+                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. mexicana" value={quoteData.providerNationality} onChange={e => setQuoteData({...quoteData, providerNationality: e.target.value})} />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Tiempo Entrega</label>
-                    <Input placeholder="Ej. 3 meses" value={quoteData.deliveryTime} onChange={e => setQuoteData({...quoteData, deliveryTime: e.target.value})} />
+                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. 3 meses" value={quoteData.deliveryTime} onChange={e => setQuoteData({...quoteData, deliveryTime: e.target.value})} />
                   </div>
                 </div>
 
                 {/* 3. EXPERIENCIA Y DATOS BANCARIOS */}
                 <div className="grid grid-cols-2 gap-6">
-                  <div className="grid grid-cols-2 gap-4 p-4 border rounded-xl bg-white shadow-sm">
-                    <div className="col-span-2 mb-2 border-b pb-2"><h3 className="text-sm font-bold text-slate-700 flex items-center gap-2"><Award size={16}/> Experiencia y Cumplimiento</h3></div>
+                  <div className="grid grid-cols-2 gap-4 p-4 border rounded-xl bg-white shadow-sm dark:bg-slate-900/60 dark:backdrop-blur-md">
+                    <div className="col-span-2 mb-2 border-b pb-2"><h3 className="text-sm font-bold text-slate-700 dark:text-white flex items-center gap-2"><Award size={16}/> Experiencia y Cumplimiento</h3></div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">% Gar. Cumplimiento</label>
-                      <Input type="number" value={quoteData.complianceWarranty} onChange={e => setQuoteData({...quoteData, complianceWarranty: Number(e.target.value)})} />
+                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.complianceWarranty} onChange={e => setQuoteData({...quoteData, complianceWarranty: Number(e.target.value)})} />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Años Experiencia</label>
-                      <Input type="number" value={quoteData.experienceYears} onChange={e => setQuoteData({...quoteData, experienceYears: Number(e.target.value)})} />
+                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.experienceYears} onChange={e => setQuoteData({...quoteData, experienceYears: Number(e.target.value)})} />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Años Especialidad</label>
-                      <Input type="number" value={quoteData.specialtyYears} onChange={e => setQuoteData({...quoteData, specialtyYears: Number(e.target.value)})} />
+                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.specialtyYears} onChange={e => setQuoteData({...quoteData, specialtyYears: Number(e.target.value)})} />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Contratos Afines</label>
-                      <Input type="number" value={quoteData.similarContracts} onChange={e => setQuoteData({...quoteData, similarContracts: Number(e.target.value)})} />
+                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.similarContracts} onChange={e => setQuoteData({...quoteData, similarContracts: Number(e.target.value)})} />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 p-4 border rounded-xl bg-white shadow-sm">
-                    <div className="col-span-2 mb-2 border-b pb-2"><h3 className="text-sm font-bold text-slate-700 flex items-center gap-2"><Building size={16}/> Datos Bancarios</h3></div>
+                  <div className="grid grid-cols-2 gap-4 p-4 border rounded-xl bg-white shadow-sm dark:bg-slate-900/60 dark:backdrop-blur-md">
+                    <div className="col-span-2 mb-2 border-b pb-2"><h3 className="text-sm font-bold text-slate-700 dark:text-white flex items-center gap-2"><Building size={16}/> Datos Bancarios</h3></div>
                     <div className="col-span-2 space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Nombre del Banco</label>
-                      <Input placeholder="Ej. INBURSA" value={quoteData.bankName} onChange={e => setQuoteData({...quoteData, bankName: e.target.value})} />
+                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. INBURSA" value={quoteData.bankName} onChange={e => setQuoteData({...quoteData, bankName: e.target.value})} />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">CLABE / Cuenta</label>
-                      <Input value={quoteData.bankAccount} onChange={e => setQuoteData({...quoteData, bankAccount: e.target.value})} />
+                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" value={quoteData.bankAccount} onChange={e => setQuoteData({...quoteData, bankAccount: e.target.value})} />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Beneficiario</label>
-                      <Input value={quoteData.bankBeneficiary} onChange={e => setQuoteData({...quoteData, bankBeneficiary: e.target.value})} />
+                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" value={quoteData.bankBeneficiary} onChange={e => setQuoteData({...quoteData, bankBeneficiary: e.target.value})} />
                     </div>
                   </div>
                 </div>
 
                 {/* 4. TABLA DE PARTIDAS */}
-                <div className="border rounded-xl overflow-hidden shadow-sm">
+                <div className="border rounded-xl overflow-hidden shadow-sm dark:border-slate-800 dark:shadow-none dark:bg-slate-950/20">
                   <Table>
                     <TableHeader className="bg-[#0F172A]">
                       <TableRow>
@@ -520,19 +546,19 @@ export default function QuotesPage() {
                     </TableHeader>
                     <TableBody>
                       {lineItems.map((item, index) => (
-                        <TableRow key={item.id} className="hover:bg-slate-50 transition-colors">
-                          <TableCell className="text-center font-bold text-slate-400">{index + 1}</TableCell>
-                          <TableCell><Input className="text-xs" placeholder="Ej. Cinta de aluminio UNS..." value={item.description} onChange={e => updateLineItem(item.id, 'description', e.target.value)} /></TableCell>
+                        <TableRow key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                          <TableCell className="text-center font-bold text-slate-400 dark:text-slate-300">{index + 1}</TableCell>
+                          <TableCell><Input className="text-xs bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Cinta de aluminio UNS..." value={item.description} onChange={e => updateLineItem(item.id, 'description', e.target.value)} /></TableCell>
                           <TableCell className="space-y-1">
-                            <Input className="text-[10px] h-6" placeholder="Req: FET(H)..." value={item.techRequirements} onChange={e => updateLineItem(item.id, 'techRequirements', e.target.value)} />
+                            <Input className="text-[10px] h-6 bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Req: FET(H)..." value={item.techRequirements} onChange={e => updateLineItem(item.id, 'techRequirements', e.target.value)} />
                             <div className="flex gap-1">
-                              <Input className="text-[10px] h-6 w-1/2" placeholder="Versión: 05" value={item.versionReference} onChange={e => updateLineItem(item.id, 'versionReference', e.target.value)} />
-                              <Input className="text-[10px] h-6 w-1/2" placeholder="Fecha: 04/JUN/24" value={item.reqDate} onChange={e => updateLineItem(item.id, 'reqDate', e.target.value)} />
+                              <Input className="text-[10px] h-6 w-1/2 bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Versión: 05" value={item.versionReference} onChange={e => updateLineItem(item.id, 'versionReference', e.target.value)} />
+                              <Input className="text-[10px] h-6 w-1/2 bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Fecha: 04/JUN/24" value={item.reqDate} onChange={e => updateLineItem(item.id, 'reqDate', e.target.value)} />
                             </div>
                           </TableCell>
-                          <TableCell><Input className="text-xs w-20 min-w-[5rem]" type="number" value={item.quantity} onChange={e => updateLineItem(item.id, 'quantity', Number(e.target.value))} /></TableCell>
-                          <TableCell><Input className="text-xs w-20 min-w-[5rem] uppercase" placeholder="Ej. KG" value={item.unitMeasure} onChange={e => updateLineItem(item.id, 'unitMeasure', e.target.value)} /></TableCell>
-                          <TableCell><Input className="text-xs" type="number" value={item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', Number(e.target.value))} /></TableCell>
+                          <TableCell><Input className="text-xs w-20 min-w-[5rem] bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={item.quantity} onChange={e => updateLineItem(item.id, 'quantity', Number(e.target.value))} /></TableCell>
+                          <TableCell><Input className="text-xs w-20 min-w-[5rem] uppercase bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. KG" value={item.unitMeasure} onChange={e => updateLineItem(item.id, 'unitMeasure', e.target.value)} /></TableCell>
+                          <TableCell><Input className="text-xs bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', Number(e.target.value))} /></TableCell>
                           <TableCell><Button variant="ghost" size="icon" onClick={() => setLineItems(lineItems.filter(i => i.id !== item.id))} className="text-red-500 hover:bg-red-50"><Trash2 size={16}/></Button></TableCell>
                         </TableRow>
                       ))}
@@ -541,7 +567,7 @@ export default function QuotesPage() {
                 </div>
 
                 <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
-                  <Button variant="outline" onClick={addLineItem} className="bg-white border-blue-200 text-blue-700 hover:bg-blue-100 font-medium">
+                  <Button variant="outline" onClick={addLineItem} className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white font-medium">
                     <Plus className="mr-2 h-4 w-4" /> Agregar Material
                   </Button>
                   <div className="text-right">
@@ -552,7 +578,7 @@ export default function QuotesPage() {
 
                 <div className="flex justify-end gap-3 pt-4 border-t">
                   <Button variant="ghost" onClick={() => setIsQuoteModalOpen(false)}>Cancelar</Button>
-                  <Button onClick={() => quoteMutation.mutate()} disabled={quoteMutation.isPending} className="bg-[#1E40AF] px-10 text-white font-bold">
+                  <Button onClick={() => quoteMutation.mutate()} disabled={quoteMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white px-10 font-bold">
                     {quoteMutation.isPending ? "Generando..." : "Finalizar y Generar PDF"}
                   </Button>
                 </div>
@@ -560,132 +586,133 @@ export default function QuotesPage() {
             </DialogContent>
           </Dialog>
         </div>
+      </div>
 
         {/* HISTORIAL */}
-        <Card className="rounded-xl shadow-sm border-slate-200 overflow-hidden">
-          <CardHeader className="bg-white border-b px-6 py-4">
-            <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Historial de Cotizaciones Generadas</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead className="px-6 py-3 text-xs font-bold uppercase">Folio</TableHead>
-                  <TableHead className="px-6 py-3 text-xs font-bold uppercase">Requisición</TableHead>
-                  <TableHead className="px-6 py-3 text-xs font-bold uppercase">Empresa Destino</TableHead>
-                  <TableHead className="px-6 py-3 text-xs font-bold uppercase text-right">Monto Total</TableHead>
-                  <TableHead className="px-6 py-3 text-xs font-bold uppercase text-center">Estado</TableHead>
-                  <TableHead className="px-6 py-3 text-xs font-bold uppercase text-center">Acciones</TableHead>
+      <div className="w-full bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl p-4">
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-4">
+          Historial de Cotizaciones Generadas
+        </h3>
+        <div className="w-full overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-slate-50 dark:bg-[rgba(255,255,255,0.04)]">
+                <TableHead className="px-6 py-3 text-xs font-bold uppercase dark:text-[#8D99AE]">Folio</TableHead>
+                <TableHead className="px-6 py-3 text-xs font-bold uppercase dark:text-[#8D99AE]">Requisición</TableHead>
+                <TableHead className="px-6 py-3 text-xs font-bold uppercase dark:text-[#8D99AE]">Empresa Destino</TableHead>
+                <TableHead className="px-6 py-3 text-xs font-bold uppercase text-right dark:text-[#8D99AE]">Monto Total</TableHead>
+                <TableHead className="px-6 py-3 text-xs font-bold uppercase text-center dark:text-[#8D99AE]">Estado</TableHead>
+                <TableHead className="px-6 py-3 text-xs font-bold uppercase text-center dark:text-[#8D99AE]">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loadingQuotes ? <TableRow><TableCell colSpan={6} className="text-center py-10">Cargando...</TableCell></TableRow> :
+               !loadingQuotes && filteredQuotes.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-10 text-slate-400">No se encontraron resultados para tu búsqueda.</TableCell></TableRow> :
+               filteredQuotes.map(q => (
+                <TableRow key={q.id} className="hover:bg-slate-50 transition-colors dark:hover:bg-[rgba(0,180,216,0.08)] dark:hover:border-l-4 dark:hover:border-cyan-400/70 dark:hover:shadow-[inset_0_0_0_1px_rgba(0,180,216,0.15)] dark:text-[#E0FBFC]">
+                  <TableCell className="px-6 py-4 font-mono text-xs font-bold text-blue-700 dark:text-[#E0FBFC]">{q.internalFolio || q.folio}</TableCell>
+                  <TableCell className="px-6 py-4 text-xs text-slate-600 dark:text-[#E0FBFC]">{q.requisitionNumber || 'N/A'}</TableCell>
+                  <TableCell className="px-6 py-4 text-sm font-medium dark:text-[#E0FBFC]">{q.destinationCompany || 'Sin asignar'}</TableCell>
+                  <TableCell className="px-6 py-4 text-right font-bold text-sm dark:text-[#E0FBFC]">${Number(q.total || 0).toLocaleString()}</TableCell>
+                  <TableCell className="px-6 py-4 text-center">
+                    <Badge className="bg-emerald-100 text-emerald-700 border-none text-[10px] font-bold">COMPLETADO</Badge>
+                  </TableCell>
+                  
+                  <TableCell className="px-6 py-4 text-center">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-slate-100 transition-colors dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white dark:hover:shadow-[0_0_0_1px_rgba(56,189,248,0.12)] dark:border dark:border-slate-700/50">
+                          <MoreVertical size={16} className="text-slate-500 dark:text-slate-200" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-white shadow-lg border rounded-lg p-1 min-w-[150px] z-50">
+                        
+                        <DropdownMenuItem 
+                          onClick={() => window.open(`/api/quotes/${q.id}/pdf`, '_blank')}
+                          className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 rounded hover:bg-slate-100 cursor-pointer"
+                        >
+                          <Download size={14} className="text-blue-600" />
+                          <span>Descargar PDF</span>
+                        </DropdownMenuItem>
+
+                        {/* 🚀 AQUÍ TAMBIÉN AGREGAMOS QUE CARGUE EL CLIENTE AL EDITAR */}
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setQuoteData({
+                              folio: q.internalFolio || q.folio || "",
+                              destinationCompany: q.destinationCompany || "",
+                              requisitionNumber: q.requisitionNumber || "",
+                              projectTitle: q.projectTitle || "",
+                              date: q.quoteDate || new Date().toISOString().split('T')[0],
+                              deliveryLocation: q.deliveryPlace || "Campo Militar No. 25-E, Oriental, Puebla",
+                              deliveryTime: q.deliveryTime || "3 meses posteriores al fallo",
+                              warrantyMonths: Number(q.guaranteeMonths || 12),
+                              validityDays: Number(q.validityDays || 120),
+                              paymentDays: Number(q.paymentDays || 17),
+                              contactPerson: q.contactPerson || "Tte. Cor. Ing. Ind. Omar Luna Ramírez",
+                              commercialTerms: q.commercialTerms || "Precios en Moneda Nacional. IVA Incluido.",
+                              goodsOrigin: q.goodsOrigin || "Nacional",
+                              providerNationality: q.providerNationality || "mexicana",
+                              manufacturingTime: q.manufacturingTime || "2 meses",
+                              complianceWarranty: Number(q.complianceWarranty || 10),
+                              experienceYears: Number(q.experienceYears || 5),
+                              specialtyYears: Number(q.specialtyYears || 5),
+                              similarContracts: Number(q.similarContracts || 3),
+                              bankName: q.bankName || "GRUPO FINANCIERO INBURSA",
+                              bankAccount: q.bankAccount || "000",
+                              bankBeneficiary: q.bankBeneficiary || "Azal"
+                            });
+                            setSelectedVendorId(q.providerId?.toString() || "");
+                            
+                            if (q.lineItems && q.lineItems.length > 0) {
+                              setLineItems(q.lineItems.map((li: any, idx: number) => ({
+                                id: li.id || idx,
+                                description: li.description || "",
+                                techRequirements: li.techRequirements || "",
+                                versionReference: li.versionReference || "",
+                                reqDate: li.reqDate || "",
+                                quantity: Number(li.quantity || 1),
+                                unitMeasure: normalizeUnitMeasure(li.unitMeasure || li.unit || "Kilogramo"),
+                                unitPrice: Number(li.unitPrice || 0)
+                              })));
+                            }
+                            setIsQuoteModalOpen(true);
+                          }}
+                          className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 rounded hover:bg-slate-100 cursor-pointer"
+                        >
+                          <Edit3 size={14} className="text-emerald-600" />
+                          <span>Editar</span>
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem 
+                          onClick={async () => {
+                            if (confirm(`¿Estás seguro de que deseas eliminar la cotización ${q.internalFolio || q.folio}?`)) {
+                              try {
+                                const res = await fetch(`/api/quotes/${q.id}`, { method: "DELETE" });
+                                if (!res.ok) throw new Error("No se pudo eliminar el registro de la API");
+                                
+                                queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+                                toast({ title: "¡Eliminado!", description: "La cotización se quitó del historial con éxito." });
+                              } catch (err: any) {
+                                toast({ title: "Error", description: err.message, variant: "destructive" });
+                              }
+                            }
+                          }}
+                          className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 rounded hover:bg-red-50 cursor-pointer"
+                        >
+                          <Trash2 size={14} />
+                          <span>Eliminar</span>
+                        </DropdownMenuItem>
+
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loadingQuotes ? <TableRow><TableCell colSpan={6} className="text-center py-10">Cargando...</TableCell></TableRow> :
-                 quotes.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-10 text-slate-400">No hay registros aún.</TableCell></TableRow> :
-                 quotes.map(q => (
-                  <TableRow key={q.id} className="hover:bg-slate-50 transition-colors">
-                    <TableCell className="px-6 py-4 font-mono text-xs font-bold text-blue-700">{q.internalFolio || q.folio}</TableCell>
-                    <TableCell className="px-6 py-4 text-xs text-slate-600">{q.requisitionNumber || 'N/A'}</TableCell>
-                    <TableCell className="px-6 py-4 text-sm font-medium">{q.destinationCompany || 'Sin asignar'}</TableCell>
-                    <TableCell className="px-6 py-4 text-right font-bold text-sm">${Number(q.total || 0).toLocaleString()}</TableCell>
-                    <TableCell className="px-6 py-4 text-center">
-                      <Badge className="bg-emerald-100 text-emerald-700 border-none text-[10px] font-bold">COMPLETADO</Badge>
-                    </TableCell>
-                    
-                    <TableCell className="px-6 py-4 text-center">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-slate-100">
-                            <MoreVertical size={16} className="text-slate-500" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-white shadow-lg border rounded-lg p-1 min-w-[150px] z-50">
-                          
-                          <DropdownMenuItem 
-                            onClick={() => window.open(`/api/quotes/${q.id}/pdf`, '_blank')}
-                            className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 rounded hover:bg-slate-100 cursor-pointer"
-                          >
-                            <Download size={14} className="text-blue-600" />
-                            <span>Descargar PDF</span>
-                          </DropdownMenuItem>
-
-                          {/* 🚀 AQUÍ TAMBIÉN AGREGAMOS QUE CARGUE EL CLIENTE AL EDITAR */}
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              setQuoteData({
-                                folio: q.internalFolio || q.folio || "",
-                                destinationCompany: q.destinationCompany || "",
-                                requisitionNumber: q.requisitionNumber || "",
-                                projectTitle: q.projectTitle || "",
-                                date: q.quoteDate || new Date().toISOString().split('T')[0],
-                                deliveryLocation: q.deliveryPlace || "Campo Militar No. 25-E, Oriental, Puebla",
-                                deliveryTime: q.deliveryTime || "3 meses posteriores al fallo",
-                                warrantyMonths: Number(q.guaranteeMonths || 12),
-                                validityDays: Number(q.validityDays || 120),
-                                paymentDays: Number(q.paymentDays || 17),
-                                contactPerson: q.contactPerson || "Tte. Cor. Ing. Ind. Omar Luna Ramírez",
-                                commercialTerms: q.commercialTerms || "Precios en Moneda Nacional. IVA Incluido.",
-                                goodsOrigin: q.goodsOrigin || "Nacional",
-                                providerNationality: q.providerNationality || "mexicana",
-                                manufacturingTime: q.manufacturingTime || "2 meses",
-                                complianceWarranty: Number(q.complianceWarranty || 10),
-                                experienceYears: Number(q.experienceYears || 5),
-                                specialtyYears: Number(q.specialtyYears || 5),
-                                similarContracts: Number(q.similarContracts || 3),
-                                bankName: q.bankName || "GRUPO FINANCIERO INBURSA",
-                                bankAccount: q.bankAccount || "000",
-                                bankBeneficiary: q.bankBeneficiary || "Azal"
-                              });
-                              setSelectedVendorId(q.providerId?.toString() || "");
-                              
-                              if (q.lineItems && q.lineItems.length > 0) {
-                                setLineItems(q.lineItems.map((li: any, idx: number) => ({
-                                  id: li.id || idx,
-                                  description: li.description || "",
-                                  techRequirements: li.techRequirements || "",
-                                  versionReference: li.versionReference || "",
-                                  reqDate: li.reqDate || "",
-                                  quantity: Number(li.quantity || 1),
-                                  unitMeasure: normalizeUnitMeasure(li.unitMeasure || li.unit || "Kilogramo"),
-                                  unitPrice: Number(li.unitPrice || 0)
-                                })));
-                              }
-                              setIsQuoteModalOpen(true);
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 rounded hover:bg-slate-100 cursor-pointer"
-                          >
-                            <Edit3 size={14} className="text-emerald-600" />
-                            <span>Editar</span>
-                          </DropdownMenuItem>
-
-                          <DropdownMenuItem 
-                            onClick={async () => {
-                              if (confirm(`¿Estás seguro de que deseas eliminar la cotización ${q.internalFolio || q.folio}?`)) {
-                                try {
-                                  const res = await fetch(`/api/quotes/${q.id}`, { method: "DELETE" });
-                                  if (!res.ok) throw new Error("No se pudo eliminar el registro de la API");
-                                  
-                                  queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
-                                  toast({ title: "¡Eliminado!", description: "La cotización se quitó del historial con éxito." });
-                                } catch (err: any) {
-                                  toast({ title: "Error", description: err.message, variant: "destructive" });
-                                }
-                              }
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 rounded hover:bg-red-50 cursor-pointer"
-                          >
-                            <Trash2 size={14} />
-                            <span>Eliminar</span>
-                          </DropdownMenuItem>
-
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
       </main>
     </div>
   );

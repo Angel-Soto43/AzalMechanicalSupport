@@ -5,18 +5,18 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-primary-border shadow-sm transition-all duration-300 ease-in-out" +
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-primary-border shadow-sm transition-all duration-300 ease-in-out dark:border-[rgba(56,189,248,0.18)] dark:hover:shadow-[0_0_32px_-10px_rgba(56,189,248,0.32)]" +
   " hover:shadow-md active-elevate-2 cursor-pointer",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground hover:bg-blue-600",
+          "bg-primary text-primary-foreground hover:bg-blue-600 dark:hover:bg-[rgba(56,189,248,0.18)]",
         destructive:
           "bg-destructive text-destructive-foreground border border-destructive-border hover:bg-red-600",
         outline:
-          "border [border-color:var(--button-outline)] shadow-xs active:shadow-none hover:bg-blue-50/50 dark:hover:bg-blue-950/30 transition-colors duration-300",
-        secondary: "border bg-secondary text-secondary-foreground border border-secondary-border ",
+          "border [border-color:var(--button-outline)] shadow-xs active:shadow-none hover:bg-blue-50/50 dark:border-[rgba(56,189,248,0.25)] dark:text-white dark:hover:bg-[rgba(56,189,248,0.16)] transition-colors duration-300",
+        secondary: "border bg-secondary text-secondary-foreground border border-secondary-border dark:bg-[rgba(15,23,42,0.72)] dark:text-slate-100 dark:border-[rgba(56,189,248,0.18)]",
         // Add a transparent border so that when someone toggles a border on later, it doesn't shift layout/size.
         ghost: "border border-transparent",
       },

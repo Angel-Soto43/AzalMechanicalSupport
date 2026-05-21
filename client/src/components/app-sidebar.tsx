@@ -81,6 +81,25 @@ export function AppSidebar() {
       .slice(0, 2);
   };
 
+  const iconDarkClass = (title: string, defaultClass = "h-5 w-5 shrink-0") => {
+    switch (title) {
+      case "Dashboard":
+        return `${defaultClass} text-[#FF6B35] drop-shadow-[0_0_8px_rgba(255,107,53,0.45)]`;
+      case "Carpetas":
+        return `${defaultClass} text-[#FFD166] drop-shadow-[0_0_8px_rgba(255,209,102,0.35)]`;
+      case "Cotizaciones":
+        return `${defaultClass} text-[#EF476F] drop-shadow-[0_0_8px_rgba(239,71,111,0.35)]`;
+      case "Todos los Archivos":
+        return `${defaultClass} text-[#06D6A0] drop-shadow-[0_0_8px_rgba(6,214,160,0.35)]`;
+      case "Registro de Auditoría":
+        return `${defaultClass} text-[#FF6B35] drop-shadow-[0_0_8px_rgba(255,107,53,0.45)]`;
+      case "Respaldar":
+        return `${defaultClass} text-[#A855F7] drop-shadow-[0_0_8px_rgba(168,85,247,0.35)]`;
+      default:
+        return defaultClass;
+    }
+  };
+
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
@@ -90,8 +109,8 @@ export function AppSidebar() {
               <Shield className="h-6 w-6" />
             </div>
             <div className="flex flex-col">
-              <span className="font-semibold text-sm leading-tight">Azal Mechanical</span>
-              <span className="text-xs text-muted-foreground">Supports</span>
+              <span className="font-semibold text-sm leading-tight">CORELINK Systems</span>
+              <span className="text-xs text-muted-foreground">Corporate UI</span>
             </div>
           </div>
           <button
@@ -122,7 +141,7 @@ export function AppSidebar() {
                     tooltip={item.title}
                   >
                     <Link href={item.url}>
-                      <item.icon className="h-5 w-5 shrink-0" />
+                      <item.icon className={iconDarkClass(item.title)} />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -147,7 +166,22 @@ export function AppSidebar() {
                     tooltip={item.title}
                   >
                     <Link href={item.url}>
-                      <item.icon className="h-5 w-5 shrink-0" />
+                      <item.icon
+                        className={
+                          item.title === "Todos los Archivos"
+                            ? "h-5 w-5 shrink-0 dark:text-emerald-400"
+                            : item.title === "Registro de Auditoría"
+                            ? "h-5 w-5 shrink-0 dark:text-orange-500"
+                            : iconDarkClass(item.title)
+                        }
+                        style={
+                          item.title === "Todos los Archivos"
+                            ? { color: '#34d399' }
+                            : item.title === "Registro de Auditoría"
+                            ? { color: '#f97316' }
+                            : undefined
+                        }
+                      />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>

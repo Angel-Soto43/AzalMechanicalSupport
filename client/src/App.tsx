@@ -37,7 +37,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <SidebarInset>
-          <header className="sticky top-0 z-40 flex h-14 items-center justify-blur px-4 flex h-14 items-center justify-between gap-4 border-b bg-background/95 backdrop-blur px-4">
+          <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b bg-background/95 backdrop-blur px-4 dark:bg-[rgba(15,23,42,0.82)] dark:border-slate-700/70 dark:shadow-[0_20px_50px_-30px_rgba(56,189,248,0.35)]">
             <div className="flex items-center gap-2">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
