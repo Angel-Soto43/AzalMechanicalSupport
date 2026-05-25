@@ -20,7 +20,12 @@ interface LineItem {
   reqDate: string;
   quantity: number;
   unitMeasure: string;
-  unitPrice: number;
+  unitPrice: number; // Actúa como el Precio de Venta en el PDF
+  // 🚀 NUEVOS CAMPOS INTERNOS (No se imprimen en el PDF)
+  supplier: string;
+  purchaseCost: number;
+  profitMargin: number;
+  profitFactor: number;
 }
 
 const unitMeasureAbbreviations: Record<string, string> = {
@@ -43,7 +48,7 @@ export default function QuotesPage() {
   const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   
-  // ================= ESTADOS DE PROVEEDORES (VENDORS) =================
+// ================= ESTADOS DE PROVEEDORES (VENDORS) =================
   const [vendorData, setVendorData] = useState({
     companyName: "",       
     businessActivity: "",  
@@ -52,14 +57,17 @@ export default function QuotesPage() {
     rfc: "",               
     legalRep: "",          
     email: "",             
-    website: ""            
+    website: "",
+    bankName: "",
+    bankAccount: "",
+    bankBeneficiary: ""
   });
 
   // ================= ESTADOS DE COTIZACIÓN (QUOTES) =================
   const [quoteData, setQuoteData] = useState({
     folio: "",
     requisitionNumber: "",
-    destinationCompany: "", // 🚀 AQUÍ AGREGAMOS EL CLIENTE DESTINO
+    destinationCompany: "", 
     projectTitle: "",
     date: new Date().toISOString().split('T')[0],
     deliveryLocation: "Campo Militar No. 25-E, Oriental, Puebla",
@@ -81,14 +89,14 @@ export default function QuotesPage() {
     bankBeneficiary: "Azal"
   });
 
+  // 🚀 INICIALIZAMOS LOS NUEVOS CAMPOS INTERNOS EN LA PARTIDA VACÍA
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: 1, description: "", techRequirements: "", versionReference: "", reqDate: "", quantity: 1, unitMeasure: "KG", unitPrice: 0 }
+    { id: 1, description: "", techRequirements: "", versionReference: "", reqDate: "", quantity: 1, unitMeasure: "KG", unitPrice: 0, supplier: "", purchaseCost: 0, profitMargin: 0, profitFactor: 1 }
   ]);
   const [searchTerm, setSearchTerm] = useState("");
 
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
 
-  // Estados para selector de carpetas después de generar PDF
   const [selectFolderModalOpen, setSelectFolderModalOpen] = useState(false);
   const [selectedQuoteId, setSelectedQuoteId] = useState<number | null>(null);
   const [rootFolders, setRootFolders] = useState<any[]>([]);
@@ -163,7 +171,6 @@ export default function QuotesPage() {
     }
   }
 
-  // ================= 🚀 CONSULTAS EN TIEMPO REAL (POLLING AUTOMÁTICO) =================
   const { data: vendors = [] } = useQuery<any[]>({ 
     queryKey: ["/api/providers"],
     refetchInterval: 2000,
@@ -191,16 +198,36 @@ export default function QuotesPage() {
     );
   });
 
+  // 🚀 SE AGREGAN LOS NUEVOS CAMPOS AL AÑADIR UNA LÍNEA NUEVA
   const addLineItem = () => {
-    setLineItems([...lineItems, { id: Date.now(), description: "", techRequirements: "", versionReference: "", reqDate: "", quantity: 1, unitMeasure: "KG", unitPrice: 0 }]);
+    setLineItems([...lineItems, { id: Date.now(), description: "", techRequirements: "", versionReference: "", reqDate: "", quantity: 1, unitMeasure: "KG", unitPrice: 0, supplier: "", purchaseCost: 0, profitMargin: 0, profitFactor: 1 }]);
   };
 
   const updateLineItem = (id: number, field: keyof LineItem, value: any) => {
     const cellValue = field === 'unitMeasure' ? normalizeUnitMeasure(value) : value;
-    setLineItems(lineItems.map(item => item.id === id ? { ...item, [field]: cellValue } : item));
+    
+    setLineItems(lineItems.map(item => {
+      if (item.id !== id) return item;
+      
+      const newItem = { ...item, [field]: cellValue };
+
+      // 🚀 LÓGICA DE AUTO-CÁLCULO: MÁRGEN -> FACTOR -> PRECIO VENTA
+      if (field === 'purchaseCost' || field === 'profitMargin') {
+        const cost = field === 'purchaseCost' ? Number(value || 0) : item.purchaseCost;
+        const margin = field === 'profitMargin' ? Number(value || 0) : item.profitMargin;
+        const factor = 1 + (margin / 100);
+        newItem.profitFactor = Number(factor.toFixed(2));
+        newItem.unitPrice = Number((cost * factor).toFixed(2)); 
+      } else if (field === 'profitFactor') {
+        const factor = Number(value || 1);
+        newItem.profitMargin = Number(((factor - 1) * 100).toFixed(2));
+        newItem.unitPrice = Number((item.purchaseCost * factor).toFixed(2));
+      }
+
+      return newItem;
+    }));
   };
 
-  // ================= MUTACIÓN: GUARDAR PROVEEDOR =================
   const vendorMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/providers", {
@@ -219,7 +246,8 @@ export default function QuotesPage() {
       toast({ title: "¡Proveedor Guardado!", description: "El proveedor se registró correctamente." });
       setIsVendorModalOpen(false);
       setVendorData({
-        companyName: "", businessActivity: "", legalAddress: "", phone: "", rfc: "", legalRep: "", email: "", website: ""
+        companyName: "", businessActivity: "", legalAddress: "", phone: "", rfc: "", legalRep: "", email: "", website: "",
+        bankName: "", bankAccount: "", bankBeneficiary: "" 
       });
     },
     onError: (error: any) => {
@@ -227,12 +255,10 @@ export default function QuotesPage() {
     }
   });
 
-  // ================= MUTACIÓN: GUARDAR COTIZACIÓN =================
   const quoteMutation = useMutation({
     mutationFn: async () => {
       const payload = {
         internalFolio: quoteData.folio,
-        // 🚀 AQUÍ ENVIAMOS EL CLIENTE REAL DESDE EL FORMULARIO
         destinationCompany: quoteData.destinationCompany || "Sin Asignar", 
         requisitionNumber: quoteData.requisitionNumber,
         projectTitle: quoteData.projectTitle,
@@ -263,7 +289,12 @@ export default function QuotesPage() {
           quantity: item.quantity,
           unit: item.unitMeasure, 
           unitMeasure: item.unitMeasure,
-          unitPrice: item.unitPrice
+          unitPrice: item.unitPrice,
+          // 🚀 SE ENVÍAN AL BACKEND PARA QUE LA BD LOS GUARDE EN UN FUTURO
+          supplier: item.supplier,
+          purchaseCost: item.purchaseCost,
+          profitMargin: item.profitMargin,
+          profitFactor: item.profitFactor
         }))
       };
 
@@ -332,6 +363,12 @@ export default function QuotesPage() {
                 <Input placeholder="Teléfono(s)" value={vendorData.phone} onChange={e => setVendorData({...vendorData, phone: e.target.value})} />
                 <Input placeholder="Correo electrónico" type="email" value={vendorData.email} onChange={e => setVendorData({...vendorData, email: e.target.value})} />
                 <Input className="col-span-2" placeholder="Página web" value={vendorData.website} onChange={e => setVendorData({...vendorData, website: e.target.value})} />
+                <div className="col-span-2 mt-2 pt-4 border-t border-slate-200 dark:border-slate-700">
+                  <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">Datos Bancarios</h3>
+                </div>
+                <Input placeholder="Nombre del Banco (Ej. INBURSA)" value={vendorData.bankName} onChange={e => setVendorData({...vendorData, bankName: e.target.value})} />
+                <Input placeholder="CLABE / Cuenta" maxLength={18} value={vendorData.bankAccount} onChange={e => setVendorData({...vendorData, bankAccount: e.target.value})} />
+                <Input className="col-span-2" placeholder="Beneficiario" value={vendorData.bankBeneficiary} onChange={e => setVendorData({...vendorData, bankBeneficiary: e.target.value})} />
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t mt-2">
                 <Button variant="ghost" onClick={() => setIsVendorModalOpen(false)}>Cancelar</Button>
@@ -420,7 +457,6 @@ export default function QuotesPage() {
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Número de Requisición</label>
                       <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. FP06-R003-01/2026" value={quoteData.requisitionNumber} onChange={e => setQuoteData({...quoteData, requisitionNumber: e.target.value})} />
                     </div>
-                    {/* 🚀 AQUÍ ESTÁ EL NUEVO CUADRO DE TEXTO PARA EL CLIENTE */}
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Empresa Destino / Cliente</label>
                       <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Secretaría de la Defensa Nacional" value={quoteData.destinationCompany} onChange={e => setQuoteData({...quoteData, destinationCompany: e.target.value})} />
@@ -445,7 +481,7 @@ export default function QuotesPage() {
 
                 {/* 2. CONDICIONES COMERCIALES */}
                 <div className="grid grid-cols-4 gap-4 p-4 border rounded-xl bg-white shadow-sm dark:bg-slate-900/60 dark:backdrop-blur-md">
-                  <div className="col-span-2 mb-2 border-b pb-2"><h3 className="text-sm font-bold text-slate-700 dark:text-white flex items-center gap-2"><Clock size={16}/> Condiciones Comerciales y Entrega</h3></div>
+                  <div className="col-span-4 mb-2 border-b pb-2"><h3 className="text-sm font-bold text-slate-700 dark:text-white flex items-center gap-2"><Clock size={16}/> Condiciones Comerciales y Entrega</h3></div>
                   
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Vigencia (Días)</label>
@@ -491,10 +527,10 @@ export default function QuotesPage() {
                   </div>
                 </div>
 
-                {/* 3. EXPERIENCIA Y DATOS BANCARIOS */}
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="grid grid-cols-2 gap-4 p-4 border rounded-xl bg-white shadow-sm dark:bg-slate-900/60 dark:backdrop-blur-md">
-                    <div className="col-span-2 mb-2 border-b pb-2"><h3 className="text-sm font-bold text-slate-700 dark:text-white flex items-center gap-2"><Award size={16}/> Experiencia y Cumplimiento</h3></div>
+                {/* 3. EXPERIENCIA Y CUMPLIMIENTO */}
+                <div className="grid grid-cols-1 gap-6">
+                  <div className="grid grid-cols-4 gap-4 p-4 border rounded-xl bg-white shadow-sm dark:bg-slate-900/60 dark:backdrop-blur-md">
+                    <div className="col-span-4 mb-2 border-b pb-2"><h3 className="text-sm font-bold text-slate-700 dark:text-white flex items-center gap-2"><Award size={16}/> Experiencia y Cumplimiento</h3></div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">% Gar. Cumplimiento</label>
                       <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.complianceWarranty} onChange={e => setQuoteData({...quoteData, complianceWarranty: Number(e.target.value)})} />
@@ -512,25 +548,9 @@ export default function QuotesPage() {
                       <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.similarContracts} onChange={e => setQuoteData({...quoteData, similarContracts: Number(e.target.value)})} />
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4 p-4 border rounded-xl bg-white shadow-sm dark:bg-slate-900/60 dark:backdrop-blur-md">
-                    <div className="col-span-2 mb-2 border-b pb-2"><h3 className="text-sm font-bold text-slate-700 dark:text-white flex items-center gap-2"><Building size={16}/> Datos Bancarios</h3></div>
-                    <div className="col-span-2 space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Nombre del Banco</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. INBURSA" value={quoteData.bankName} onChange={e => setQuoteData({...quoteData, bankName: e.target.value})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">CLABE / Cuenta</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" value={quoteData.bankAccount} onChange={e => setQuoteData({...quoteData, bankAccount: e.target.value})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Beneficiario</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" value={quoteData.bankBeneficiary} onChange={e => setQuoteData({...quoteData, bankBeneficiary: e.target.value})} />
-                    </div>
-                  </div>
                 </div>
 
-                {/* 4. TABLA DE PARTIDAS */}
+                {/* 4. TABLA DE PARTIDAS (ACTUALIZADA CON COSTOS INTERNOS) */}
                 <div className="border rounded-xl overflow-hidden shadow-sm dark:border-slate-800 dark:shadow-none dark:bg-slate-950/20">
                   <Table>
                     <TableHeader className="bg-[#0F172A]">
@@ -538,9 +558,11 @@ export default function QuotesPage() {
                         <TableHead className="text-white w-12 text-center font-bold text-xs">#</TableHead>
                         <TableHead className="text-white font-bold text-xs">Descripción / Espec. Técnica</TableHead>
                         <TableHead className="text-white font-bold text-xs">Req. Técnicos / Versión / Fecha</TableHead>
-                        <TableHead className="text-white w-28 text-center font-bold text-xs">Cant.</TableHead>
+                        {/* 🚀 NUEVA COLUMNA DE DATOS INTERNOS */}
+                        <TableHead className="text-emerald-300 font-bold text-xs border-l border-slate-700 bg-slate-800 text-center">Datos Internos (Oculto en PDF)</TableHead>
+                        <TableHead className="text-white w-20 text-center font-bold text-xs">Cant.</TableHead>
                         <TableHead className="text-white w-20 font-bold text-xs">U.M.</TableHead>
-                        <TableHead className="text-white w-32 font-bold text-xs">P. Unitario</TableHead>
+                        <TableHead className="text-white w-28 font-bold text-xs text-center">P. Venta (Unitario)</TableHead>
                         <TableHead className="text-white w-12"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -548,7 +570,9 @@ export default function QuotesPage() {
                       {lineItems.map((item, index) => (
                         <TableRow key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                           <TableCell className="text-center font-bold text-slate-400 dark:text-slate-300">{index + 1}</TableCell>
+                          
                           <TableCell><Input className="text-xs bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Cinta de aluminio UNS..." value={item.description} onChange={e => updateLineItem(item.id, 'description', e.target.value)} /></TableCell>
+                          
                           <TableCell className="space-y-1">
                             <Input className="text-[10px] h-6 bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Req: FET(H)..." value={item.techRequirements} onChange={e => updateLineItem(item.id, 'techRequirements', e.target.value)} />
                             <div className="flex gap-1">
@@ -556,27 +580,41 @@ export default function QuotesPage() {
                               <Input className="text-[10px] h-6 w-1/2 bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Fecha: 04/JUN/24" value={item.reqDate} onChange={e => updateLineItem(item.id, 'reqDate', e.target.value)} />
                             </div>
                           </TableCell>
+
+                          {/* 🚀 CELDA DE DATOS INTERNOS QUE NO SALEN EN EL PDF */}
+                          <TableCell className="border-l border-slate-200 dark:border-slate-800 bg-emerald-50/30 dark:bg-emerald-950/20">
+                            <div className="grid grid-cols-2 gap-1 min-w-[12rem]">
+                              <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" placeholder="Proveedor" title="Proveedor" value={item.supplier} onChange={e => updateLineItem(item.id, 'supplier', e.target.value)} />
+                              <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" type="number" placeholder="Costo Compra $" title="Costo Compra" value={item.purchaseCost || ''} onChange={e => updateLineItem(item.id, 'purchaseCost', e.target.value)} />
+                              <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" type="number" placeholder="% Utilidad" title="Porcentaje de Utilidad" value={item.profitMargin || ''} onChange={e => updateLineItem(item.id, 'profitMargin', e.target.value)} />
+                              <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" type="number" placeholder="Factor" title="Factor de Utilidad" value={item.profitFactor || ''} onChange={e => updateLineItem(item.id, 'profitFactor', e.target.value)} />
+                            </div>
+                          </TableCell>
+
                           <TableCell><Input className="text-xs w-20 min-w-[5rem] bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={item.quantity} onChange={e => updateLineItem(item.id, 'quantity', Number(e.target.value))} /></TableCell>
+                          
                           <TableCell><Input className="text-xs w-20 min-w-[5rem] uppercase bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. KG" value={item.unitMeasure} onChange={e => updateLineItem(item.id, 'unitMeasure', e.target.value)} /></TableCell>
-                          <TableCell><Input className="text-xs bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', Number(e.target.value))} /></TableCell>
-                          <TableCell><Button variant="ghost" size="icon" onClick={() => setLineItems(lineItems.filter(i => i.id !== item.id))} className="text-red-500 hover:bg-red-50"><Trash2 size={16}/></Button></TableCell>
+                          
+                          <TableCell><Input className="text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 transition" type="number" value={item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', Number(e.target.value))} /></TableCell>
+                          
+                          <TableCell><Button variant="ghost" size="icon" onClick={() => setLineItems(lineItems.filter(i => i.id !== item.id))} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"><Trash2 size={16}/></Button></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </div>
 
-                <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
-                  <Button variant="outline" onClick={addLineItem} className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white font-medium">
+                <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100 dark:bg-blue-950/20 dark:border-blue-900/50">
+                  <Button variant="outline" onClick={addLineItem} className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white font-medium border-0">
                     <Plus className="mr-2 h-4 w-4" /> Agregar Material
                   </Button>
                   <div className="text-right">
-                    <p className="text-xs font-bold text-blue-600 uppercase">Total Propuesta (Pesos)</p>
-                    <p className="text-3xl font-black text-[#1E40AF]">${lineItems.reduce((acc, i) => acc + (i.quantity * i.unitPrice), 0).toLocaleString()}</p>
+                    <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">Total Venta (Pesos)</p>
+                    <p className="text-3xl font-black text-[#1E40AF] dark:text-blue-300">${lineItems.reduce((acc, i) => acc + (i.quantity * i.unitPrice), 0).toLocaleString()}</p>
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t">
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
                   <Button variant="ghost" onClick={() => setIsQuoteModalOpen(false)}>Cancelar</Button>
                   <Button onClick={() => quoteMutation.mutate()} disabled={quoteMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white px-10 font-bold">
                     {quoteMutation.isPending ? "Generando..." : "Finalizar y Generar PDF"}
@@ -635,7 +673,6 @@ export default function QuotesPage() {
                           <span>Descargar PDF</span>
                         </DropdownMenuItem>
 
-                        {/* 🚀 AQUÍ TAMBIÉN AGREGAMOS QUE CARGUE EL CLIENTE AL EDITAR */}
                         <DropdownMenuItem 
                           onClick={() => {
                             setQuoteData({
@@ -673,7 +710,12 @@ export default function QuotesPage() {
                                 reqDate: li.reqDate || "",
                                 quantity: Number(li.quantity || 1),
                                 unitMeasure: normalizeUnitMeasure(li.unitMeasure || li.unit || "Kilogramo"),
-                                unitPrice: Number(li.unitPrice || 0)
+                                unitPrice: Number(li.unitPrice || 0),
+                                // 🚀 RECUPERAR DATOS INTERNOS AL EDITAR
+                                supplier: li.supplier || "",
+                                purchaseCost: Number(li.purchaseCost || 0),
+                                profitMargin: Number(li.profitMargin || 0),
+                                profitFactor: Number(li.profitFactor || 1)
                               })));
                             }
                             setIsQuoteModalOpen(true);
