@@ -679,100 +679,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  app.post("/api/quotes/:id/pdf/save", requireAuth, async (req: any, res) => {
-    try {
-      const quoteId = Number(req.params.id);
-      if (Number.isNaN(quoteId)) {
-        return res.status(400).json({ error: "ID de cotización inválido" });
-      }
-
-      const { folderId } = req.body;
-      if (!folderId || typeof folderId !== 'string') {
-        return res.status(400).json({ error: "El folderId es obligatorio" });
-      }
-
-      const isMicrosoftId = Number.isNaN(Number(folderId));
-      if (!isMicrosoftId) {
-        return res.status(400).json({ error: "ID de carpeta de OneDrive inválido" });
-      }
-
-      const quote = await storage.getQuoteById(quoteId);
-      if (!quote) {
-        return res.status(404).json({ error: "Cotización no encontrada" });
-      }
-
-      if (!quote.providerId) {
-        return res.status(404).json({ error: "Proveedor no encontrado" });
-      }
-
-      const provider = await storage.getProviderById(Number(quote.providerId));
-      if (!provider) {
-        return res.status(404).json({ error: "Proveedor no encontrado" });
-      }
-
-      const rawItems = await storage.getQuoteItems(quoteId);
-      const lineItems = convertQuoteItemsFromDb(rawItems);
-      const totalCents = rawItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-      const total = fromCents(totalCents);
-      const totalText = amountToSpanishText(total);
-
-      const quoteWithText = {
-        ...quote,
-        folio: quote.internalFolio,
-        destinationCompany: quote.destinationCompany,
-        totalText,
-      };
-
-      const pdfBuffer = await generateQuotePdfBuffer(quoteWithText, provider, lineItems);
-      const fileName = buildQuotePdfFileName(quoteWithText);
-
-      const uploadResult = await uploadFileToGraph(
-        req.user.accessToken,
-        req.user.refreshToken,
-        req.user.id,
-        pdfBuffer,
-        fileName,
-        'application/pdf',
-        folderId
-      );
-
-      await storage.createAuditLog({
-        correo: req.user.correo || req.user.email || null,
-        action: "Guardar PDF de cotización en carpeta",
-        details: `Se guardó el PDF ${fileName} en la carpeta de OneDrive ${folderId}`
-      });
-
-      return res.status(200).json({
-        success: true,
-        fileName,
-        savedTo: folderId,
-        uploadResult,
-      });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  app.get("/api/quotes/price-history", requireAuth, async (req: any, res) => {
-    try {
-      const description = String(req.query.description || req.query.material || "").trim();
-      if (!description) {
-        return res.status(400).json({ error: "El campo description es requerido" });
-      }
-
-      const history = await storage.getQuotePriceHistory(description);
-      const normalizedHistory = history.map(item => ({
-        ...item,
-        unitPrice: fromCents(Number(item.unitPrice) || 0),
-        amount: fromCents(Number(item.amount) || 0),
-      }));
-      res.json(normalizedHistory);
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  app.post("/api/quotes", requireAuth, async (req: any, res) => {
+ app.post("/api/quotes", requireAuth, async (req: any, res) => {
     try {
       const internalFolio = (req.body.internalFolio || req.body.folio || "").toString().trim();
       const destinationCompany = (req.body.destinationCompany || req.body.empresaDestino || "").toString().trim();
@@ -800,6 +707,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const bankName = (req.body.bankName || "").toString().trim();
       const bankAccount = (req.body.bankAccount || "").toString().trim();
       const bankBeneficiary = (req.body.bankBeneficiary || "").toString().trim();
+
+      // 🚀 TAREAS 2 y 3: Atrapando los nuevos parámetros enviados desde el Frontend
+      const empresaId = req.body.empresaId ? Number(req.body.empresaId) : providerId;
+      const templateName = (req.body.templateName || "azal_official").toString().trim();
 
       const validityDays = Number.isFinite(validityDaysRaw) && Number.isInteger(validityDaysRaw) && validityDaysRaw > 0 ? validityDaysRaw : 120;
       const paymentDays = Number.isFinite(paymentDaysRaw) && Number.isInteger(paymentDaysRaw) && paymentDaysRaw >= 0 ? paymentDaysRaw : 0;
@@ -844,7 +755,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         similarContracts,
         bankName,
         bankAccount,
-        bankBeneficiary
+        bankBeneficiary,
+        // 🚀 Inyectando relacionalmente los nuevos campos únicos a Neon Postgres
+        empresaId,
+        templateName
       });
 
       const createdItems = [];
@@ -882,7 +796,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.status(500).json({ error: e.message });
     }
   });
-
   app.get("/api/files/:id/share", requireAuth, async (req: any, res) => {
     try {
       const fileIdParam = req.params.id;

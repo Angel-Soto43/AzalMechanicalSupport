@@ -256,7 +256,10 @@ export default function QuotesPage() {
   });
 
   const quoteMutation = useMutation({
+
     mutationFn: async () => {
+      const selectedVendor = vendors.find(v => v.id.toString() === selectedVendorId);
+
       const payload = {
         internalFolio: quoteData.folio,
         destinationCompany: quoteData.destinationCompany || "Sin Asignar", 
@@ -281,6 +284,11 @@ export default function QuotesPage() {
         bankAccount: quoteData.bankAccount,
         bankBeneficiary: quoteData.bankBeneficiary,
         providerId: Number(selectedVendorId),
+        
+        // 🚀 TAREAS 2 y 3: Campos relacionales añadidos para ligar de forma nativa la plantilla y la empresa
+        empresaId: selectedVendorId ? Number(selectedVendorId) : null,
+        templateName: "azal_official", // Control de renderizado dinámico para la API de PDFs
+
         lineItems: lineItems.map(item => ({
           description: item.description,
           techRequirements: item.techRequirements,
@@ -290,7 +298,8 @@ export default function QuotesPage() {
           unit: item.unitMeasure, 
           unitMeasure: item.unitMeasure,
           unitPrice: item.unitPrice,
-          // 🚀 SE ENVÍAN AL BACKEND PARA QUE LA BD LOS GUARDE EN UN FUTURO
+          
+          // 🚀 SE ENVIAN AL BACKEND JUNTO CON LOS ATRIBUTOS RELACIONALES
           supplier: item.supplier,
           purchaseCost: item.purchaseCost,
           profitMargin: item.profitMargin,
@@ -325,6 +334,7 @@ export default function QuotesPage() {
       toast({ title: "Error en el formulario", description: error.message, variant: "destructive" });
     }
   });
+  
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col dark:bg-[linear-gradient(180deg,#0B132B_0%,#1C2541_100%)]">

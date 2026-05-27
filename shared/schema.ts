@@ -2,6 +2,35 @@ import { pgTable, text, varchar, timestamp, integer, serial, boolean, bigint, nu
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// ==========================================
+// INTERFACES Y TIPOS
+// ==========================================
+export interface RawQuoteLineItem {
+  description: string;
+  quantity: number;
+  unit: string;
+  unitMeasure?: string;
+  techRequirements?: string;
+  versionReference?: string;
+  unitPrice: number;
+  amount?: number;
+}
+
+export interface NormalizedQuoteLineItem {
+  description: string;
+  quantity: number;
+  unit: string;
+  unitMeasure: string;
+  techRequirements: string;
+  versionReference: string;
+  unitPriceCents: number;
+  amountCents: number;
+}
+
+// ==========================================
+// ENTIDADES DE LA BASE DE DATOS (ESQUEMAS)
+// ==========================================
+
 export const session = pgTable("session", {
   sid: varchar("sid").primaryKey(),
   sess: text("sess").notNull(),
@@ -33,13 +62,10 @@ export const licitaciones = pgTable("licitaciones", {
 export const providers = pgTable("providers", {
   id: serial("id").primaryKey(),
   companyName: text("company_name").notNull(),
-  
-  // 🚀 NUEVOS CAMPOS DEL PROVEEDOR
   businessActivity: text("business_activity").notNull().default(""), 
   legalAddress: text("legal_address").notNull().default(""), 
   rfc: text("rfc").notNull().default(""), 
   website: text("website").default(""), 
-  
   legalRepresentative: text("legal_representative").notNull(),
   phone: text("phone").notNull(),
   email: text("email").notNull(),
@@ -63,7 +89,7 @@ export const quotes = pgTable("quotes", {
   deliveryPlace: text("delivery_place").notNull().default(""),
   contactPerson: text("contact_person").notNull().default(""),
   
-  // 🚀 NUEVOS CAMPOS DE LA COTIZACIÓN (PDF)
+  // CONDICIONES LEGALES CORPORATIVAS DEL PDF
   complianceWarranty: integer("compliance_warranty").notNull().default(0),
   goodsOrigin: text("goods_origin").notNull().default(""),
   providerNationality: text("provider_nationality").notNull().default(""),
@@ -76,6 +102,10 @@ export const quotes = pgTable("quotes", {
 
   providerId: integer("provider_id").references(() => providers.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+
+  // 🚀 TAREAS 2 y 3: Campos relacionales añadidos de forma limpia y única
+  empresaId: integer("empresa_id").references(() => providers.id), // Llave foránea real hacia empresas
+  templateName: varchar("template_name", { length: 100 }).default("azal_official"), // Selección de plantilla
 });
 
 export const quoteItems = pgTable("quote_items", {
@@ -87,10 +117,7 @@ export const quoteItems = pgTable("quote_items", {
   unitMeasure: text("unit_measure").notNull().default(""),
   techRequirements: text("tech_requirements").notNull().default(""),
   versionReference: text("version_reference").notNull().default(""),
-  
-  // 🚀 NUEVO CAMPO DE LA PARTIDA (PDF)
   reqDate: text("req_date").notNull().default(""), 
-
   unitPrice: integer("unit_price").notNull().default(0),
   amount: integer("amount").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -100,9 +127,6 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   fullName: text("full_name").notNull(),
   correo: text("correo").notNull().unique(),
-  
-  // 🚀 ADIÓS DEUDA TÉCNICA: Se eliminó password, is_admin, failedLoginAttempts y lockedUntil
-  
   isActive: boolean("is_active").default(true).notNull(),
   lastLogin: timestamp("last_login"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -136,6 +160,9 @@ export const files = pgTable("files", {
   deletedBy: integer("deleted_by").references(() => users.id),
 });
 
+// ==========================================
+// ESQUEMAS DE VALIDACIÓN ZOD Y INFERENCIA
+// ==========================================
 export const insertLicitacionSchema = createInsertSchema(licitaciones);
 export const insertProviderSchema = createInsertSchema(providers);
 export const insertQuoteSchema = createInsertSchema(quotes);
