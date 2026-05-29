@@ -70,6 +70,12 @@ export const providers = pgTable("providers", {
   phone: text("phone").notNull(),
   email: text("email").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+
+  // 🚀 NUEVOS CAMPOS: DATOS BANCARIOS DEL PROVEEDOR (VINCULADOS DESDE EL MODAL)
+  bankName: text("bank_name").notNull().default(""),
+  bankAccount: varchar("bank_account", { length: 50 }).notNull().default(""),
+  bankBeneficiary: text("bank_beneficiary").notNull().default(""),
+
 });
 
 export const quotes = pgTable("quotes", {
@@ -121,6 +127,11 @@ export const quoteItems = pgTable("quote_items", {
   unitPrice: integer("unit_price").notNull().default(0),
   amount: integer("amount").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  
+  // 🚀 DATOS INTERNOS DE GESTIÓN (OCULTOS EN EL PDF FINAL)
+  providerId: integer("provider_id").references(() => providers.id), // Enlace al proveedor asignado en la celda verde
+  costoCompra: numeric("costo_compra", { precision: 10, scale: 2 }), // Almacena el Costo Compra $
+  porcentajeUtilidad: numeric("porcentaje_utilidad", { precision: 5, scale: 2 }), // Almacena el % Utilidad
 });
 
 export const users = pgTable("users", {
