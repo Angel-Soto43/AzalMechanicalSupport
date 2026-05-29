@@ -18,7 +18,6 @@ import { getMicrosoftFiles,
         getMicrosoftFolders, 
         createMicrosoftFolder, 
         getMicrosoftFolderContent,
-        updateMicrosoftItemDescription,
         uploadFileToGraph,
         renameMicrosoftItem,
         deleteMicrosoftItem,
@@ -38,7 +37,7 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// 🚀 FUNCIÓN MAESTRA: INYECCIÓN DE IMÁGENES AL BORDE DE LA HOJA
+//  FUNCIÓN MAESTRA: INYECCIÓN DE IMÁGENES AL BORDE DE LA HOJA
 async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[]) {
   const html = generateQuoteHTML({
     ...quote,
@@ -97,6 +96,7 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
           ${footerBase64 ? `<img src="${footerBase64}" style="width: 100%; height: auto; display: block;" />` : ''}
         </div>
       `,
+      // 🚀 MÁRGENES DERECHO E IZQUIERDO EN 0 PARA QUE LA IMAGEN TOQUE EL BORDE
       margin: { top: '270px', right: '0px', bottom: '150px', left: '0px' },
       preferCSSPageSize: false
     });
