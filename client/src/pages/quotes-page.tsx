@@ -198,7 +198,6 @@ export default function QuotesPage() {
     );
   });
 
-  // 🚀 SE AGREGAN LOS NUEVOS CAMPOS AL AÑADIR UNA LÍNEA NUEVA
   const addLineItem = () => {
     setLineItems([...lineItems, { id: Date.now(), description: "", techRequirements: "", versionReference: "", reqDate: "", quantity: 1, unitMeasure: "KG", unitPrice: 0, supplier: "", purchaseCost: 0, profitMargin: 0, profitFactor: 1 }]);
   };
@@ -211,7 +210,6 @@ export default function QuotesPage() {
       
       const newItem = { ...item, [field]: cellValue };
 
-      // 🚀 LÓGICA DE AUTO-CÁLCULO: MÁRGEN -> FACTOR -> PRECIO VENTA
       if (field === 'purchaseCost' || field === 'profitMargin') {
         const cost = field === 'purchaseCost' ? Number(value || 0) : item.purchaseCost;
         const margin = field === 'profitMargin' ? Number(value || 0) : item.profitMargin;
@@ -285,9 +283,8 @@ export default function QuotesPage() {
         bankBeneficiary: quoteData.bankBeneficiary,
         providerId: Number(selectedVendorId),
         
-        // 🚀 TAREAS 2 y 3: Campos relacionales añadidos para ligar de forma nativa la plantilla y la empresa
         empresaId: selectedVendorId ? Number(selectedVendorId) : null,
-        templateName: "azal_official", // Control de renderizado dinámico para la API de PDFs
+        templateName: "azal_official", 
 
         lineItems: lineItems.map(item => ({
           description: item.description,
@@ -299,7 +296,6 @@ export default function QuotesPage() {
           unitMeasure: item.unitMeasure,
           unitPrice: item.unitPrice,
           
-          // 🚀 SE ENVIAN AL BACKEND JUNTO CON LOS ATRIBUTOS RELACIONALES
           supplier: item.supplier,
           purchaseCost: item.purchaseCost,
           profitMargin: item.profitMargin,
@@ -447,7 +443,7 @@ export default function QuotesPage() {
                 <Plus className="mr-2 h-4 w-4" /> Nueva Propuesta Económica
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-7xl h-[95vh] overflow-y-auto shadow-2xl dark:bg-slate-950 dark:backdrop-blur-md">
+            <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] overflow-y-auto shadow-2xl dark:bg-slate-950 dark:backdrop-blur-md">
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold flex items-center gap-2 dark:text-white">
                   <FileText className="text-blue-600" /> Detalle de la Propuesta (Planilla Oficial)
@@ -560,16 +556,17 @@ export default function QuotesPage() {
                   </div>
                 </div>
 
-                {/* 4. TABLA DE PARTIDAS (ACTUALIZADA CON COSTOS INTERNOS) */}
+                {/* 4. TABLA DE PARTIDAS (ACTUALIZADA) */}
                 <div className="border rounded-xl overflow-hidden shadow-sm dark:border-slate-800 dark:shadow-none dark:bg-slate-950/20">
                   <Table>
                     <TableHeader className="bg-[#0F172A]">
                       <TableRow>
                         <TableHead className="text-white w-12 text-center font-bold text-xs">#</TableHead>
-                        <TableHead className="text-white font-bold text-xs">Descripción / Espec. Técnica</TableHead>
-                        <TableHead className="text-white font-bold text-xs">Req. Técnicos / Versión / Fecha</TableHead>
-                        {/* 🚀 NUEVA COLUMNA DE DATOS INTERNOS */}
-                        <TableHead className="text-emerald-300 font-bold text-xs border-l border-slate-700 bg-slate-800 text-center">Datos Internos (Oculto en PDF)</TableHead>
+                        {/* 🚀 1. DESCRIPCIÓN MUCHO MÁS ANCHA */}
+                        <TableHead className="text-white font-bold text-xs w-[30%] min-w-[350px]">Descripción / Especificación Técnica</TableHead>
+                        {/* 🚀 2. REQUERIMIENTOS COMPACTO */}
+                        <TableHead className="text-white font-bold text-xs w-[190px] min-w-[190px]">Req. Técnicos / Versión / Fecha</TableHead>
+                        <TableHead className="text-emerald-300 font-bold text-xs border-l border-slate-700 bg-slate-800 text-center">Datos Internos</TableHead>
                         <TableHead className="text-white w-20 text-center font-bold text-xs">Cant.</TableHead>
                         <TableHead className="text-white w-20 font-bold text-xs">U.M.</TableHead>
                         <TableHead className="text-white w-28 font-bold text-xs text-center">P. Venta (Unitario)</TableHead>
@@ -579,35 +576,43 @@ export default function QuotesPage() {
                     <TableBody>
                       {lineItems.map((item, index) => (
                         <TableRow key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                          <TableCell className="text-center font-bold text-slate-400 dark:text-slate-300">{index + 1}</TableCell>
+                          <TableCell className="text-center font-bold text-slate-400 dark:text-slate-300 align-top pt-4">{index + 1}</TableCell>
                           
-                          <TableCell><Input className="text-xs bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Cinta de aluminio UNS..." value={item.description} onChange={e => updateLineItem(item.id, 'description', e.target.value)} /></TableCell>
+                          {/* DESCRIPCIÓN */}
+                          <TableCell className="align-top pt-3">
+                            <Input className="text-xs bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Cinta de aluminio UNS..." value={item.description} onChange={e => updateLineItem(item.id, 'description', e.target.value)} />
+                          </TableCell>
                           
-                          <TableCell className="space-y-1">
-                            <Input className="text-[10px] h-6 bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Req: FET(H)..." value={item.techRequirements} onChange={e => updateLineItem(item.id, 'techRequirements', e.target.value)} />
-                            <div className="flex gap-1">
-                              <Input className="text-[10px] h-6 w-1/2 bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Versión: 05" value={item.versionReference} onChange={e => updateLineItem(item.id, 'versionReference', e.target.value)} />
-                              <Input className="text-[10px] h-6 w-1/2 bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Fecha: 04/JUN/24" value={item.reqDate} onChange={e => updateLineItem(item.id, 'reqDate', e.target.value)} />
+                          {/* REQUERIMIENTOS - TAMAÑO FIJO Y ESTRECHO */}
+                          <TableCell className="align-top pt-3">
+                            <div className="w-full space-y-1">
+                              <Input className="text-[10px] h-6 w-full bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Req: FET(H)..." value={item.techRequirements} onChange={e => updateLineItem(item.id, 'techRequirements', e.target.value)} />
+                              <div className="flex gap-1">
+                                <Input className="text-[10px] h-6 w-1/2 bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Versión: 05" value={item.versionReference} onChange={e => updateLineItem(item.id, 'versionReference', e.target.value)} />
+                                <Input className="text-[10px] h-6 w-1/2 bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Fecha: 04/JUN/24" value={item.reqDate} onChange={e => updateLineItem(item.id, 'reqDate', e.target.value)} />
+                              </div>
                             </div>
                           </TableCell>
 
-                          {/* 🚀 CELDA DE DATOS INTERNOS QUE NO SALEN EN EL PDF */}
-                          <TableCell className="border-l border-slate-200 dark:border-slate-800 bg-emerald-50/30 dark:bg-emerald-950/20">
-                            <div className="grid grid-cols-2 gap-1 min-w-[12rem]">
-                              <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" placeholder="Proveedor" title="Proveedor" value={item.supplier} onChange={e => updateLineItem(item.id, 'supplier', e.target.value)} />
-                              <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" type="number" placeholder="Costo Compra $" title="Costo Compra" value={item.purchaseCost || ''} onChange={e => updateLineItem(item.id, 'purchaseCost', e.target.value)} />
-                              <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" type="number" placeholder="% Utilidad" title="Porcentaje de Utilidad" value={item.profitMargin || ''} onChange={e => updateLineItem(item.id, 'profitMargin', e.target.value)} />
-                              <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" type="number" placeholder="Factor" title="Factor de Utilidad" value={item.profitFactor || ''} onChange={e => updateLineItem(item.id, 'profitFactor', e.target.value)} />
+                          {/* DATOS INTERNOS */}
+                          <TableCell className="border-l border-slate-200 dark:border-slate-800 bg-emerald-50/30 dark:bg-emerald-950/20 align-top pt-3">
+                            <div className="flex flex-col gap-1 min-w-[18rem]">
+                              <Input className="text-[10px] h-7 w-full bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" placeholder="Proveedor" title="Proveedor" value={item.supplier} onChange={e => updateLineItem(item.id, 'supplier', e.target.value)} />
+                              <div className="grid grid-cols-3 gap-1">
+                                <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" type="number" placeholder="Costo Compra $" title="Costo Compra" value={item.purchaseCost || ''} onChange={e => updateLineItem(item.id, 'purchaseCost', e.target.value)} />
+                                <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" type="number" placeholder="Factor" title="Factor de Utilidad" value={item.profitFactor || ''} onChange={e => updateLineItem(item.id, 'profitFactor', e.target.value)} />
+                                <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" type="number" placeholder="% Utilidad" title="Porcentaje de Utilidad" value={item.profitMargin || ''} onChange={e => updateLineItem(item.id, 'profitMargin', e.target.value)} />
+                              </div>
                             </div>
                           </TableCell>
 
-                          <TableCell><Input className="text-xs w-20 min-w-[5rem] bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={item.quantity} onChange={e => updateLineItem(item.id, 'quantity', Number(e.target.value))} /></TableCell>
+                          <TableCell className="align-top pt-3"><Input className="text-xs w-20 min-w-[5rem] bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={item.quantity} onChange={e => updateLineItem(item.id, 'quantity', Number(e.target.value))} /></TableCell>
                           
-                          <TableCell><Input className="text-xs w-20 min-w-[5rem] uppercase bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. KG" value={item.unitMeasure} onChange={e => updateLineItem(item.id, 'unitMeasure', e.target.value)} /></TableCell>
+                          <TableCell className="align-top pt-3"><Input className="text-xs w-20 min-w-[5rem] uppercase bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. KG" value={item.unitMeasure} onChange={e => updateLineItem(item.id, 'unitMeasure', e.target.value)} /></TableCell>
                           
-                          <TableCell><Input className="text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 transition" type="number" value={item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', Number(e.target.value))} /></TableCell>
+                          <TableCell className="align-top pt-3"><Input className="text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 transition" type="number" value={item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', Number(e.target.value))} /></TableCell>
                           
-                          <TableCell><Button variant="ghost" size="icon" onClick={() => setLineItems(lineItems.filter(i => i.id !== item.id))} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"><Trash2 size={16}/></Button></TableCell>
+                          <TableCell className="align-top pt-3"><Button variant="ghost" size="icon" onClick={() => setLineItems(lineItems.filter(i => i.id !== item.id))} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"><Trash2 size={16}/></Button></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

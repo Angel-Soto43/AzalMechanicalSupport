@@ -8,7 +8,7 @@ import archiver from "archiver";
 import multer from "multer";
 import puppeteer from "puppeteer";
 import { storage } from "./storage";
-import { amountToSpanishText, convertQuoteItemFromDb, convertQuoteItemsFromDb, fromCents, validateQuoteItems, generateQuoteHTML } from "./quotes";
+import { amountToSpanishText, convertQuoteItemFromDb, convertQuoteItemsFromDb, fromCents, validateQuoteItems, generateQuoteHTML, TEMPLATE_CONFIGS } from "./quotes";
 import { insertLicitacionSchema, files } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -18,7 +18,6 @@ import { getMicrosoftFiles,
         getMicrosoftFolders, 
         createMicrosoftFolder, 
         getMicrosoftFolderContent,
-        updateMicrosoftItemDescription,
         uploadFileToGraph,
         renameMicrosoftItem,
         deleteMicrosoftItem,
@@ -38,7 +37,7 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// 🚀 FUNCIÓN MAESTRA: INYECCIÓN DE IMÁGENES AL BORDE DE LA HOJA
+//  FUNCIÓN MAESTRA: INYECCIÓN DE IMÁGENES AL BORDE DE LA HOJA
 async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[]) {
   const html = generateQuoteHTML({
     ...quote,
@@ -476,6 +475,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const email = (req.body.email || "").trim();
       const website = (req.body.website || "").trim();
 
+      // 🚀 Extrayendo los parámetros bancarios enviados desde el modal del Frontend
+      const bankName = (req.body.bankName || "").trim();
+      const bankAccount = (req.body.bankAccount || "").trim();
+      const bankBeneficiary = (req.body.bankBeneficiary || "").trim();
+
       if (!companyName || !legalRepresentative || !phone || !email) {
         return res.status(400).json({ error: "Razón social, representante, teléfono y correo son obligatorios" });
       }
@@ -626,7 +630,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // 🚀 AQUÍ ESTABA EL ERROR: RUTA DE GENERACIÓN QUE LLAMA A LA FUNCIÓN MAESTRA
   app.get("/api/quotes/:id/pdf", requireAuth, async (req: any, res) => {
     try {
       const quoteId = Number(req.params.id);
@@ -661,7 +664,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         totalText: totalText 
       };
 
-      // 🚀 SE USA LA FUNCIÓN MAESTRA GENERATORPDFBUFFER QUE INYECTA LAS IMÁGENES
       const pdfBuffer = await generateQuotePdfBuffer(quoteWithText, provider, lineItems);
 
       res.setHeader('Content-Type', 'application/pdf');
@@ -679,7 +681,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
- app.post("/api/quotes", requireAuth, async (req: any, res) => {
+  app.post("/api/quotes", requireAuth, async (req: any, res) => {
     try {
       const internalFolio = (req.body.internalFolio || req.body.folio || "").toString().trim();
       const destinationCompany = (req.body.destinationCompany || req.body.empresaDestino || "").toString().trim();
@@ -708,7 +710,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const bankAccount = (req.body.bankAccount || "").toString().trim();
       const bankBeneficiary = (req.body.bankBeneficiary || "").toString().trim();
 
-      // 🚀 TAREAS 2 y 3: Atrapando los nuevos parámetros enviados desde el Frontend
       const empresaId = req.body.empresaId ? Number(req.body.empresaId) : providerId;
       const templateName = (req.body.templateName || "azal_official").toString().trim();
 
@@ -756,7 +757,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         bankName,
         bankAccount,
         bankBeneficiary,
-        // 🚀 Inyectando relacionalmente los nuevos campos únicos a Neon Postgres
         empresaId,
         templateName
       });
@@ -796,6 +796,38 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.status(500).json({ error: e.message });
     }
   });
+
+  // ==========================================================================
+  // 🚀 ENDPOINT REST: SELECCIÓN DINÁMICA DE PLANTILLAS (GET /api/templates/:empresa)
+  // ==========================================================================
+  app.get("/api/templates/:empresa", requireAuth, async (req, res) => {
+    try {
+      const empresaKey = req.params.empresa.toUpperCase().trim();
+      const config = TEMPLATE_CONFIGS[empresaKey];
+
+      if (!config) {
+        return res.status(404).json({ 
+          error: `La empresa '${empresaKey}' no se encuentra registrada en el clúster dinámico de plantillas.` 
+        });
+      }
+
+      return res.json({
+        empresa: empresaKey,
+        template_name: config.templateName,
+        config: {
+          header: true,
+          footer: true,
+          colors: {
+            primary: config.primaryColor
+          },
+          friendlyName: config.friendlyName
+        }
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.get("/api/files/:id/share", requireAuth, async (req: any, res) => {
     try {
       const fileIdParam = req.params.id;
@@ -1419,32 +1451,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.status(201).json(nueva);
     } catch (e: any) {
       res.status(400).json({ error: e.message });
-    }
-  });
-
-  app.delete("/api/quotes/:id", requireAuth, async (req: any, res) => {
-    try {
-      const quoteId = Number(req.params.id);
-      if (Number.isNaN(quoteId)) {
-        return res.status(400).json({ error: "ID de cotización inválido" });
-      }
-
-      const quote = await storage.getQuoteById(quoteId);
-      if (!quote) {
-        return res.status(404).json({ error: "Cotización no encontrada" });
-      }
-
-      await storage.deleteQuote?.(quoteId);
-
-      await storage.createAuditLog({
-        correo: req.user.correo || req.user.email || null,
-        action: "Eliminar cotización",
-        details: `Se eliminó la cotización con folio ${quote.internalFolio || quote.folio} del historial.`
-      });
-
-      res.status(204).end();
-    } catch (e: any) {
-      res.status(500).json({ error: e.message || "Error al eliminar el registro" });
     }
   });
 

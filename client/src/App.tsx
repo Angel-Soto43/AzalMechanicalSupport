@@ -17,7 +17,6 @@ import { Lock } from "lucide-react";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import DashboardPage from "@/pages/dashboard-page";
-import UsersPage from "@/pages/users-page";
 import AuditLogsPage from "@/pages/audit-logs-page";
 import FolderPage from "@/pages/folder-page";
 import FoldersListPage from "@/pages/folders-list-page";

@@ -2,13 +2,13 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Shield, FileText, Users, ClipboardList, CheckCircle } from "lucide-react";
+import { FileText, Users, ClipboardList, CheckCircle } from "lucide-react";
 
 const brandLogos = [
   {
-    src: "/images/hsn14.svg",
-    alt: "HSN14 logo",
-    title: "HSN14",
+    src: "/images/ams.svg",
+    alt: "AZAL logo",
+    title: "AZAL",
     description: "Soluciones industriales y soporte avanzado para sistemas corporativos.",
   },
   {
@@ -16,6 +16,24 @@ const brandLogos = [
     alt: "HGW logo",
     title: "HGW",
     description: "Procesos avanzados y consultoría para manufactura inteligente.",
+  },
+  {
+    src: "/images/hyh.svg",
+    alt: "HYH logo",
+    title: "HYH",
+    description: "Alianzas estratégicas y servicios de ingeniería industrial.",
+  },
+  {
+    src: "/images/dema.svg",
+    alt: "DEMA logo",
+    title: "DEMA",
+    description: "Soluciones de diseño mecánico y soporte de sistemas empresariales.",
+  },
+  {
+    src: "/images/hermal.svg",
+    alt: "HERMAL logo",
+    title: "HERMAL",
+    description: "Innovación térmica y servicios especializados para entornos críticos.",
   },
 ];
 
@@ -53,8 +71,8 @@ export default function AuthPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-[1200px]">
+    <div className="min-h-screen bg-slate-950 flex items-start justify-center px-4 py-4">
+      <div className="w-full max-w-[1200px] pt-0">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(420px,520px)_1fr] gap-8 items-center">
           <div className="hidden lg:grid gap-4">
             {features.slice(0, 2).map((feature, index) => (
@@ -70,26 +88,23 @@ export default function AuthPage() {
             ))}
           </div>
 
-          <div className="relative overflow-hidden rounded-[32px] border border-sky-500/10 bg-slate-900/90 p-10 lg:p-14 shadow-[0_0_80px_rgba(56,189,248,0.12)] text-center backdrop-blur-xl">
+          <div className="relative overflow-hidden rounded-[32px] border border-sky-500/10 bg-slate-900/90 pt-1 pb-8 lg:pb-12 px-6 lg:px-10 shadow-[0_0_80px_rgba(56,189,248,0.12)] text-center backdrop-blur-xl">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(56,189,248,0.08),_transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.92),rgba(15,23,42,0.98))]" />
             <div className="absolute left-6 top-6 h-32 w-32 rounded-full bg-sky-400/10 blur-3xl" />
             <div className="absolute right-8 top-16 h-28 w-28 rounded-full bg-emerald-400/10 blur-3xl" />
             <div className="absolute left-1/2 top-36 h-24 w-24 -translate-x-1/2 rounded-full bg-violet-500/10 blur-3xl" />
 
-            <div className="relative z-10 space-y-8">
-              <div className="flex flex-col items-center gap-3">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 border border-white/15">
-                  <Shield className="h-10 w-10 text-white" />
-                </div>
-                <div>
-                  <h1 className="mt-3 text-5xl md:text-6xl font-bold tracking-[0.02em] text-white">
-                    <span className="text-sky-300 drop-shadow-[0_0_18px_rgba(56,189,248,0.45)]">CORELINK</span>
+            <div className="relative z-10 space-y-3">
+              <div className="flex flex-col items-center gap-0 -mt-3 px-2 w-full">
+                <div className="w-full">
+                  <h1 className="text-[60pt] font-extrabold tracking-[-0.02em] leading-[1.0] text-white whitespace-nowrap">
+                    <span className="text-sky-300 drop-shadow-[0_0_28px_rgba(56,189,248,0.65)]">CORELINK</span>
                     <span className="ml-2 text-white">Systems</span>
                   </h1>
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-2">
                 <p className="text-sm text-slate-400 max-w-xl mx-auto">
                   Bienvenido a la plataforma multiempresa. Inicia sesión con tu cuenta corporativa para acceder a los controles centralizados, documentos y auditorías del ecosistema.
                 </p>
@@ -101,18 +116,21 @@ export default function AuthPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:max-w-md mx-auto">
-                {brandLogos.map((brand) => (
-                  <div key={brand.title} className="group relative overflow-hidden rounded-[28px] border border-white/10 bg-white/5 p-4 text-center shadow-[0_0_28px_rgba(56,189,248,0.10)] transition duration-300 hover:border-sky-400/30 hover:bg-slate-800/90 hover:shadow-[0_0_36px_rgba(56,189,248,0.20)] hover:-translate-y-0.5">
-                    <div className="flex items-center justify-center rounded-3xl bg-slate-950/80 p-3 transition duration-300 group-hover:-translate-y-1">
-                      <img src={brand.src} alt={brand.alt} className="h-12 w-auto" />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:max-w-none mx-auto w-full justify-items-center">
+                {brandLogos.map((brand, index) => {
+                  const isLast = index === brandLogos.length - 1;
+                  return (
+                    <div key={brand.title} className={`group relative overflow-hidden rounded-[28px] border border-white/10 bg-white/5 p-4 text-center shadow-[0_0_28px_rgba(56,189,248,0.10)] transition duration-300 hover:border-sky-400/30 hover:bg-slate-800/90 hover:shadow-[0_0_36px_rgba(56,189,248,0.20)] hover:-translate-y-0.5 w-full max-w-[300px] ${isLast ? "sm:col-span-2 justify-self-center" : ""}`}>
+                      <div className="flex items-center justify-center rounded-3xl bg-slate-950/80 p-3 transition duration-300 group-hover:-translate-y-1">
+                        <img src={brand.src} alt={brand.alt} className="h-12 w-auto" />
+                      </div>
+                      <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-4 w-72 -translate-x-1/2 rounded-3xl border border-white/10 bg-slate-950/95 p-4 text-left text-sm text-slate-200 shadow-2xl backdrop-blur-xl opacity-0 transition duration-300 group-hover:opacity-100">
+                        <p className="text-xs uppercase tracking-[0.2em] text-sky-300">{brand.title}</p>
+                        <p className="mt-2 leading-5 text-slate-300">{brand.description}</p>
+                      </div>
                     </div>
-                    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-4 w-72 -translate-x-1/2 rounded-3xl border border-white/10 bg-slate-950/95 p-4 text-left text-sm text-slate-200 shadow-2xl backdrop-blur-xl opacity-0 transition duration-300 group-hover:opacity-100">
-                      <p className="text-xs uppercase tracking-[0.2em] text-sky-300">{brand.title}</p>
-                      <p className="mt-2 leading-5 text-slate-300">{brand.description}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <Button

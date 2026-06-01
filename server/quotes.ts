@@ -230,20 +230,114 @@ export function amountToSpanishText(amount: number): string {
 }
 
 // ==========================================
-// RENDERIZADOR HTML INSTITUCIONAL (PLANTILLA AZAL)
+// 🚀 DICCIONARIO DE CONFIGURACIÓN AUTOMÁTICA DE PLANTILLAS CORPORATIVAS
 // ==========================================
+export const TEMPLATE_CONFIGS: Record<string, { 
+  templateName: string; 
+  primaryColor: string; 
+  friendlyName: string;
+  rfc: string;
+  legalAddress: string;
+  email: string;
+  legalRepresentative: string;
+  phone: string;
+  bankName: string;
+  bankAccount: string;
+  objetoSocial: string;
+}> = {
+  "AZAL": {
+    templateName: "AZAL_TEMPLATE",
+    primaryColor: "#0F172A", // Azul Marino Oscuro
+    friendlyName: "Azal Mechanical Supports, S.A. de C.V.",
+    rfc: "AMS161027SY5",
+    legalAddress: "Lago Chapala 27, Los Manantiales, 54420, Nicolás Romero, Estado de México.",
+    email: "azal@azalmechanical.com",
+    legalRepresentative: "Ing. Víctor Hernández Hernández.",
+    phone: "55 4854 0838 y 55 1733 2055",
+    bankName: "GRUPO FINANCIERO INBURSA",
+    bankAccount: "036 180 500 524 410 942",
+    objetoSocial: "Adquirir, fabricar, ensamblar, procesar, preparar, reparar, vender, comprar, distribuir, importar, exportar e instalar todo tipo de resortes, muelles, tornillos, pernos, tuercas, arandelas, herramientas de corte, herramientas manuales, dispositivos, calibres troqueles y en general todo tipo de componentes estándar, herramienta y utillaje, especialmente pero no limitado para la industria vehicular, aeronáutica, militar y/u otras industrias sin limitación de trabajar y manipular todo tipo de cobre, acero hierro estaño plomo zinc, titanio y un sinfín de material existente utilizado en la fabricación metal mecánica."
+  },
+  "DEMA": {
+    templateName: "DEMA_TEMPLATE",
+    primaryColor: "#1E3A8A", // Azul Eléctrico Industrial
+    friendlyName: "DEMA Ingeniería y Soluciones Industriales S.A. de C.V.",
+    rfc: "DIS2302154R4",
+    legalAddress: "Av. De los Jinetes #7, Piso 2, Interior 29, Las Arboledas, Atizapán de Zaragoza, estado de México, C.P. 52950",
+    email: "dema@demaisi.com.mx",
+    legalRepresentative: "Ing. Deisy Hernández Hernández",
+    phone: "55 39731421",
+    bankName: "BANORTE",
+    bankAccount: "072180012321261862",
+    objetoSocial: "Prestar servicios de ingeniería, diseño, desarrollo e implementación, asistencia técnica, mano de obra especializada, mantenimiento y servicio, compra, venta, distribution, ensamble, instalación e importación de equipo industrial, insumos y refacciones utilizadas para la operación de plantas de tratamiento de aguas residuales, pozos profundos, potabilizadoras y purificadoras de agua, aires acondicionados industriales, manejadoras de aire, calderas, sistemas de calentamiento de agua, hidroneumáticos, cuartos fríos, sistemas de refrigeración, conservación y congelamiento."
+  },
+  "HERMAL": {
+    templateName: "HERMAL_TEMPLATE",
+    primaryColor: "#000000", // Negro Corporativo
+    friendlyName: "HERMAL Industrial, S.A. de C.V.",
+    rfc: "HIN2305193K1",
+    legalAddress: "Boulevard Manuel Ávila Camacho #2610, Torre B, P 10, oficina 10-A, Col. Valle de los Pinos, Tlalnepantla, Estado de México, Código Postal 54040.",
+    email: "hermal@industrial.com.mx",
+    legalRepresentative: "Lactive Hernández Mauro.",
+    phone: "55 34 61 78 88.",
+    bankName: "Banorte",
+    bankAccount: "072180013415670012.",
+    objetoSocial: "Fabricación, preparación, suministro, distribución, instalación y soporte, compra, venta, importación, exportación de materias primas, productos semiterminados, productos finales y toda clase de elementos propios de la industria metalmecánica aplicada a procesos industriales y de manufactura ."
+  },
+  "HGW": {
+    templateName: "HGW_TEMPLATE",
+    primaryColor: "#047857", // Verde Esmeralda
+    friendlyName: "HGW PROCESS AND SOLUTIONS, S.A. DE C.V.",
+    rfc: "HPS200624FG1.",
+    legalAddress: "Av. Jorge Jiménez Cantú No. 1 int. 124, Valle Escondido, Atizapán de Zaragoza, Estado de México, Código Postal 52937",
+    email: "hgw@hgwprocessolutions.com",
+    legalRepresentative: "Ing. Octavio Soto Hernández.",
+    phone: "55 45566367.",
+    bankName: "Inbursa",
+    bankAccount: "036180500583815041",
+    objetoSocial: "Proporcionar el servicio de diseño, instalación, mantenimiento, soporte técnico, suministro, venta, compra e importación de equipo para distribución y transmisión de energía eléctrica, equipo industrial y de sus refacciones utilizadas en plantas de tratamiento de aguas residuales, calderas, aires acondicionados industriales, subestaciones eléctricas, y en general, para todo tipo de instalaciones que requieran de equipo industrial para su operación."
+  },
+  "HYH": {
+    templateName: "HYH_TEMPLATE",
+    primaryColor: "#B91C1C", // Rojo Carmesí
+    friendlyName: "HYH SUMINISTROS Y MANTENIMIENTO INDUSTRIAL, S.A.S. DE C.V.",
+    rfc: "HSM230216B45.",
+    legalAddress: "Circuito circunvalación poniente, 149, Int. B, Ciudad Satélite, C.P. 53100, Naucalpan de Juárez, Estado de México.",
+    email: "hyh@hyhsuministros.com",
+    legalRepresentative: "Ing. Héctor Trejo Tovar.",
+    phone: "55 4451 2172 y 55 9337 6548.",
+    bankName: "Santander",
+    bankAccount: "014 180 65509776799 2",
+    objetoSocial: "Ejecutar toda clase de actos de comercio, pudiendo comprar y vender, importar y exportar toda clase de artículos y mercancías, así como la prestación de toda clase de servicios."
+  }
+};
+
+// ==========================================================================
+// RENDERIZADOR HTML INSTITUCIONAL CENTRALIZADO CON SELECCIÓN DINÁMICA
+// ==========================================================================
 export function generateQuoteHTML(quote: any, provider: any, items: any[]) {
   const subtotal = items.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.unitPrice)), 0);
   const iva = subtotal * 0.16;
   const total = subtotal + iva;
-
   const totalEnTexto = amountToSpanishText(total);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(amount);
   };
 
-  const nombreEmpresa = provider.companyName || 'Azal Mechanical Supports, S.A. de C.V.';
+  // 1. Obtener la plantilla activa desde el modelo de la base de datos
+  const activeTemplate = quote.templateName || "AZAL_TEMPLATE";
+
+  // 2. Extraer los datos estáticos correctos basándose en la clave del templateMap
+  let currentCompanyKey = "AZAL";
+  if (activeTemplate.includes("DEMA")) currentCompanyKey = "DEMA";
+  else if (activeTemplate.includes("HERMAL")) currentCompanyKey = "HERMAL";
+  else if (activeTemplate.includes("HGW")) currentCompanyKey = "HGW";
+  else if (activeTemplate.includes("HYH")) currentCompanyKey = "HYH";
+
+  const companyMeta = TEMPLATE_CONFIGS[currentCompanyKey];
+  
+  const nombreEmpresa = companyMeta.friendlyName;
   const nombreCliente = quote.destinationCompany || 'NOMBRE DEL CLIENTE Y/O EMPRESA';
 
   return `
@@ -260,7 +354,10 @@ export function generateQuoteHTML(quote: any, provider: any, items: any[]) {
         .subtitle { font-weight: bold; text-decoration: underline; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 9pt; }
         th, td { border: 1px solid #000; padding: 6px 4px; text-align: center; vertical-align: middle; }
-        th { background-color: #555ee6; color: white; font-weight: bold; font-size: 8.5pt; text-transform: uppercase; }
+        
+        /* 🚀 INYECCIÓN DEL COLOR CORPORATIVO DINÁMICO SEGÚN LA EMPRESA SELECCIONADA */
+        th { background-color: ${companyMeta.primaryColor} !important; color: white; font-weight: bold; font-size: 8.5pt; text-transform: uppercase; }
+        
         .text-left { text-align: left; }
         .text-right { text-align: right; }
         .bold { font-weight: bold; }
@@ -279,6 +376,13 @@ export function generateQuoteHTML(quote: any, provider: any, items: any[]) {
       </style>
     </head>
     <body>
+
+      <div class="attention-block">
+        <div class="attention-title">ATENCIÓN:</div>
+        <div>C. Tte. Cor. Inf.</div>
+        <div>Vicente Herrera Valdez,</div>
+        <div>Jefe de I.M. de la Dir. Gral. Ind. Mil.</div>
+      </div>
 
       <div class="header-title">
         <div class="title">PROPUESTA ECONÓMICA</div>
@@ -344,7 +448,7 @@ export function generateQuoteHTML(quote: any, provider: any, items: any[]) {
         <li><span class="bold">Condiciones de pago:</span> Mi representada tiene considerado que el pago será a los ${quote.paymentDays || 17} días hábiles posteriores a la entrega de la factura, previa entrega de los bienes a satisfacción del Área requirente. Así mismo, el pago será mediante transferencia electrónica.</li>
         <li><span class="bold">Tiempo de entrega:</span> ${nombreEmpresa} realizará la entrega de los bienes requeridos y documentación completa a partir del día natural siguiente a la comunicación del fallo y a más tardar &nbsp;${quote.deliveryTime ? quote.deliveryTime.replace(/\s*al\s+fallo/i, '') : '3 meses'}  a referido evento.</li>
         <li><span class="bold">Lugar de la entrega:</span> ${nombreEmpresa}, entregará los bienes en las instalaciones que a continuación se indica: ${quote.deliveryPlace || 'UBICACIÓN DE LA EMPRESA Y/O CLIENTE.'}</li>
-        <li><span class="bold">Contacto:</span>${quote.contactPerson ? quote.contactPerson.replace(/^Contacto:\s*/i, '') : 'Contacto del cliente'}</li> 
+        <li><span class="bold">Contacto:</span> ${quote.contactPerson ? quote.contactPerson.replace(/^Contacto:\s*/i, '') : 'Contacto del cliente'}</li> 
         <li><span class="bold">Tiempo de fabricación:</span> ${quote.manufacturingTime || '2 meses'}.</li>
       </ul>
 
@@ -352,7 +456,7 @@ export function generateQuoteHTML(quote: any, provider: any, items: any[]) {
         <li>La responsabilidad de <span class="bold">${nombreEmpresa}</span>, en relación con esta garantía consistirá en que este, sin ningún costo para la “${nombreCliente}”, reemplazará los “bienes”, en un plazo no mayor a 30 días hábiles conforme a los términos y condiciones para su aplicación.</li>
         <div class="section-title">Garantía de calidad:</div>
         <ul style="list-style-type: circle; margin-left: 25px; padding-left: 0; text-align: justify;">
-          <li> </span> ${nombreEmpresa}, deberá entregar por escrito una garantía de calidad contra defectos de fabricación y/o vicios ocultos que especifique que el “bien”, que oferta es nuevo de fábrica, que está libre de defectos y en buenas condiciones, conforme a las especificaciones técnicas del fabricante, la cual deberá responder de los defectos de fabricación y/o vicios ocultos que llegue a presentar el “bien”, por un plazo de <span class="bold">${quote.guaranteeMonths || 12} (doce) meses</span>, a partir de la expedición del acta de aceptación que formule con motivo de la entrega y recepción definitiva del “bien” a plena y entera satisfacción de la ${nombreCliente}.</li>
+          <li> ${nombreEmpresa}, deberá entregar por escrito una garantía de calidad contra defectos de fabricación y/o vicios ocultos que especifique que el “bien”, que oferta es nuevo de fábrica, que está libre de defectos y en buenas condiciones, conforme a las especificaciones técnicas del fabricante, la cual deberá responder de los defectos de fabricación y/o vicios ocultos que llegue a presentar el “bien”, por un plazo de <span class="bold">${quote.guaranteeMonths || 12} (doce) meses</span>, a partir de la expedición del acta de aceptación que formule con motivo de la entrega y recepción definitiva del “bien” a plena y entera satisfacción de la ${nombreCliente}.</li>
           <li>Esta garantía de calidad contra defectos de fabricación y/o vicios ocultos se cancelará una vez que haya fenecido el plazo estipulado en el inciso anterior a partir de la fecha de entrega total del “bien” y a entera satisfacción de la ${nombreCliente}.</li>
           <li>Para la aplicación de dicha garantía <span class="bold">${nombreEmpresa}</span>, en cualquier caso, de desperfecto que presente o daños que sufran “los bienes” adquiridos serán remplazados al 100% sin costo para la ${nombreCliente}.</li>
           <li>La reposición de los “bienes” con defectos de fabricación y/o vicios ocultos, se realizará en el lugar indicado en el apartado Ubicación del lugar donde se realizará la Entrega de los Bienes; para lo cual <span class="bold">${nombreEmpresa}</span> deberá establecer coordinación con el contacto especificado.</li>
@@ -371,20 +475,20 @@ export function generateQuoteHTML(quote: any, provider: any, items: any[]) {
 
       <ul class="list-bullet">
         <li><span class="bold">Razón social:</span> ${nombreEmpresa}</li>
-        <li><span class="bold">Objeto social o actividad que desarrolla:</span> ${provider.businessActivity || ''}</li>
-        <li><span class="bold">Domicilio legal:</span> ${provider.legalAddress || ''}</li>
-        <li><span class="bold">Teléfono:</span> ${provider.phone || ''}</li>
-        <li><span class="bold">RFC:</span> ${provider.rfc || ''}</li>
-        <li><span class="bold">Nombre del representante legal:</span> ${provider.legalRepresentative || ''}</li>
-        <li><span class="bold">Correo electrónico:</span> ${provider.email || ''}</li>
-        <li><span class="bold">Página web:</span> ${provider.website || ''}</li>
+        <li><span class="bold">Objeto social o actividad que desarrolla:</span> ${companyMeta.objetoSocial}</li>
+        <li><span class="bold">Domicilio legal:</span> ${companyMeta.legalAddress}</li>
+        <li><span class="bold">Teléfono:</span> ${companyMeta.phone}</li>
+        <li><span class="bold">RFC:</span> ${companyMeta.rfc}</li>
+        <li><span class="bold">Nombre del representante legal:</span> ${companyMeta.legalRepresentative}</li>
+        <li><span class="bold">Correo electrónico:</span> ${companyMeta.email}</li>
+        <li><span class="bold">Página web:</span> ${companyMeta.email.includes('azal') ? 'www.azalmechanical.com' : ''}</li>
       </ul>
 
       <ul class="list-bullet">
         <li><span class="bold">Forma de pago:</span> Transferencia Electrónica.</li>
-        <li><span class="bold">Nombre del banco:</span> ${quote.bankName || 'GRUPO FINANCIERO INBURSA'}</li>
-        <li><span class="bold">Clabe Interbancaria:</span> ${quote.bankAccount || '000'}</li>
-        <li><span class="bold">Beneficiario de la cuenta:</span> ${quote.bankBeneficiary || nombreEmpresa}</li>
+        <li><span class="bold">Nombre del banco:</span> ${companyMeta.bankName}</li>
+        <li><span class="bold">Clabe Interbancaria:</span> ${companyMeta.bankAccount}</li>
+        <li><span class="bold">Beneficiario de la cuenta:</span> ${nombreEmpresa}</li>
       </ul>
 
       <div style="text-align: justify; margin-top: 15px; margin-bottom: 30px;">
@@ -394,7 +498,7 @@ export function generateQuoteHTML(quote: any, provider: any, items: any[]) {
       <div class="professional-signature-section">
         <div class="signature-title-label">ATENTAMENTE</div>
         <div class="signature-solid-line"></div>
-        <div class="signature-fullname-text">${provider.legalRepresentative || ''}</div>
+        <div class="signature-fullname-text">${companyMeta.legalRepresentative}</div>
         <div class="signature-role-subtext">DIRECTOR DE OPERACIONES</div>
       </div>
     </body>
