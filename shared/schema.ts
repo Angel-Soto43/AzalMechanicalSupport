@@ -129,9 +129,10 @@ export const quoteItems = pgTable("quote_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   
   // 🚀 DATOS INTERNOS DE GESTIÓN (OCULTOS EN EL PDF FINAL)
-  providerId: integer("provider_id").references(() => providers.id), // Enlace al proveedor asignado en la celda verde
-  costoCompra: numeric("costo_compra", { precision: 10, scale: 2 }), // Almacena el Costo Compra $
-  porcentajeUtilidad: numeric("porcentaje_utilidad", { precision: 5, scale: 2 }), // Almacena el % Utilidad
+  supplier: text("supplier").default(""),
+  purchaseCost: numeric("purchase_cost", { precision: 15, scale: 2 }).default("0"),
+  profitMargin: numeric("profit_margin", { precision: 10, scale: 2 }).default("0"),
+  profitFactor: numeric("profit_factor", { precision: 10, scale: 2 }).default("1"),
 });
 
 export const users = pgTable("users", {

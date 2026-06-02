@@ -8,7 +8,15 @@ import archiver from "archiver";
 import multer from "multer";
 import puppeteer from "puppeteer";
 import { storage } from "./storage";
-import { amountToSpanishText, convertQuoteItemFromDb, convertQuoteItemsFromDb, fromCents, validateQuoteItems, generateQuoteHTML, TEMPLATE_CONFIGS } from "./quotes";
+import { getTemplateForProvider } from "./templates/manager";
+import { getTemplateForProvider } from "./templates/manager";
+import {
+  validateQuoteItems,
+  amountToSpanishText,
+  fromCents,
+  convertQuoteItemFromDb,
+  convertQuoteItemsFromDb
+} from "./quotes";
 import { insertLicitacionSchema, files } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -39,12 +47,13 @@ if (!fs.existsSync(uploadsDir)) {
 
 //  FUNCIÓN MAESTRA: INYECCIÓN DE IMÁGENES AL BORDE DE LA HOJA
 async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[]) {
-  const html = generateQuoteHTML({
+  // 🚀 AHORA USAMOS EL MANAGER DINÁMICO
+  const html = getTemplateForProvider(provider, {
     ...quote,
     folio: quote.internalFolio,
     destinationCompany: quote.destinationCompany,
     totalText: quote.totalText
-  }, provider, lineItems);
+  }, lineItems);
 
   let headerBase64 = '';
   let footerBase64 = '';
@@ -777,6 +786,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           reqDate: (rawItem.reqDate || "").toString().trim(),
           unitPrice: item.unitPriceCents,
           amount: item.amountCents,
+          // 🚀 AQUÍ ESTÁN LOS 4 CAMPOS NUEVOS AGREGADOS:
+          supplier: item.supplier,
+          purchaseCost: item.purchaseCost ? String(item.purchaseCost) : "0", 
+          profitMargin: item.profitMargin ? String(item.profitMargin) : "0",
+          profitFactor: item.profitFactor ? String(item.profitFactor) : "1"
         });
         createdItems.push(convertQuoteItemFromDb(createdItem));
       }
