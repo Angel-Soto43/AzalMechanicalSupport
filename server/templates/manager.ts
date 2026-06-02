@@ -1,5 +1,8 @@
 import { generateAzalTemplate } from './azal';
 import { generateDemaTemplate } from './dema';
+import { generateHgwTemplate } from './hgw';
+import { generateHermalTemplate } from './hermal';
+import { generateHyhTemplate } from './hyh';
 
 export function getTemplateForProvider(provider: any, quote: any, items: any[]): string {
   const companyName = (provider.companyName || "").toUpperCase();
@@ -8,11 +11,11 @@ export function getTemplateForProvider(provider: any, quote: any, items: any[]):
   if (companyName.includes("DEMA")) {
     return generateDemaTemplate(provider, quote, items); // Cambiaremos esto por generateDemaTemplate
   } else if (companyName.includes("HERMAL")) {
-    return generateAzalTemplate(provider, quote, items); 
+    return generateHermalTemplate(provider, quote, items);
   } else if (companyName.includes("HGW")) {
-    return generateAzalTemplate(provider, quote, items); 
+    return generateHgwTemplate(provider, quote, items); 
   } else if (companyName.includes("HYH")) {
-    return generateAzalTemplate(provider, quote, items); 
+    return generateHyhTemplate(provider, quote, items);
   }
 
   // Por defecto retorna el diseño de AZAL

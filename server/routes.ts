@@ -55,16 +55,23 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
     totalText: quote.totalText
   }, lineItems);
 
+  // 🚀 VALIDACIÓN DE EMPRESA: Detectamos si es Azal o alguna de las otras
+  const companyName = (provider.companyName || "").toUpperCase();
+  const isAzal = !companyName.includes("DEMA") && !companyName.includes("HERMAL") && !companyName.includes("HGW") && !companyName.includes("HYH");
+
   let headerBase64 = '';
   let footerBase64 = '';
   const headerPath = path.join(process.cwd(), 'server', 'assets', 'encabezado.png');
   const footerPath = path.join(process.cwd(), 'server', 'assets', 'pie.png');
 
-  if (fs.existsSync(headerPath)) {
-    headerBase64 = `data:image/png;base64,${fs.readFileSync(headerPath).toString('base64')}`;
-  }
-  if (fs.existsSync(footerPath)) {
-    footerBase64 = `data:image/png;base64,${fs.readFileSync(footerPath).toString('base64')}`;
+  // Solo cargamos las imágenes de Azal si realmente es Azal
+  if (isAzal) {
+    if (fs.existsSync(headerPath)) {
+      headerBase64 = `data:image/png;base64,${fs.readFileSync(headerPath).toString('base64')}`;
+    }
+    if (fs.existsSync(footerPath)) {
+      footerBase64 = `data:image/png;base64,${fs.readFileSync(footerPath).toString('base64')}`;
+    }
   }
 
   const dateParts = (quote.quoteDate || "").split('-');
@@ -85,11 +92,18 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle2', timeout: 30000 });
-    const pdfBuffer = await page.pdf({
+    
+    // 🚀 CONFIGURACIÓN DINÁMICA DEL PDF SEGÚN LA EMPRESA
+    const pdfOptions: any = {
       format: 'A4',
       printBackground: true,
-      displayHeaderFooter: true,
-      headerTemplate: `
+      preferCSSPageSize: false
+    };
+
+    if (isAzal) {
+      // Configuraciones exclusivas para Azal
+      pdfOptions.displayHeaderFooter = true;
+      pdfOptions.headerTemplate = `
         <style>html, body { margin: 0; padding: 0; }</style>
         <div style="position: absolute; top: 0; left: 0; width: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; -webkit-print-color-adjust: exact;">
           ${headerBase64 ? `<img src="${headerBase64}" style="width: 100%; height: auto; display: block;" />` : ''}
@@ -98,17 +112,22 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
             a ${formattedDate}
           </div>
         </div>
-      `,
-      footerTemplate: `
+      `;
+      pdfOptions.footerTemplate = `
         <style>html, body { margin: 0; padding: 0; }</style>
         <div style="position: absolute; bottom: 0; left: 0; width: 100%; margin: 0; padding: 0; display: flex; justify-content: center; align-items: flex-end; -webkit-print-color-adjust: exact;">
           ${footerBase64 ? `<img src="${footerBase64}" style="width: 100%; height: auto; display: block;" />` : ''}
         </div>
-      `,
-      // 🚀 MÁRGENES DERECHO E IZQUIERDO EN 0 PARA QUE LA IMAGEN TOQUE EL BORDE
-      margin: { top: '270px', right: '0px', bottom: '150px', left: '0px' },
-      preferCSSPageSize: false
-    });
+      `;
+      pdfOptions.margin = { top: '270px', right: '0px', bottom: '150px', left: '0px' };
+    } else {
+      // Para HGW, DEMA, etc., apagamos el header/footer inyectado y quitamos los márgenes de Puppeteer
+      pdfOptions.displayHeaderFooter = false;
+      pdfOptions.margin = { top: '0px', right: '0px', bottom: '0px', left: '0px' };
+      pdfOptions.preferCSSPageSize = true;
+    }
+
+    const pdfBuffer = await page.pdf(pdfOptions);
     return pdfBuffer;
   } finally {
     await browser.close();
@@ -806,6 +825,33 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         },
         lineItems: createdItems,
       });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete("/api/quotes/:id", requireAuth, async (req: any, res) => {
+    try {
+      const quoteId = Number(req.params.id);
+      if (Number.isNaN(quoteId)) {
+        return res.status(400).json({ error: "ID de cotización inválido" });
+      }
+
+      const quote = await storage.getQuoteById(quoteId);
+      if (!quote) {
+        return res.status(404).json({ error: "Cotización no encontrada" });
+      }
+
+      // Eliminar la cotización (también elimina sus items automáticamente)
+      await storage.deleteQuote(quoteId);
+
+      await storage.createAuditLog({
+        correo: req.user.correo || req.user.email || null,
+        action: "Eliminar cotización",
+        details: `Se eliminó la cotización ${quote.internalFolio}`
+      });
+
+      res.status(204).end();
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
