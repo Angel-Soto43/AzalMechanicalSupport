@@ -9,10 +9,8 @@ export function generateHyhTemplate(provider: any, quote: any, items: any[]) {
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(amount);
   };
 
-  // Dato azul: Razón social del proveedor
   const nombreEmpresa = provider.companyName || 'HYH SUMINISTROS Y MANTENIMIENTO INDUSTRIAL, S.A.S. DE C.V.';
   
-  // Genera dinámicamente el listado de números de partida (ej. "1, 2, 3, 4")
   const partidasNumeros = items.map((_, i) => i + 1).join(', ');
 
   return `
@@ -28,7 +26,6 @@ export function generateHyhTemplate(provider: any, quote: any, items: any[]) {
         
         table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 9pt; }
         th, td { border: 1px solid #000; padding: 6px 4px; text-align: center; vertical-align: middle; }
-        /* Se usa un color rojo/guinda distintivo para HYH */
         th { background-color: #B91C1C !important; color: white; font-weight: bold; text-transform: uppercase; }
         .text-left { text-align: left; }
         
@@ -81,23 +78,21 @@ export function generateHyhTemplate(provider: any, quote: any, items: any[]) {
       </table>
 
       <div class="bold" style="margin-bottom: 10px;">TÉRMINOS COMERCIALES:</div>
-      <p>Moneda en que se cotiza: Moneda Nacional.</p>
-      <p>Vigencia de la cotización: ${quote.validityDays || 90} días</p>
-      <p>Fecha de entrega: a partir del día siguiente hábil a la formalización del respectivo instrumento contractual y teniendo como fecha límite ${quote.deliveryTime || '95 días naturales'} posteriores de referida formalización.</p>
-      <p>Lugar de entrega: ${quote.deliveryPlace || 'En los Almacenes Generales de Materiales de Guerra, ubicado en el Campo Militar Estratégico Conjunto No. 37-D, “Gral. Div. P.A Alfredo Lezama Álvarez”, Santa Lucía, México, Carretera México-Pachuca Km, 42.5, C.P. 55640, considerando que referida entrega será de lunes a viernes en un horario de 08:00 a 14:00 Hrs.'}</p>
-      <p>Condiciones de entrega: Conforme a el Anexo Administrativo.</p>
-      
-      <p class="bold" style="margin-bottom: 5px;">Garantía de calidad:</p>
-      <p>Carta escrita membretada bajo protesta de decir verdad, en donde manifieste que otorgará ${quote.guaranteeMonths || 3} (${quote.guaranteeMonthsText || 'tres'}) meses de garantía de calidad para las partidas números: ${partidasNumeros}.</p>
-      <p>La garantía de calidad deberá de cubrir por ${quote.guaranteeMonths || 3} (${quote.guaranteeMonthsText || 'tres'}) meses el buen estado y empleo de las refacciones, accesorios e insumos que fueron adquiridos.</p>
-      <p>La garantía de Calidad se activará una vez que se detecte en el plazo de su vigencia, alguna falla, deterioro, o mal funcionamiento que impidan el uso adecuado de los bienes que fueron adquiridos.</p>
-      <p>La garantía de calidad surtirá efectos a partir de que se hayan recibido los bienes a entera satisfacción del área usuaria mediante el acta de recepción definitiva.</p>
-      <p>En la garantía de calidad se indicará que la obligación de ${nombreEmpresa}, será que sin costo para esta Secretaría de Estado llevará a cabo el cambio de los insumos por otros de buena calidad, sin que para ello transcurran más de 7 (siete) días hábiles, a partir de la fecha y hora de la notificación.</p>
-      <p>${nombreEmpresa}, será notificado de la falla, deterioro, o mal funcionamiento de los bienes, atribuibles a su mala calidad, a través de una carta dirigida al representante legal y enviada por correo electrónico a la dirección electrónica que el proveedor dispondrá para tal fin.</p>
-      <p>${nombreEmpresa}, coordinará con el Administrador del contrato lo relativo al acceso al sitio donde se encuentran los bienes a ser reemplazados por activación de la garantía de calidad.</p>
-      
-      <p>Forma de Pago: Transferencia Electrónica.</p>
-      <p>Mi representada cumple con las Condiciones de Entrega, Especificaciones Técnicas, Normas y Atributos Indicados en el Anexo Técnico y Administrativo.</p>
+      <p>A. Moneda en que se cotiza: Moneda Nacional.</p>
+      <p>B. Vigencia de la cotización: 90 días</p>
+      <p>C. Fecha de entrega: a partir del día siguiente hábil a la formalización del respectivo instrumento contractual y teniendo como fecha límite 95 días naturales posteriores de referida formalización.</p>
+      <p>D. Lugar de entrega: En los Almacenes Generales de Materiales de Guerra, ubicado en el Campo Militar Estratégico Conjunto No. 37-D, “Gral. Div. P.A Alfredo Lezama Álvarez”, Santa Lucía, México, Carretera México-Pachuca Km, 42.5, C.P. 55640, considerando que referida entrega será de lunes a viernes en un horario de 08:00 a 14:00 Hrs.</p>
+      <p>E. Condiciones de entrega: Conforme a el Anexo Administrativo.</p>
+      <p>F. Garantía de calidad:</p>
+      <p style="margin-left: 20px;">1. Carta escrita membretada bajo protesta de decir verdad, en donde manifieste que otorgará 3 (tres) meses de garantía de calidad para las partidas números: 2, 16, 40, 42, 43, 47, 48 y 54.</p>
+      <p style="margin-left: 20px;">2. La garantía de calidad deberá de cubrir por 3 (tres) meses el buen estado y empleo de las refacciones, accesorios e insumos que fueron adquiridos.</p>
+      <p style="margin-left: 20px;">3. La garantía de Calidad se activará una vez que se detecte en el plazo de su vigencia, alguna falla, deterioro, o mal funcionamiento que impidan el uso adecuado de los bienes que fueron adquiridos.</p>
+      <p style="margin-left: 20px;">4. La garantía de calidad surtirá efectos a partir de que se hayan recibido los bienes a entera satisfacción del área usuaria mediante el acta de recepción definitiva.</p>
+      <p style="margin-left: 20px;">5. En la garantía de calidad se indicará que la obligación de ${nombreEmpresa}, será que sin costo para esta Secretaría de Estado llevará a cabo el cambio de los insumos por otros de buena calidad, sin que para ello transcurran más de 7 (siete) días hábiles, a partir de la fecha y hora de la notificación.</p>
+      <p style="margin-left: 20px;">6. ${nombreEmpresa}, será notificado de la falla, deterioro, o mal funcionamiento de los bienes, atribuibles a su mala calidad, a través de una carta dirigida al representante legal y enviada por correo electrónico a la dirección electrónica que el proveedor dispondrá para tal fin.</p>
+      <p style="margin-left: 20px;">7. ${nombreEmpresa}, coordinará con el Administrador del contrato lo relativo al acceso al sitio donde se encuentran los bienes a ser reemplazados por activación de la garantía de calidad.</p>
+      <p>G. Forma de Pago: Transferencia Electrónica.</p>
+      <p>H. Mi representada cumple con las Condiciones de Entrega, Especificaciones Técnicas, Normas y Atributos Indicados en el Anexo Técnico y Administrativo.</p>
       
       <p>Razón social: ${nombreEmpresa}<br>
       RFC: ${provider.rfc}.<br>
@@ -116,11 +111,12 @@ export function generateHyhTemplate(provider: any, quote: any, items: any[]) {
         <div class="bold">ATENTAMENTE</div>
         <br><br><br>
         <div class="signature-line"></div>
-        <div class="bold">${provider.legalRepresentative ? provider.legalRepresentative.toUpperCase() : 'ING. HECTOR TREJO TOVAR'}</div>
+        <div class="bold">${provider.legalRepresentative ? provider.legalRepresentative.toUpperCase() : 'ING.HÉCTOR. TREJO. TOVAR.'}</div>
         <div class="bold">REPRESENTANTE LEGAL</div>
       </div>
 
     </body>
+    
     </html>
   `;
 }
