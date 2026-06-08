@@ -9,7 +9,7 @@ export function getTemplateForProvider(provider: any, quote: any, items: any[]):
 
   // 🚀 RUTEO DINÁMICO: Solo decide qué diseño usar, los datos ya vienen en "provider"
   if (companyName.includes("DEMA")) {
-    return generateDemaTemplate(provider, quote, items); // Cambiaremos esto por generateDemaTemplate
+    return generateDemaTemplate(provider, quote, items); 
   } else if (companyName.includes("HERMAL")) {
     return generateHermalTemplate(provider, quote, items);
   } else if (companyName.includes("HGW")) {
