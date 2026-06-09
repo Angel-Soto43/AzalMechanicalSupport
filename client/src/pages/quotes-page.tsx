@@ -11,6 +11,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { DynamicFormRenderer } from "@/components/quotations/DynamicFormRenderer";
+import type { AMSFormData, QuoteFormType } from "@/components/quotations/forms/form-types";
+import { defaultAMSFormData } from "@/components/quotations/forms/form-types";
 
 interface LineItem {
   id: number;
@@ -88,6 +91,9 @@ export default function QuotesPage() {
     bankAccount: "000",
     bankBeneficiary: "Azal"
   });
+
+  const [quoteType, setQuoteType] = useState<QuoteFormType>("bienes");
+  const [amsFormData, setAmsFormData] = useState<AMSFormData>(defaultAMSFormData);
 
   // 🚀 INICIALIZAMOS LOS NUEVOS CAMPOS INTERNOS EN LA PARTIDA VACÍA
   const [lineItems, setLineItems] = useState<LineItem[]>([
@@ -176,6 +182,8 @@ export default function QuotesPage() {
     refetchInterval: 2000,
     refetchIntervalInBackground: true
   });
+
+  const selectedVendor = vendors.find(v => v.id?.toString() === selectedVendorId);
 
   const { data: quotes = [], isLoading: loadingQuotes } = useQuery<any[]>({ 
     queryKey: ["/api/quotes"],
@@ -284,7 +292,9 @@ export default function QuotesPage() {
         providerId: Number(selectedVendorId),
         
         empresaId: selectedVendorId ? Number(selectedVendorId) : null,
-        templateName: "azal_official", 
+        templateName: "azal_official",
+        amsType: quoteType,
+        amsDetails: amsFormData,
 
         lineItems: lineItems.map(item => ({
           description: item.description,
@@ -479,6 +489,20 @@ export default function QuotesPage() {
                       </Select>
                     </div>
                     <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Tipo de AMS</label>
+                      <Select onValueChange={(value) => {
+                        const type = value as QuoteFormType;
+                        setQuoteType(type);
+                        setAmsFormData((current) => ({ ...current, quoteType: type }));
+                      }} value={quoteType}>
+                        <SelectTrigger className="bg-white dark:bg-slate-900/60 dark:text-white border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400"><SelectValue placeholder="Seleccione Tipo" /></SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-slate-900/95 dark:text-white">
+                          <SelectItem value="bienes">AMS Bienes</SelectItem>
+                          <SelectItem value="servicios">AMS Servicios</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Objeto de Adquisición</label>
                       <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Adquisición de diversos Aluminios" value={quoteData.projectTitle} onChange={e => setQuoteData({...quoteData, projectTitle: e.target.value})} />
                     </div>
@@ -513,6 +537,15 @@ export default function QuotesPage() {
                   <div className="col-span-2 space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Persona de Contacto</label>
                     <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" value={quoteData.contactPerson} onChange={e => setQuoteData({...quoteData, contactPerson: e.target.value})} />
+                  </div>
+
+                  <div className="col-span-4">
+                    <DynamicFormRenderer
+                      type={quoteType}
+                      companyName={selectedVendor?.companyName}
+                      data={amsFormData}
+                      onChange={setAmsFormData}
+                    />
                   </div>
 
                   <div className="space-y-1">
