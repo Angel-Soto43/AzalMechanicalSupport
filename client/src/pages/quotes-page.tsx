@@ -475,54 +475,6 @@ export default function QuotesPage() {
               </DialogHeader>
               
               <div className="space-y-6 py-4">
-                
-                {/* 1. DATOS GENERALES */}
-                <div className="grid grid-cols-2 gap-6 p-4 bg-slate-50 dark:bg-slate-900/60 dark:backdrop-blur-md border rounded-xl">
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Folio Interno AZAL</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. AZAL-2026-001" value={quoteData.folio} onChange={e => setQuoteData({...quoteData, folio: e.target.value})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Número de Requisición</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. FP06-R003-01/2026" value={quoteData.requisitionNumber} onChange={e => setQuoteData({...quoteData, requisitionNumber: e.target.value})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Empresa Destino / Cliente</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Secretaría de la Defensa Nacional" value={quoteData.destinationCompany} onChange={e => setQuoteData({...quoteData, destinationCompany: e.target.value})} />
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Empresa / Proveedor</label>
-                      <Select onValueChange={setSelectedVendorId} value={selectedVendorId}>
-                        <SelectTrigger className="bg-white dark:bg-slate-900/60 dark:text-white border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400"><SelectValue placeholder="Seleccione Proveedor" /></SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-slate-900/95 dark:text-white">
-                          {vendors.map(v => <SelectItem key={v.id} value={v.id.toString()} className="dark:text-white dark:hover:bg-slate-800">{v.companyName}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Tipo de AMS</label>
-                      <Select onValueChange={(value) => {
-                        const type = value as QuoteFormType;
-                        setQuoteType(type);
-                        setAmsFormData((current) => ({ ...current, quoteType: type }));
-                      }} value={quoteType}>
-                        <SelectTrigger className="bg-white dark:bg-slate-900/60 dark:text-white border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400"><SelectValue placeholder="Seleccione Tipo" /></SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-slate-900/95 dark:text-white">
-                          <SelectItem value="bienes">AMS Bienes</SelectItem>
-                          <SelectItem value="servicios">AMS Servicios</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Objeto de Adquisición</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Adquisición de diversos Aluminios" value={quoteData.projectTitle} onChange={e => setQuoteData({...quoteData, projectTitle: e.target.value})} />
-                    </div>
-                  </div>
-                </div>
-
               {/* 🚀 PASO 1: TARJETAS DE EMPRESA */}
               {wizardStep === 1 && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 p-4 mt-8">
@@ -547,7 +499,7 @@ export default function QuotesPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-3xl px-4">
                     <Card 
                       className="cursor-pointer border-2 border-transparent hover:border-blue-500 hover:shadow-lg transition-all duration-300 bg-white dark:bg-slate-900" 
-                      onClick={() => { setSelectedType('Bienes'); setWizardStep(3); }}
+                      onClick={() => { setSelectedType('Bienes'); setQuoteType('bienes'); setWizardStep(3); }}
                     >
                       <CardContent className="flex flex-col items-center justify-center p-8 h-56">
                         <Package size={72} className="mb-6 text-blue-500" />
@@ -557,7 +509,7 @@ export default function QuotesPage() {
 
                     <Card 
                       className="cursor-pointer border-2 border-transparent hover:border-emerald-500 hover:shadow-lg transition-all duration-300 bg-white dark:bg-slate-900" 
-                      onClick={() => { setSelectedType('Servicios'); setWizardStep(3); }}
+                      onClick={() => { setSelectedType('Servicios'); setQuoteType('servicios'); setWizardStep(3); }}
                     >
                       <CardContent className="flex flex-col items-center justify-center p-8 h-56">
                         <Wrench size={72} className="mb-6 text-emerald-500" />
@@ -588,38 +540,6 @@ export default function QuotesPage() {
                     </Button>
                   </div>
 
-                  {/* 1. DATOS GENERALES */}
-                  <div className="grid grid-cols-2 gap-6 p-4 bg-slate-50 dark:bg-slate-900/60 dark:backdrop-blur-md border rounded-xl">
-                    <div className="space-y-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Folio Interno AZAL</label>
-                        <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. AZAL-2026-001" value={quoteData.folio} onChange={e => setQuoteData({...quoteData, folio: e.target.value})} />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Número de Requisición</label>
-                        <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. FP06-R003-01/2026" value={quoteData.requisitionNumber} onChange={e => setQuoteData({...quoteData, requisitionNumber: e.target.value})} />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Empresa Destino / Cliente</label>
-                        <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Secretaría de la Defensa Nacional" value={quoteData.destinationCompany} onChange={e => setQuoteData({...quoteData, destinationCompany: e.target.value})} />
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Empresa / Proveedor</label>
-                        <Select onValueChange={setSelectedVendorId} value={selectedVendorId}>
-                          <SelectTrigger className="bg-white dark:bg-slate-900/60 dark:text-white border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400"><SelectValue placeholder="Seleccione Proveedor" /></SelectTrigger>
-                          <SelectContent className="bg-white dark:bg-slate-900/95 dark:text-white">
-                            {vendors.map(v => <SelectItem key={v.id} value={v.id.toString()} className="dark:text-white dark:hover:bg-slate-800">{v.companyName}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Objeto de Adquisición</label>
-                        <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Adquisición de diversos Aluminios" value={quoteData.projectTitle} onChange={e => setQuoteData({...quoteData, projectTitle: e.target.value})} />
-                      </div>
-                    </div>
-                  </div>
 
                   <div className="col-span-4">
                     <DynamicFormRenderer
@@ -630,165 +550,6 @@ export default function QuotesPage() {
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Tiempo Fabricación</label>
-                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. 2 meses" value={quoteData.manufacturingTime} onChange={e => setQuoteData({...quoteData, manufacturingTime: e.target.value})} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Origen de Bienes</label>
-                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Nacional" value={quoteData.goodsOrigin} onChange={e => setQuoteData({...quoteData, goodsOrigin: e.target.value})} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Nacionalidad Prov.</label>
-                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. mexicana" value={quoteData.providerNationality} onChange={e => setQuoteData({...quoteData, providerNationality: e.target.value})} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Tiempo Entrega</label>
-                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. 3 meses" value={quoteData.deliveryTime} onChange={e => setQuoteData({...quoteData, deliveryTime: e.target.value})} />
-                  </div>
-                </div>
-
-                {/* 3. EXPERIENCIA Y CUMPLIMIENTO */}
-                <div className="grid grid-cols-1 gap-6">
-                  {/* 2. CONDICIONES COMERCIALES */}
-                  <div className="grid grid-cols-4 gap-4 p-4 border rounded-xl bg-white shadow-sm dark:bg-slate-900/60 dark:backdrop-blur-md">
-                    <div className="col-span-4 mb-2 border-b pb-2"><h3 className="text-sm font-bold text-slate-700 dark:text-white flex items-center gap-2"><Clock size={16}/> Condiciones Comerciales y Entrega</h3></div>
-                    
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Vigencia (Días)</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.validityDays} onChange={e => setQuoteData({...quoteData, validityDays: Number(e.target.value)})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Días para Pago</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.paymentDays} onChange={e => setQuoteData({...quoteData, paymentDays: Number(e.target.value)})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Garantía Calidad (Meses)</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.warrantyMonths} onChange={e => setQuoteData({...quoteData, warrantyMonths: Number(e.target.value)})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Fecha Emisión</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="date" value={quoteData.date} onChange={e => setQuoteData({...quoteData, date: e.target.value})} />
-                    </div>
-
-                    <div className="col-span-2 space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Lugar de Entrega</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" value={quoteData.deliveryLocation} onChange={e => setQuoteData({...quoteData, deliveryLocation: e.target.value})} />
-                    </div>
-                    <div className="col-span-2 space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Persona de Contacto</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" value={quoteData.contactPerson} onChange={e => setQuoteData({...quoteData, contactPerson: e.target.value})} />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Tiempo Fabricación</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. 2 meses" value={quoteData.manufacturingTime} onChange={e => setQuoteData({...quoteData, manufacturingTime: e.target.value})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Origen de Bienes</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Nacional" value={quoteData.goodsOrigin} onChange={e => setQuoteData({...quoteData, goodsOrigin: e.target.value})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Nacionalidad Prov.</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. mexicana" value={quoteData.providerNationality} onChange={e => setQuoteData({...quoteData, providerNationality: e.target.value})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Tiempo Entrega</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. 3 meses" value={quoteData.deliveryTime} onChange={e => setQuoteData({...quoteData, deliveryTime: e.target.value})} />
-                    </div>
-                  </div>
-
-                  {/* 3. EXPERIENCIA Y CUMPLIMIENTO */}
-                  <div className="grid grid-cols-1 gap-6">
-                    <div className="grid grid-cols-4 gap-4 p-4 border rounded-xl bg-white shadow-sm dark:bg-slate-900/60 dark:backdrop-blur-md">
-                      <div className="col-span-4 mb-2 border-b pb-2"><h3 className="text-sm font-bold text-slate-700 dark:text-white flex items-center gap-2"><Award size={16}/> Experiencia y Cumplimiento</h3></div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">% Gar. Cumplimiento</label>
-                        <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.complianceWarranty} onChange={e => setQuoteData({...quoteData, complianceWarranty: Number(e.target.value)})} />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Años Experiencia</label>
-                        <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.experienceYears} onChange={e => setQuoteData({...quoteData, experienceYears: Number(e.target.value)})} />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Años Especialidad</label>
-                        <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.specialtyYears} onChange={e => setQuoteData({...quoteData, specialtyYears: Number(e.target.value)})} />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Contratos Afines</label>
-                        <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.similarContracts} onChange={e => setQuoteData({...quoteData, similarContracts: Number(e.target.value)})} />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 4. TABLA DE PARTIDAS */}
-                  <div className="border rounded-xl overflow-hidden shadow-sm dark:border-slate-800 dark:shadow-none dark:bg-slate-950/20">
-                    <Table>
-                      <TableHeader className="bg-[#0F172A]">
-                        <TableRow>
-                          <TableHead className="text-white w-12 text-center font-bold text-xs">#</TableHead>
-                          <TableHead className="text-white font-bold text-xs w-[30%] min-w-[350px]">Descripción / Especificación Técnica</TableHead>
-                          <TableHead className="text-white font-bold text-xs w-[190px] min-w-[190px]">Req. Técnicos / Versión / Fecha</TableHead>
-                          <TableHead className="text-emerald-300 font-bold text-xs border-l border-slate-700 bg-slate-800 text-center">Datos Internos</TableHead>
-                          <TableHead className="text-white w-20 text-center font-bold text-xs">Cant.</TableHead>
-                          <TableHead className="text-white w-20 font-bold text-xs">U.M.</TableHead>
-                          <TableHead className="text-white w-28 font-bold text-xs text-center">P. Venta (Unitario)</TableHead>
-                          <TableHead className="text-white w-12"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {lineItems.map((item, index) => (
-                          <TableRow key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                            <TableCell className="text-center font-bold text-slate-400 dark:text-slate-300 align-top pt-4">{index + 1}</TableCell>
-                            
-                            <TableCell className="align-top pt-3">
-                              <Input className="text-xs bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Cinta de aluminio UNS..." value={item.description} onChange={e => updateLineItem(item.id, 'description', e.target.value)} />
-                            </TableCell>
-                            
-                            <TableCell className="align-top pt-3">
-                              <div className="w-full space-y-1">
-                                <Input className="text-[10px] h-6 w-full bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Req: FET(H)..." value={item.techRequirements} onChange={e => updateLineItem(item.id, 'techRequirements', e.target.value)} />
-                                <div className="flex gap-1">
-                                  <Input className="text-[10px] h-6 w-1/2 bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Versión: 05" value={item.versionReference} onChange={e => updateLineItem(item.id, 'versionReference', e.target.value)} />
-                                  <Input className="text-[10px] h-6 w-1/2 bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Fecha: 04/JUN/24" value={item.reqDate} onChange={e => updateLineItem(item.id, 'reqDate', e.target.value)} />
-                                </div>
-                              </div>
-                            </TableCell>
-
-                            <TableCell className="border-l border-slate-200 dark:border-slate-800 bg-emerald-50/30 dark:bg-emerald-950/20 align-top pt-3">
-                              <div className="flex flex-col gap-1 min-w-[18rem]">
-                                <Input className="text-[10px] h-7 w-full bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" placeholder="Proveedor" title="Proveedor" value={item.supplier} onChange={e => updateLineItem(item.id, 'supplier', e.target.value)} />
-                                <div className="grid grid-cols-3 gap-1">
-                                  <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" type="number" placeholder="Costo Compra $" title="Costo Compra" value={item.purchaseCost || ''} onChange={e => updateLineItem(item.id, 'purchaseCost', e.target.value)} />
-                                  <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" type="number" placeholder="Factor" title="Factor de Utilidad" value={item.profitFactor || ''} onChange={e => updateLineItem(item.id, 'profitFactor', e.target.value)} />
-                                  <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" type="number" placeholder="% Utilidad" title="Porcentaje de Utilidad" value={item.profitMargin || ''} onChange={e => updateLineItem(item.id, 'profitMargin', e.target.value)} />
-                                </div>
-                              </div>
-                            </TableCell>
-
-                            <TableCell className="align-top pt-3"><Input className="text-xs w-20 min-w-[5rem] bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={item.quantity} onChange={e => updateLineItem(item.id, 'quantity', Number(e.target.value))} /></TableCell>
-                            
-                            <TableCell className="align-top pt-3"><Input className="text-xs w-20 min-w-[5rem] uppercase bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. KG" value={item.unitMeasure} onChange={e => updateLineItem(item.id, 'unitMeasure', e.target.value)} /></TableCell>
-                            
-                            <TableCell className="align-top pt-3"><Input className="text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 transition" type="number" value={item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', Number(e.target.value))} /></TableCell>
-                            
-                            <TableCell className="align-top pt-3"><Button variant="ghost" size="icon" onClick={() => setLineItems(lineItems.filter(i => i.id !== item.id))} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"><Trash2 size={16}/></Button></TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100 dark:bg-blue-950/20 dark:border-blue-900/50">
-                    <Button variant="outline" onClick={addLineItem} className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white font-medium border-0">
-                      <Plus className="mr-2 h-4 w-4" /> Agregar Material
-                    </Button>
-                    <div className="text-right">
-                      <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">Total Venta (Pesos)</p>
-                      <p className="text-3xl font-black text-[#1E40AF] dark:text-blue-300">${lineItems.reduce((acc, i) => acc + (i.quantity * i.unitPrice), 0).toLocaleString()}</p>
-                    </div>
-                  </div>
-
                   <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
                     <Button variant="ghost" onClick={() => setIsQuoteModalOpen(false)}>Cancelar</Button>
                     <Button onClick={() => quoteMutation.mutate()} disabled={quoteMutation.status === 'pending'} className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white px-10 font-bold">
@@ -797,6 +558,7 @@ export default function QuotesPage() {
                   </div>
                 </div>
               )}
+            </div>
             </DialogContent>
           </Dialog>
         </div>

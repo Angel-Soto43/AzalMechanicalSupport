@@ -1,18 +1,74 @@
 export type QuoteFormType = "bienes" | "servicios";
 
+export interface LineItem {
+  id: number;
+  description: string;
+  techRequirements: string;
+  versionReference: string;
+  reqDate: string;
+  quantity: number;
+  unitMeasure: string;
+  unitPrice: number;
+  supplier: string;
+  purchaseCost: number;
+  profitFactor: number;
+  importe: number;
+  previo: number;
+}
+
+export const defaultLineItem: LineItem = {
+  id: 1,
+  description: "",
+  techRequirements: "",
+  versionReference: "",
+  reqDate: "",
+  quantity: 1,
+  unitMeasure: "KG",
+  unitPrice: 0,
+  supplier: "",
+  purchaseCost: 0,
+  profitFactor: 1,
+  importe: 0,
+  previo: 0,
+};
+
 export interface AMSFormData {
   quoteType: QuoteFormType;
 
-  technicalScope: string;
+  // ─── Sección 1 "Atención" ───────────────────────────────
+  attnLugar: string;
+  attnGrado: string;
+  attnNombre: string;
+  attnDependencia: string;
+  attnArea: string;
+  attnUbicacion: string;
+  attnDireccion: string;
+
+  // ─── Sección 2 ──────────────────────────────────────────
+  validityDays: number;
+  paymentTerms: string;
   goodsOrigin: string;
-  providerNationality: string;
-  manufacturingTime: string;
   deliveryTime: string;
+  manufacturingTime: string;
+  hasManufacturingTime: boolean;
+  deliverySingle: boolean;
+  deliveryLocation: string;
+  deliveryLocations: Array<{ noPartida: string; address: string; contact: string }>;
+
+  // ─── Sección 3 "Garantía de calidad" ────────────────────
+  qualityGuarantees: string[];
+  selectedSocialObjects: string[];
+
+  // ─── Tabla de partidas ───────────────────────────────────
+  lineItems: LineItem[];
+
+  // ─── Resto ──────────────────────────────────────────────
+  technicalScope: string;
+  providerNationality: string;
   complianceWarranty: number;
   similarContracts: number;
   qualityStandards: string;
   warrantyCoverage: string;
-
   serviceScope: string;
   serviceOrigin: string;
   serviceSchedule: string;
@@ -23,11 +79,32 @@ export interface AMSFormData {
 
 export const defaultAMSFormData: AMSFormData = {
   quoteType: "bienes",
-  technicalScope: "",
+
+  attnLugar: "",
+  attnGrado: "",
+  attnNombre: "",
+  attnDependencia: "",
+  attnArea: "",
+  attnUbicacion: "",
+  attnDireccion: "",
+
+  validityDays: 120,
+  paymentTerms: "",
   goodsOrigin: "Nacional",
-  providerNationality: "Mexicana",
-  manufacturingTime: "2 meses",
   deliveryTime: "3 meses posteriores al fallo",
+  manufacturingTime: "2 meses",
+  hasManufacturingTime: false,
+  deliverySingle: true,
+  deliveryLocation: "",
+  deliveryLocations: [],
+
+  qualityGuarantees: [""],
+  selectedSocialObjects: [],
+
+  lineItems: [{ ...defaultLineItem }],
+
+  technicalScope: "",
+  providerNationality: "Mexicana",
   complianceWarranty: 10,
   similarContracts: 3,
   qualityStandards: "",

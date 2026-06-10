@@ -1,20 +1,19 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 interface FormSectionProps {
   title: string;
-  subtitle?: string;
+  subtitle: string;
   children: ReactNode;
-  className?: string;
 }
 
-export function FormSection({ title, subtitle, children, className }: FormSectionProps) {
+export function FormSection({ title, subtitle, children }: FormSectionProps) {
   return (
-    <div className={`border border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-900/70 rounded-2xl p-4 shadow-sm ${className || ""}`}>
-      <div className="mb-4">
-        <h3 className="text-base font-semibold text-slate-900 dark:text-white">{title}</h3>
-        {subtitle ? <p className="text-sm text-slate-500 dark:text-slate-400">{subtitle}</p> : null}
+    <section className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{title}</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
       </div>
-      <div className="space-y-4">{children}</div>
-    </div>
+      {children}
+    </section>
   );
 }

@@ -15,38 +15,54 @@ export function DynamicFormRenderer({ type, companyName, data, onChange }: Dynam
       <AMSBienesForm
         companyName={companyName}
         values={{
-          technicalScope: data.technicalScope,
+          attnLugar: data.attnLugar,
+          attnGrado: data.attnGrado,
+          attnNombre: data.attnNombre,
+          attnDependencia: data.attnDependencia,
+          attnArea: data.attnArea,
+          attnUbicacion: data.attnUbicacion,
+          attnDireccion: data.attnDireccion,
+          validityDays: data.validityDays,
+          paymentTerms: data.paymentTerms,
           goodsOrigin: data.goodsOrigin,
-          providerNationality: data.providerNationality,
-          manufacturingTime: data.manufacturingTime,
           deliveryTime: data.deliveryTime,
-          complianceWarranty: data.complianceWarranty,
-          similarContracts: data.similarContracts,
-          qualityStandards: data.qualityStandards,
-          warrantyCoverage: data.warrantyCoverage,
+          hasManufacturingTime: data.hasManufacturingTime,
+          manufacturingTime: data.manufacturingTime,
+          deliverySingle: data.deliverySingle,
+          deliveryLocation: data.deliveryLocation,
+          deliveryLocations: data.deliveryLocations,
+          qualityGuarantees: data.qualityGuarantees,
+          selectedSocialObjects: data.selectedSocialObjects,
+          lineItems: data.lineItems
         }}
         onChange={(next) => onChange({ ...data, ...next, quoteType: "bienes" })}
       />
-    );
-  }
+    );  
+  }   
 
-  return (
-    <AMSServiciosForm
-      companyName={companyName}
-      values={{
-        serviceScope: data.serviceScope,
-        serviceOrigin: data.serviceOrigin,
-        providerNationality: data.providerNationality,
-        serviceSchedule: data.serviceSchedule,
-        serviceInspection: data.serviceInspection,
-        complianceWarranty: data.complianceWarranty,
-        similarContracts: data.similarContracts,
-        experienceYears: data.experienceYears,
-        specialtyYears: data.specialtyYears,
-        qualityStandards: data.qualityStandards,
-        warrantyCoverage: data.warrantyCoverage,
-      }}
-      onChange={(next) => onChange({ ...data, ...next, quoteType: "servicios" })}
-    />
-  );
+return (
+  <AMSServiciosForm
+    companyName={companyName}
+    values={{
+      attnLugar: data.attnLugar,
+      attnGrado: data.attnGrado,
+      attnNombre: data.attnNombre,
+      attnDependencia: data.attnDependencia,
+      attnArea: data.attnArea,
+      attnUbicacion: data.attnUbicacion,
+      attnDireccion: data.attnDireccion,
+      validityDays: data.validityDays,
+      paymentTerms: data.paymentTerms,
+      goodsOrigin: data.goodsOrigin,
+      deliveryTime: data.deliveryTime,
+      deliverySingle: data.deliverySingle,
+      deliveryLocation: data.deliveryLocation,
+      deliveryLocations: data.deliveryLocations,
+      qualityGuarantees: data.qualityGuarantees,
+      selectedSocialObjects: data.selectedSocialObjects,
+      lineItems: data.lineItems
+    }}
+    onChange={(next) => onChange({ ...data, ...next, quoteType: "servicios" })}
+  />
+);
 }
