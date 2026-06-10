@@ -1,4 +1,4 @@
-import { AMSBienesForm } from "@/components/quotations/forms/AMSBienesForm";
+﻿import { AMSBienesForm } from "@/components/quotations/forms/AMSBienesForm";
 import { AMSServiciosForm } from "@/components/quotations/forms/AMSServiciosForm";
 import type { AMSFormData, QuoteFormType } from "@/components/quotations/forms/form-types";
 
@@ -16,6 +16,9 @@ export function DynamicFormRenderer({ type, companyName, data, onChange }: Dynam
         companyName={companyName}
         values={{
           attnLugar: data.attnLugar,
+          attnDia: data.attnDia,
+          attnMes: data.attnMes,
+          attnAnio: data.attnAnio,
           attnGrado: data.attnGrado,
           attnNombre: data.attnNombre,
           attnDependencia: data.attnDependencia,
@@ -48,6 +51,9 @@ return (
     companyName={companyName}
     values={{
       attnLugar: data.attnLugar,
+      attnDia: data.attnDia,
+      attnMes: data.attnMes,
+      attnAnio: data.attnAnio,
       attnGrado: data.attnGrado,
       attnNombre: data.attnNombre,
       attnDependencia: data.attnDependencia,

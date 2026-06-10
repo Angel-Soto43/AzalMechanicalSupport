@@ -37,6 +37,9 @@ export interface AMSFormData {
 
   // ─── Sección 1 "Atención" ───────────────────────────────
   attnLugar: string;
+  attnDia: string;
+  attnMes: string;
+  attnAnio: string;
   attnGrado: string;
   attnNombre: string;
   attnDependencia: string;
@@ -84,6 +87,9 @@ export const defaultAMSFormData: AMSFormData = {
   quoteType: "bienes",
 
   attnLugar: "",
+  attnDia: "",
+  attnMes: "",
+  attnAnio: "",
   attnGrado: "",
   attnNombre: "",
   attnDependencia: "",

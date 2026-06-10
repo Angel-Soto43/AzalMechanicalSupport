@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+﻿import { useEffect, useRef } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,7 +22,7 @@ const SOCIAL_OBJECTS = [
 ];
 
 type FormValues = Pick<AMSFormData,
-  | "attnLugar" | "attnGrado" | "attnNombre" | "attnDependencia" | "attnArea" | "attnUbicacion" | "attnDireccion"
+  | "attnLugar" | "attnDia" | "attnMes" | "attnAnio" | "attnGrado" | "attnNombre" | "attnDependencia" | "attnArea" | "attnUbicacion" | "attnDireccion"
   | "attnNombreProcedimiento" | "attnContacto" | "attnCargo"
   | "validityDays" | "paymentTerms" | "goodsOrigin" | "deliveryTime"
   | "hasManufacturingTime" | "manufacturingTime"
@@ -109,9 +109,26 @@ export function AMSBienesForm({ companyName, values, onChange }: AMSBienesFormPr
       {/* SECCIÓN 1 */}
       <FormSection title='Sección 1' subtitle="Solo aparecerán en el PDF los campos que se llenen.">
         <div className="grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2 grid grid-cols-3 gap-4">
+            <FormField control={form.control} name="attnDia" render={({ field }) => (
+              <FormItem><FormLabel>Día</FormLabel><FormControl>
+                <Input className={inputClass} placeholder="Ej. 10" {...field} />
+              </FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="attnMes" render={({ field }) => (
+              <FormItem><FormLabel>Mes</FormLabel><FormControl>
+                <Input className={inputClass} placeholder="Ej. junio" {...field} />
+              </FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="attnAnio" render={({ field }) => (
+              <FormItem><FormLabel>Año</FormLabel><FormControl>
+                <Input className={inputClass} placeholder="Ej. 2026" {...field} />
+              </FormControl><FormMessage /></FormItem>
+            )} />
+          </div>
           <FormField control={form.control} name="attnLugar" render={({ field }) => (
             <FormItem><FormLabel>Lugar</FormLabel><FormControl>
-              <Input className={inputClass} placeholder="Ej. CAMPO MIL. No. 25-E “VENUSTIANO CARRANZA DE LA GARZA”." {...field} />
+              <Input className={inputClass} placeholder={'Ej. CAMPO MIL. No. 25-E "VENUSTIANO CARRANZA DE LA GARZA".'} {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="attnGrado" render={({ field }) => (
@@ -139,24 +156,24 @@ export function AMSBienesForm({ companyName, values, onChange }: AMSBienesFormPr
               <Input className={inputClass} placeholder="Ej. CARRETERA FEDERAL 140-D KILOMETRO 1.5, C.P. 68200..." {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
-          <div className="md:col-span-2 grid grid-cols-2 gap-4">
-            <FormField control={form.control} name="attnDireccion" render={({ field }) => (
-              <FormItem><FormLabel>Dirección</FormLabel><FormControl>
-                <Input className={inputClass} placeholder="Ej. Av. Dirección General de Sanidad  " {...field} />
-              </FormControl><FormMessage /></FormItem>
-            )} />
-            <FormField control={form.control} name="attnCargo" render={({ field }) => (
-              <FormItem><FormLabel>Cargo</FormLabel><FormControl>
-                <Input className={inputClass} placeholder="Ej. Jefe de I.M. de la Dir. Gral. Ind. Mil." {...field} />
-                </FormControl><FormMessage /></FormItem>
-            )} />
+          <FormField control={form.control} name="attnDireccion" render={({ field }) => (
+            <FormItem><FormLabel>Dirección</FormLabel><FormControl>
+              <Input className={inputClass} placeholder="Ej. Av. Dirección General de Sanidad" {...field} />
+            </FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="attnCargo" render={({ field }) => (
+            <FormItem><FormLabel>Cargo</FormLabel><FormControl>
+              <Input className={inputClass} placeholder="Ej. Jefe de I.M. de la Dir. Gral. Ind. Mil." {...field} />
+            </FormControl><FormMessage /></FormItem>
+          )} />
+          <div className="md:col-span-2">
             <FormField control={form.control} name="attnNombreProcedimiento" render={({ field }) => (
               <FormItem><FormLabel>Nombre del procedimiento</FormLabel><FormControl>
-                <Input className={inputClass} placeholder="Ej. Requisición No. FA09-R001/2026, “Adquisición de polímeros A”." {...field} />
+                <Input className={inputClass} placeholder={'Ej. Requisición No. FA09-R001/2026, "Adquisición de polímeros A".'} {...field} />
               </FormControl><FormMessage /></FormItem>
             )} />
           </div>
-          
+
 
     
 
@@ -359,7 +376,7 @@ export function AMSBienesForm({ companyName, values, onChange }: AMSBienesFormPr
               <div className="grid grid-cols-2 gap-4">
                 <FormField control={form.control} name="deliveryLocation" render={({ field }) => (
                   <FormItem><FormLabel>Lugar de entrega</FormLabel><FormControl>
-                    <Input className={inputClass} placeholder="Ej. Hospital Militar de Zona de Ixcotel, Oax., en el interior del Campo Mil. No. 28-A “Gral. Bgda. Antonio..." {...field} />
+                    <Input className={inputClass} placeholder={'Ej. Hospital Militar de Zona de Ixcotel, Oax., en el interior del Campo Mil. No. 28-A "Gral. Bgda. Antonio...'} {...field} />
                     </FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="attnContacto" render={({ field }) => (
