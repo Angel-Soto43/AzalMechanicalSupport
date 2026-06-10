@@ -9,10 +9,21 @@ import { defaultLineItem } from "./form-types";
 import { Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const SOCIAL_OBJECTS: string[] = [];
+const SOCIAL_OBJECTS = [
+  "Proporcionar el servicio de diseño, desarrollo e implementación de la ingeniería metal mecánica y automatizada aplicada a procesos industriales en el ramo automotriz, aeronáutico y militar.",
+  "Adquirir, fabricar, ensamblar, procesar, preparar, reparar, vender, comprar, distribuir, importar y exportar armamento, municiones, vehículos (blindados, militares y convencionales) y aeronaves (militares y convencionales).",
+  "Adquirir, fabricar, ensamblar, procesar, preparar, reparar, vender, comprar, distribuir, importar, exportar e instalar todo tipo de refacciones e insumos para la industria automotriz, aeronáutica y militar tales como armamento, municiones, vehículos (blindados, militares y convencionales) y aeronaves (militares y convencionales).",
+  "Proporcionar servicio de diseño, instalación, mantenimiento, soporte técnico, así como el suministro, venta, compra e importación de refacciones para el equipamiento y maquinaria industrial convencionales o computarizadas en el ramo automotriz, aeronáutico y militar aplicado a la industria metal mecánica.",
+  "Adquirir, procesar, vender, comprar, distribuir, importar y exportar todo tipo de químicos que se utilizan en la industria automotriz, aeronáutica y militar como materia prima o producto terminado, incluyendo las sustancias peligrosas que establece la NORMA Oficial Mexicana NOM-002-SCT/2011, Listado de las substancias y materiales peligrosos más usualmente transportados.",
+  "Adquirir, fabricar, ensamblar, procesar, preparar, reparar,  vender, comprar, distribuir, importar, exportar e instalar todo tipo de resortes, muelles, tornillos, pernos, tuercas, arandelas, herramientas de corte, herramientas manuales, dispositivos, calibres troqueles y en general todo tipo de componentes estándar, herramienta y utillaje, especialmente pero no limitado para la industria vehicular, aeronáutica, militar y/u otras industrias sin limitación de trabajar y manipular todo tipo de cobre, acero hierro estaño plomo zinc, titanio y un sinfín de material existente utilizado en la fabricación metal mecánica.",
+  "Adquirir, fabricar, ensamblar, procesar, preparar, reparar, vender, comprar, arrendar, distribuir, importar, exportar e instalar todo tipo de equipos electrónicos, material eléctrico y equipo de cómputo, aplicados a la industria automotriz, aeronáutica y militar.",
+  "Adquirir, procesar, vender, comprar, distribuir, importar, exportar, diseñar, implementar software aplicado a la industria automotriz, aeronáutica y militar.",
+  "La compra y/o venta de accesorios y refacciones, la compra, venta, importación, exportación, comisión consignación, representación corretaje, agencia, franquicia, licencia, concesión, fabricación, maquila, diseño, exposición, elaboración, envasado, empacado, servicio, mantenimiento, reparación, financiamiento, arrendamiento, subarrendamiento, arrendamiento puro, distribución y comercio en general, de toda clase de artículos, vehículos nuevos y usados, bienes  muebles e inmuebles y productos ya sean de uso industrial, militar, comercial y doméstico, así como de maquinaria, equipo y herramientas necesarias para su fabricación, sus partes, materias primas, accesorios y refacciones y toda clase de actividades, artículos y/o productos relacionados con el objeto enunciado.",
+];
 
 type FormValues = Pick<AMSFormData,
   | "attnLugar" | "attnGrado" | "attnNombre" | "attnDependencia" | "attnArea" | "attnUbicacion" | "attnDireccion"
+  | "attnNombreProcedimiento" | "attnContacto" | "attnCargo"
   | "validityDays" | "paymentTerms" | "goodsOrigin" | "deliveryTime"
   | "hasManufacturingTime" | "manufacturingTime"
   | "deliverySingle" | "deliveryLocation" | "deliveryLocations"
@@ -100,7 +111,7 @@ export function AMSBienesForm({ companyName, values, onChange }: AMSBienesFormPr
         <div className="grid gap-4 md:grid-cols-2">
           <FormField control={form.control} name="attnLugar" render={({ field }) => (
             <FormItem><FormLabel>Lugar</FormLabel><FormControl>
-              <Input className={inputClass} placeholder="Ej. Ciudad de México" {...field} />
+              <Input className={inputClass} placeholder="Ej. CAMPO MIL. No. 25-E “VENUSTIANO CARRANZA DE LA GARZA”." {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="attnGrado" render={({ field }) => (
@@ -120,21 +131,34 @@ export function AMSBienesForm({ companyName, values, onChange }: AMSBienesFormPr
           )} />
           <FormField control={form.control} name="attnArea" render={({ field }) => (
             <FormItem><FormLabel>Área</FormLabel><FormControl>
-              <Input className={inputClass} placeholder="Ej. Dirección General de Industria Militar" {...field} />
+              <Input className={inputClass} placeholder="Ej. Comedor, puerta 4 étc..." {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="attnUbicacion" render={({ field }) => (
             <FormItem><FormLabel>Ubicación</FormLabel><FormControl>
-              <Input className={inputClass} placeholder="Ej. CAMPO MIL. No. 25-E" {...field} />
+              <Input className={inputClass} placeholder="Ej. CARRETERA FEDERAL 140-D KILOMETRO 1.5, C.P. 68200..." {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 grid grid-cols-2 gap-4">
             <FormField control={form.control} name="attnDireccion" render={({ field }) => (
               <FormItem><FormLabel>Dirección</FormLabel><FormControl>
-                <Input className={inputClass} placeholder="Ej. Av. Industria Militar S/N" {...field} />
+                <Input className={inputClass} placeholder="Ej. Av. Dirección General de Sanidad  " {...field} />
+              </FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="attnCargo" render={({ field }) => (
+              <FormItem><FormLabel>Cargo</FormLabel><FormControl>
+                <Input className={inputClass} placeholder="Ej. Jefe de I.M. de la Dir. Gral. Ind. Mil." {...field} />
+                </FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="attnNombreProcedimiento" render={({ field }) => (
+              <FormItem><FormLabel>Nombre del procedimiento</FormLabel><FormControl>
+                <Input className={inputClass} placeholder="Ej. Requisición No. FA09-R001/2026, “Adquisición de polímeros A”." {...field} />
               </FormControl><FormMessage /></FormItem>
             )} />
           </div>
+          
+
+    
 
           {/* TABLA DE PARTIDAS */}
           <div className="md:col-span-2 space-y-3">
@@ -332,11 +356,18 @@ export function AMSBienesForm({ companyName, values, onChange }: AMSBienesFormPr
               </label>
             </div>
             {deliverySingle ? (
-              <FormField control={form.control} name="deliveryLocation" render={({ field }) => (
-                <FormItem><FormLabel>Lugar de entrega</FormLabel><FormControl>
-                  <Input className={inputClass} placeholder="Ej. Campo Militar No. 25-E" {...field} />
-                </FormControl><FormMessage /></FormItem>
-              )} />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={form.control} name="deliveryLocation" render={({ field }) => (
+                  <FormItem><FormLabel>Lugar de entrega</FormLabel><FormControl>
+                    <Input className={inputClass} placeholder="Ej. Hospital Militar de Zona de Ixcotel, Oax., en el interior del Campo Mil. No. 28-A “Gral. Bgda. Antonio..." {...field} />
+                    </FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="attnContacto" render={({ field }) => (
+                    <FormItem><FormLabel>Contacto</FormLabel><FormControl>
+                      <Input className={inputClass} placeholder="Ej. Coronel Ing. Ind. Fredy Ramírez Ruíz Jefe de la Ensambladora Militar, o quien haga sus veces al momento de la recepción, Teléfono: 276-688-3229..." {...field} />
+                      </FormControl><FormMessage /></FormItem>
+                    )} />
+              </div>
             ) : (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -394,22 +425,35 @@ export function AMSBienesForm({ companyName, values, onChange }: AMSBienesFormPr
           <div className="space-y-3">
             {(form.watch("qualityGuarantees") ?? [""]).map((_, i) => (
               <div key={i} className="flex gap-2 items-start">
-                <FormField control={form.control} name={`qualityGuarantees.${i}` as any} render={({ field }) => (
                   <FormItem className="flex-1">
                     <FormLabel className="text-xs text-slate-500">Garantía {i + 1}</FormLabel>
-                    <FormControl>
-                      <Textarea className={inputClass + " min-h-[80px]"} placeholder={`Descripción de la garantía ${i + 1}`} {...field} />
-                    </FormControl>
+                    <Textarea
+                      className={inputClass + " min-h-[80px]"}
+                      placeholder={`Descripción de la garantía ${i + 1}`}
+                      value={form.watch("qualityGuarantees")?.[i] ?? ""}
+                      onChange={e => {
+                        const current = [...(form.getValues("qualityGuarantees") ?? [])];
+                        current[i] = e.target.value;
+                        form.setValue("qualityGuarantees", current, { shouldDirty: true });
+                      }}
+                    />
                   </FormItem>
-                )} />
-                <button type="button"
-                  className="mt-6 text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
-                  onClick={() => qualityGuarantees.remove(i)}>✕</button>
+                  <button type="button"
+                    className="mt-6 text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
+                    onClick={() => {
+                      const current = [...(form.getValues("qualityGuarantees") ?? [])];
+                      current.splice(i, 1);
+                      form.setValue("qualityGuarantees", current, { shouldDirty: true });
+                    }}>✕</button>
               </div>
             ))}
             <button type="button"
               className="rounded border border-cyan-400 px-3 py-1 text-sm text-cyan-600 font-semibold hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition"
-              onClick={() => qualityGuarantees.append("" as any)}>
+              onClick={() => {
+                const current = [...(form.getValues("qualityGuarantees") ?? [])];
+                current.push("");
+                form.setValue("qualityGuarantees", current, { shouldDirty: true });
+              }}>
               + Agregar garantía
             </button>
           </div>

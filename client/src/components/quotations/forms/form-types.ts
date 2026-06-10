@@ -43,6 +43,9 @@ export interface AMSFormData {
   attnArea: string;
   attnUbicacion: string;
   attnDireccion: string;
+  attnNombreProcedimiento: string;
+  attnContacto: string;
+  attnCargo: string;
 
   // ─── Sección 2 ──────────────────────────────────────────
   validityDays: number;
@@ -87,7 +90,9 @@ export const defaultAMSFormData: AMSFormData = {
   attnArea: "",
   attnUbicacion: "",
   attnDireccion: "",
-
+  attnNombreProcedimiento: "",
+  attnContacto: "",
+  attnCargo: "",
   validityDays: 120,
   paymentTerms: "",
   goodsOrigin: "Nacional",
