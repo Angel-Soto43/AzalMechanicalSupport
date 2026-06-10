@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,15 +10,18 @@ import { Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const SOCIAL_OBJECTS = [
-  "Proporcionar el servicio de diseño, desarrollo e implementación de la ingeniería metal mecánica y automatizada aplicada a procesos industriales en el ramo automotriz, aeronáutico y militar.",
-  "Adquirir, fabricar, ensamblar, procesar, preparar, reparar, vender, comprar, distribuir, importar y exportar armamento, municiones, vehículos (blindados, militares y convencionales) y aeronaves (militares y convencionales).",
-  "Adquirir, fabricar, ensamblar, procesar, preparar, reparar, vender, comprar, distribuir, importar, exportar e instalar todo tipo de refacciones e insumos para la industria automotriz, aeronáutica y militar tales como armamento, municiones, vehículos (blindados, militares y convencionales) y aeronaves (militares y convencionales).",
-  "Proporcionar servicio de diseño, instalación, mantenimiento, soporte técnico, así como el suministro, venta, compra e importación de refacciones para el equipamiento y maquinaria industrial convencionales o computarizadas en el ramo automotriz, aeronáutico y militar aplicado a la industria metal mecánica.",
-  "Adquirir, procesar, vender, comprar, distribuir, importar y exportar todo tipo de químicos que se utilizan en la industria automotriz, aeronáutica y militar como materia prima o producto terminado, incluyendo las sustancias peligrosas que establece la NORMA Oficial Mexicana NOM-002-SCT/2011, Listado de las substancias y materiales peligrosos más usualmente transportados.",
-  "Adquirir, fabricar, ensamblar, procesar, preparar, reparar,  vender, comprar, distribuir, importar, exportar e instalar todo tipo de resortes, muelles, tornillos, pernos, tuercas, arandelas, herramientas de corte, herramientas manuales, dispositivos, calibres troqueles y en general todo tipo de componentes estándar, herramienta y utillaje, especialmente pero no limitado para la industria vehicular, aeronáutica, militar y/u otras industrias sin limitación de trabajar y manipular todo tipo de cobre, acero hierro estaño plomo zinc, titanio y un sinfín de material existente utilizado en la fabricación metal mecánica.",
-  "Adquirir, fabricar, ensamblar, procesar, preparar, reparar, vender, comprar, arrendar, distribuir, importar, exportar e instalar todo tipo de equipos electrónicos, material eléctrico y equipo de cómputo, aplicados a la industria automotriz, aeronáutica y militar.",
-  "Adquirir, procesar, vender, comprar, distribuir, importar, exportar, diseñar, implementar software aplicado a la industria automotriz, aeronáutica y militar.",
-  "La compra y/o venta de accesorios y refacciones, la compra, venta, importación, exportación, comisión consignación, representación corretaje, agencia, franquicia, licencia, concesión, fabricación, maquila, diseño, exposición, elaboración, envasado, empacado, servicio, mantenimiento, reparación, financiamiento, arrendamiento, subarrendamiento, arrendamiento puro, distribución y comercio en general, de toda clase de artículos, vehículos nuevos y usados, bienes  muebles e inmuebles y productos ya sean de uso industrial, militar, comercial y doméstico, así como de maquinaria, equipo y herramientas necesarias para su fabricación, sus partes, materias primas, accesorios y refacciones y toda clase de actividades, artículos y/o productos relacionados con el objeto enunciado.",
+  "Proporcionar el diseño, instalación, mantenimiento, soporte técnico, suministro, venta, compra e importación de equipo industrial, maquinaria industrial convencional, automática o de C.N.C. y de sus refacciones en el ramo de la industria metal mecánica, tratamientos térmicos, termoquímicos y superficiales",
+  "Proporcionar el servicio de diseño, instalación, mantenimiento, soporte técnico, suministro, venta, compra e importación de equipo para distribución y transmisión de energía eléctrica, equipo industrial y de sus refacciones utilizadas en plantas de tratamiento de aguas residuales, calderas, aires acondicionados industriales, subestaciones eléctricas, y en general, para todo tipo de instalaciones que requieran de equipo industrial para su operación.",
+  "Proporcionar el servicio de diseño, instalación, mantenimiento, soporte técnico, suministro, venta, compra e importación de equipo para distribución y transmisión de energía eléctrica en edificios administrativos, de manufactura, de servicios, clínicas, hospitales y en general, para todo tipo de instalaciones que requieran de energía eléctrica para su operación.",
+  "Suministrar el servicio de diseño, desarrollo e implementación de la ingeniería metal mecánica y automatizada aplicada a procesos industriales.",
+  "Adquirir, procesar, vender, comprar, distribuir, importar y exportar todo tipo de químicos como materia prima, producto semiprocesado o producto terminado que se utilizan en los procesos productivos de la industria automotriz, metal mecánica, tratamientos térmicos, termoquímicos y superficiales y de la construcción.",
+  "Adquirir, procesar, vender, comprar, distribuir, importar y exportar todo tipo de aceros, materiales metálicos ferrosos y no ferrosos que se utilizan en la industria metal mecánica, automotriz y construcción como materia prima, producto semiprocesado o producto terminado incluyendo polvos metálicos.",
+  "Adquirir, fabricar, ensamblar, procesar, preparar, reparar, vender, comprar, distribuir, importar, exportar e instalar todo tipo de maquinaria industrial y sus refacciones, así como demás insumos empleados en la industria automotriz, industrial, construcción, química y farmacéutica.",
+  "Adquirir, comercializar, procesar, vender, comprar, importar y exportar, material de curación, consumibles e insumos hospitalarios, equipo médico, refacciones para equipo grado médico, equipo auxiliar de diagnóstico, material para equipo de auxilio, diagnostico con rayos X, equipo médico de rehabilitación física, equipos y accesorios para fisioterapia y ortopedia, reactivos de laboratorio y diversos accesorios de uso médico.",
+  "Adquirir, fabricar, dar mantenimiento, importar y exportar instrumental médico, instrumental dental, compresora grado clínico y todo lo relacionado con material, equipo e instrumental para cirugía y en general todo tipo de equipamiento, refaccionamiento e insumos para el equipamiento de clínicas y hospitales.",
+  "Adquirir, fabricar, ensamblar, procesar, preparar, reparar, vender, comprar, distribuir, importar, exportar e instalar todo tipo de resortes, muelles, herramientas de corte, herramientas manuales, ferretería en general, instrumentos de medición, dispositivos, troqueles y en general todo tipo de componentes estándar, herramienta y utillaje para la industria metal mecánica y de la construcción.",
+  "Adquirir, fabricar, ensamblar, procesar, preparar, reparar, vender, comprar, arrendar, distribuir, importar, exportar e instalar todo tipo de equipos eléctricos, electrónicos, material eléctrico y electrónico, equipo de cómputo, software, equipos de impresión y demás periféricos, aplicados a la industria en general.",
+  "La compra y/o venta de accesorios y refacciones, la compra, venta, importación, exportación, comisión consignación, representación corretaje, agencia, franquicia, licencia, concesión, fabricación, maquila, diseño, exposición, elaboración, envasado, empacado, servicio, mantenimiento, reparación, financiamiento, arrendamiento, subarrendamiento, arrendamiento puro, distribución y comercio en general, de toda clase de artículos, vehículos nuevos y usados, bienes muebles e inmuebles y productos ya sean de uso industrial, comercial y doméstico, así como de maquinaria, equipo y herramientas necesarias para su fabricación, sus partes, materias primas, accesorios y refacciones y toda clase de actividades, artículos y/o productos relacionados con el objeto enunciado.",
 ];
 
 type FormValues = Pick<AMSFormData,
@@ -30,7 +33,7 @@ type FormValues = Pick<AMSFormData,
   | "lineItems"
 >;
 
-interface AMSServiciosFormProps {
+interface HGWServiciosFormProps {
   companyName?: string;
   values: FormValues;
   onChange: (values: FormValues) => void;
@@ -45,7 +48,7 @@ const normalizeUnitMeasure = (value: string) => {
   return unitMeasureAbbreviations[value.trim().toLowerCase()] || value;
 };
 
-export function AMSServiciosForm({ companyName, values, onChange }: AMSServiciosFormProps) {
+export function HGWServiciosForm({ companyName, values, onChange }: HGWServiciosFormProps) {
   const initialized = useRef(false);
 
   const form = useForm<FormValues>({
@@ -336,14 +339,14 @@ export function AMSServiciosForm({ companyName, values, onChange }: AMSServicios
               <div className="grid grid-cols-2 gap-4">
                 <FormField control={form.control} name="deliveryLocation" render={({ field }) => (
                   <FormItem><FormLabel>Lugar de entrega</FormLabel><FormControl>
-                    <Input className={inputClass} placeholder={'Ej. Hospital Militar de Zona de Ixcotel, Oax., en el interior del Campo Mil. No. 28-A "Gral. Bgda. Antonio...'} {...field} />
-                    </FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="attnContacto" render={({ field }) => (
-                    <FormItem><FormLabel>Contacto</FormLabel><FormControl>
-                      <Input className={inputClass} placeholder="Ej. Coronel Ing. Ind. Fredy Ramírez Ruíz Jefe de la Ensambladora Militar, o quien haga sus veces al momento de la recepción, Teléfono: 276-688-3229..." {...field} />
-                      </FormControl><FormMessage /></FormItem>
-                    )} />
+                    <Input className={inputClass} placeholder={'Ej. Hospital Militar de Zona de Ixcotel, Oax.'} {...field} />
+                  </FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="attnContacto" render={({ field }) => (
+                  <FormItem><FormLabel>Contacto</FormLabel><FormControl>
+                    <Input className={inputClass} placeholder="Ej. Coronel Ing. Ind. Fredy Ramírez Ruíz..." {...field} />
+                  </FormControl><FormMessage /></FormItem>
+                )} />
               </div>
             ) : (
               <div className="space-y-2">
@@ -393,6 +396,51 @@ export function AMSServiciosForm({ companyName, values, onChange }: AMSServicios
               </div>
             )}
           </div>
+
+          {/* Condiciones de entrega */}
+          <div className="md:col-span-2 space-y-3">
+            <div className="flex items-center justify-between">
+              <FormLabel>Condiciones de entrega</FormLabel>
+              <button
+                type="button"
+                className="rounded border border-cyan-400 px-3 py-1 text-sm text-cyan-600 font-semibold hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition"
+                onClick={() => {
+                  const current = [...(form.getValues("deliveryConditions") ?? [])];
+                  current.push("");
+                  form.setValue("deliveryConditions", current, { shouldDirty: true });
+                }}
+              >
+                <span className="flex items-center gap-1"><Plus className="h-3 w-3" /> Agregar condición</span>
+              </button>
+            </div>
+            {(form.watch("deliveryConditions") ?? [""]).map((_, i) => (
+              <div key={i} className="flex gap-2 items-start">
+                <FormItem className="flex-1">
+                  <FormLabel className="text-xs text-slate-500">Condición {i + 1}</FormLabel>
+                  <Textarea
+                    className={inputClass + " min-h-[70px]"}
+                    placeholder="Ej. La entrega deberá realizarse en días hábiles..."
+                    value={form.watch("deliveryConditions")?.[i] ?? ""}
+                    onChange={e => {
+                      const current = [...(form.getValues("deliveryConditions") ?? [])];
+                      current[i] = e.target.value;
+                      form.setValue("deliveryConditions", current, { shouldDirty: true });
+                    }}
+                  />
+                </FormItem>
+                <button
+                  type="button"
+                  className="mt-6 text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
+                  onClick={() => {
+                    const current = [...(form.getValues("deliveryConditions") ?? [])];
+                    current.splice(i, 1);
+                    form.setValue("deliveryConditions", current, { shouldDirty: true });
+                  }}
+                >✕</button>
+              </div>
+            ))}
+          </div>
+
         </div>
       </FormSection>
 
@@ -402,26 +450,26 @@ export function AMSServiciosForm({ companyName, values, onChange }: AMSServicios
           <div className="space-y-3">
             {(form.watch("qualityGuarantees") ?? [""]).map((_, i) => (
               <div key={i} className="flex gap-2 items-start">
-                  <FormItem className="flex-1">
-                    <FormLabel className="text-xs text-slate-500">Garantía {i + 1}</FormLabel>
-                    <Textarea
-                      className={inputClass + " min-h-[80px]"}
-                      placeholder={`Descripción de la garantía ${i + 1}`}
-                      value={form.watch("qualityGuarantees")?.[i] ?? ""}
-                      onChange={e => {
-                        const current = [...(form.getValues("qualityGuarantees") ?? [])];
-                        current[i] = e.target.value;
-                        form.setValue("qualityGuarantees", current, { shouldDirty: true });
-                      }}
-                    />
-                  </FormItem>
-                  <button type="button"
-                    className="mt-6 text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
-                    onClick={() => {
+                <FormItem className="flex-1">
+                  <FormLabel className="text-xs text-slate-500">Garantía {i + 1}</FormLabel>
+                  <Textarea
+                    className={inputClass + " min-h-[80px]"}
+                    placeholder={`Descripción de la garantía ${i + 1}`}
+                    value={form.watch("qualityGuarantees")?.[i] ?? ""}
+                    onChange={e => {
                       const current = [...(form.getValues("qualityGuarantees") ?? [])];
-                      current.splice(i, 1);
+                      current[i] = e.target.value;
                       form.setValue("qualityGuarantees", current, { shouldDirty: true });
-                    }}>✕</button>
+                    }}
+                  />
+                </FormItem>
+                <button type="button"
+                  className="mt-6 text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
+                  onClick={() => {
+                    const current = [...(form.getValues("qualityGuarantees") ?? [])];
+                    current.splice(i, 1);
+                    form.setValue("qualityGuarantees", current, { shouldDirty: true });
+                  }}>✕</button>
               </div>
             ))}
             <button type="button"

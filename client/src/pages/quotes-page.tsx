@@ -295,7 +295,7 @@ const payload = {
   bankBeneficiary: selectedVendor?.bankBeneficiary || "",
   providerId: Number(selectedVendorId),
   empresaId: selectedVendorId ? Number(selectedVendorId) : null,
-  templateName: "azal_official",
+  templateName: `${selectedCompany}:${quoteType}`,
   amsType: quoteType,
   amsDetails: amsFormData,
 
@@ -543,6 +543,7 @@ const payload = {
                   <div className="col-span-4">
                     <DynamicFormRenderer
                       type={quoteType}
+                      company={selectedCompany}
                       companyName={selectedVendor?.companyName}
                       data={amsFormData}
                       onChange={setAmsFormData}
@@ -655,10 +656,14 @@ const payload = {
                               })));
                             }
                             
-                            // 🚀 AL EDITAR, NOS SALTAMOS EL WIZARD Y VAMOS DIRECTO AL FORMULARIO
+                            // Recuperar empresa y tipo desde templateName ("EMPRESA:tipo")
+                            const [tplCompany, tplType] = (q.templateName || "AMS:bienes").split(":");
+                            const resolvedCompany = tplCompany?.toUpperCase() || "AMS";
+                            const resolvedType = (tplType || "bienes") as QuoteFormType;
+                            setSelectedCompany(resolvedCompany);
+                            setSelectedType(resolvedType === "bienes" ? "Bienes" : "Servicios");
+                            setQuoteType(resolvedType);
                             setWizardStep(3);
-                            setSelectedCompany("AMS"); // Valor por defecto temporal hasta tener dinámicos en la DB
-                            setSelectedType("Bienes"); // Valor por defecto temporal
                             setIsQuoteModalOpen(true);
                           }}
                           className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 rounded hover:bg-slate-100 cursor-pointer"
