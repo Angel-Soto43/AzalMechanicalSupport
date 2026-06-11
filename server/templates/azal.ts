@@ -12,6 +12,9 @@ export function generateAzalTemplate(provider: any, quote: any, items: any[]) {
 
   const nombreEmpresa = provider.companyName || 'Azal Mechanical Supports, S.A. de C.V.';
   const nombreCliente = quote.destinationCompany || 'NOMBRE DEL CLIENTE Y/O EMPRESA';
+  
+  // 🚀 AQUÍ ESTÁ LA VARIABLE MÁGICA QUE DETECTA EL TIPO DE COTIZACIÓN
+  const isServicios = quote.proposalType?.toLowerCase() === 'servicios';
 
   return `
     <!DOCTYPE html>
@@ -52,7 +55,7 @@ export function generateAzalTemplate(provider: any, quote: any, items: any[]) {
           <tr>
             <th>No.</th>
             <th>DESCRIPCIÓN</th>
-            <th>REQUERIMIENTOS TÉCNICOS</th>
+            <th>${isServicios ? '' : 'REQUERIMIENTOS TÉCNICOS'}</th>
             <th>CANT.</th>
             <th>U.M.</th>
             <th>COSTO UNITARIO</th>
@@ -67,7 +70,7 @@ export function generateAzalTemplate(provider: any, quote: any, items: any[]) {
               <tr>
                 <td>${index + 1}</td>
                 <td class="text-left">${item.description}</td>
-                <td>${item.techRequirements || ''}<br>${versionString}<br>${item.reqDate || ''}</td>
+                <td>${isServicios ? '' : `${item.techRequirements || ''}<br>${versionString}<br>${item.reqDate || ''}`}</td>
                 <td>${item.quantity}</td>
                 <td>${item.unitMeasure || item.unit}</td>
                 <td class="text-right">${formatCurrency(item.unitPrice)}</td>
@@ -100,30 +103,52 @@ export function generateAzalTemplate(provider: any, quote: any, items: any[]) {
       <div class="section-title">CONDICIONES COMERCIALES:</div>
       <ul class="list-bullet">
         <li><span class="bold">Precios en Moneda Nacional.</span></li>
-        <li><span class="bold">Vigencia de la cotización:</span> ${quote.validityDays || 120} días.</li>
-        <li><span class="bold">Origen de los bienes:</span> ${quote.goodsOrigin || 'Nacional'}.</li>
+        <li><span class="bold">Vigencia de la cotización:</span> ${quote.validityDays || (isServicios ? 90 : 120)} días.</li>
+        <li><span class="bold">Origen de los ${isServicios ? 'servicios' : 'bienes'}:</span> ${quote.goodsOrigin || 'Nacional'}.</li>
         <li><span class="bold">Nacionalidad del proveedor:</span> ${quote.providerNationality || 'mexicana'}.</li>
-        <li><span class="bold">Condiciones de pago:</span> Mi representada tiene considerado que el pago será a los ${quote.paymentDays || 17} días hábiles posteriores a la entrega de la factura, previa entrega de los bienes a satisfacción del Área requirente. Así mismo, el pago será mediante transferencia electrónica.</li>
-        <li><span class="bold">Tiempo de entrega:</span> ${nombreEmpresa} realizará la entrega de los bienes requeridos y documentación completa a partir del día natural siguiente a la comunicación del fallo y a más tardar &nbsp;${quote.deliveryTime ? quote.deliveryTime.replace(/\s*al\s+fallo/i, '') : '3 meses'}  a referido evento.</li>
-        <li><span class="bold">Lugar de la entrega:</span> ${nombreEmpresa}, entregará los bienes en las instalaciones que a continuación se indica: ${quote.deliveryPlace || 'UBICACIÓN DE LA EMPRESA Y/O CLIENTE.'}</li>
+        
+        <li><span class="bold">Condiciones de pago:</span> ${isServicios 
+          ? 'Mi representada tiene considerado que el pago será conforme a lo establecido en el Anexo Administrativo.' 
+          : `Mi representada tiene considerado que el pago será a los ${quote.paymentDays || 17} días hábiles posteriores a la entrega de la factura, previa entrega de los bienes a satisfacción del Área requirente. Así mismo, el pago será mediante transferencia electrónica.`}
+        </li>
+        
+        <li><span class="bold">Tiempo de entrega:</span> ${isServicios
+          ? 'La entrega de los servicios de mantenimiento y documentación completa a partir del día hábil siguiente de la formalización del instrumento contractual.'
+          : `${nombreEmpresa} realizará la entrega de los bienes requeridos y documentación completa a partir del día natural siguiente a la comunicación del fallo y a más tardar &nbsp;${quote.deliveryTime ? quote.deliveryTime.replace(/\s*al\s+fallo/i, '') : '3 meses'} a referido evento.`}
+        </li>
+        
+        <li><span class="bold">Lugar de la entrega:</span> ${nombreEmpresa}, entregará los ${isServicios ? 'servicios' : 'bienes'} en las instalaciones que a continuación se indica: ${quote.deliveryPlace || 'UBICACIÓN DE LA EMPRESA Y/O CLIENTE.'}</li>
+        
         <li><span class="bold">Contacto:</span> ${quote.contactPerson ? quote.contactPerson.replace(/^Contacto:\s*/i, '') : 'Contacto del cliente'}</li> 
-        <li><span class="bold">Tiempo de fabricación:</span> ${quote.manufacturingTime || '2 meses'}.</li>
+        
+        ${!isServicios ? `<li><span class="bold">Tiempo de fabricación:</span> ${quote.manufacturingTime || '2 meses'}.</li>` : ''}
       </ul>
 
       <ul class="list-bullet">
-        <li>La responsabilidad de <span class="bold">${nombreEmpresa}</span>, en relación con esta garantía consistirá en que este, sin ningún costo para la “${nombreCliente}”, reemplazará los “bienes”, en un plazo no mayor a 30 días hábiles conforme a los términos y condiciones para su aplicación.</li>
+        ${!isServicios ? `<li>La responsabilidad de <span class="bold">${nombreEmpresa}</span>, en relación con esta garantía consistirá en que este, sin ningún costo para la “${nombreCliente}”, reemplazará los “bienes”, en un plazo no mayor a 30 días hábiles conforme a los términos y condiciones para su aplicación.</li>` : ''}
+        
         <div class="section-title">Garantía de calidad:</div>
         <ul style="list-style-type: circle; margin-left: 25px; padding-left: 0; text-align: justify;">
-          <li> ${nombreEmpresa}, deberá entregar por escrito una garantía de calidad contra defectos de fabricación y/o vicios ocultos que especifique que el “bien”, que oferta es nuevo de fábrica, que está libre de defectos y en buenas condiciones, conforme a las especificaciones técnicas del fabricante, la cual deberá responder de los defectos de fabricación y/o vicios ocultos que llegue a presentar el “bien”, por un plazo de <span class="bold">${quote.guaranteeMonths || 12} (doce) meses</span>, a partir de la expedición del acta de aceptación que formule con motivo de la entrega y recepción definitiva del “bien” a plena y entera satisfacción de la ${nombreCliente}.</li>
-          <li>Esta garantía de calidad contra defectos de fabricación y/o vicios ocultos se cancelará una vez que haya fenecido el plazo estipulado en el inciso anterior a partir de la fecha de entrega total del “bien” y a entera satisfacción de la ${nombreCliente}.</li>
-          <li>Para la aplicación de dicha garantía <span class="bold">${nombreEmpresa}</span>, en cualquier caso, de desperfecto que presente o daños que sufran “los bienes” adquiridos serán remplazados al 100% sin costo para la ${nombreCliente}.</li>
-          <li>La reposición de los “bienes” con defectos de fabricación y/o vicios ocultos, se realizará en el lugar indicado en el apartado Ubicación del lugar donde se realizará la Entrega de los Bienes; para lo cual <span class="bold">${nombreEmpresa}</span> deberá establecer coordinación con el contacto especificado.</li>
-          <li><span class="bold">${nombreEmpresa}</span> deberá recoger los “bienes” que presenten defectos de fabricación y/o vicios ocultos en el lugar indicado en el inciso anterior, sin costo adicional para la “${nombreCliente}”.</li>
-          <li>La responsabilidad de <span class="bold">${nombreEmpresa}</span>, en relación con esta garantía consistirá en que este, sin ningún costo para la “${nombreCliente}”, reemplazará el “bien” que resulte defectuoso y en un plazo no mayor a 30 días hábiles.</li>
+          ${isServicios ? `
+            <li><span class="bold">${nombreEmpresa}</span>, entregará una garantía de calidad por escrito que ampare los trabajos realizados y/o las partes y componentes reemplazados con vigencia de <span class="bold">${quote.guaranteeMonths || 6} (seis) meses</span> a partir de la entrega y recepción definitiva por partida completa del último servicio y a entera satisfacción de esta Secretaría.</li>
+            <li>Lo anterior para responder por la calidad, defectos y vicios ocultos, así como de las fallas que presenten los equipos.</li>
+            <li>La garantía surtirá efectos a partir de que el equipo se haya recibido a entera satisfacción del área usuaria, mediante la constancia de recepción de los servicios.</li>
+            <li><span class="bold">${nombreEmpresa}</span>, deberá otorgar solución inmediata a la problemática con respecto a la calidad del servicio de mantenimiento, debiendo emplear refacciones nuevas y originales para evitar problemas de calidad, defectos y vicios ocultos y corresponder al equipo que se le dará el servicio.</li>
+            <li><span class="bold">${nombreEmpresa}</span>, deberá proporcionar un número telefónico con numero de extensión, así como un correo electrónico en el cual se puedan realizar los reportes de mantenimiento por fallas y solicitud de apoyo técnico para la corrección de fallas en los equipos industriales a los cuales se les allá realizado el mantenimiento.</li>
+            <li>La notificación a <span class="bold">${nombreEmpresa}</span> de la falla, avería o mal funcionamiento de los equipos, atribuible al servicio de mantenimiento que proporcionó, se realizará a través de una carta dirigida al representante legal y enviada por correo electrónico a la dirección electrónica que el proveedor dispondrá, teniendo un plazo de 15 días naturales para la aplicación de la garantía.</li>
+          ` : `
+            <li><span class="bold">${nombreEmpresa}</span>, deberá entregar por escrito una garantía de calidad contra defectos de fabricación y/o vicios ocultos que especifique que el “bien”, que oferta es nuevo de fábrica, que está libre de defectos y en buenas condiciones, conforme a las especificaciones técnicas del fabricante, la cual deberá responder de los defectos de fabricación y/o vicios ocultos que llegue a presentar el “bien”, por un plazo de <span class="bold">${quote.guaranteeMonths || 12} (doce) meses</span>, a partir de la expedición del acta de aceptación que formule con motivo de la entrega y recepción definitiva del “bien” a plena y entera satisfacción de la ${nombreCliente}.</li>
+            <li>Esta garantía de calidad contra defectos de fabricación y/o vicios ocultos se cancelará una vez que haya fenecido el plazo estipulado en el inciso anterior a partir de la fecha de entrega total del “bien” y a entera satisfacción de la ${nombreCliente}.</li>
+            <li>Para la aplicación de dicha garantía <span class="bold">${nombreEmpresa}</span>, en cualquier caso, de desperfecto que presente o daños que sufran “los bienes” adquiridos serán remplazados al 100% sin costo para la ${nombreCliente}.</li>
+            <li>La reposición de los “bienes” con defectos de fabricación y/o vicios ocultos, se realizará en el lugar indicado en el apartado Ubicación del lugar donde se realizará la Entrega de los Bienes; para lo cual <span class="bold">${nombreEmpresa}</span> deberá establecer coordinación con el contacto especificado.</li>
+            <li><span class="bold">${nombreEmpresa}</span> deberá recoger los “bienes” que presenten defectos de fabricación y/o vicios ocultos en el lugar indicado en el inciso anterior, sin costo adicional para la “${nombreCliente}”.</li>
+            <li>La responsabilidad de <span class="bold">${nombreEmpresa}</span>, en relación con esta garantía consistirá en que este, sin ningún costo para la “${nombreCliente}”, reemplazará el “bien” que resulte defectuoso y en un plazo no mayor a 30 días hábiles.</li>
+          `}
         </ul>
+        
         <li><span class="bold">${nombreEmpresa}</span> cumplirá con las condiciones de entrega conforme a el Anexo Administrativo.</li>
         <li><span class="bold">${nombreEmpresa}</span> cumple con los atributos, normas, garantías y documentación indicada en el Anexo “C”, así como en el Anexo Administrativo y Anexo Técnico.</li>
-        <li>Mi representada(o) cuenta con la capacidad técnica para el suministro de los bienes requeridos.</li>
+        <li>Mi representada(o) cuenta con la capacidad técnica para el suministro de los ${isServicios ? 'servicios' : 'bienes'} requeridos.</li>
         <li><span class="bold">El porcentaje de garantía de cumplimiento será del:</span> ${quote.complianceWarranty || 10}%</li>
         <li>Mi representada se encuentra inscrita en el Sistema Compras MX y Registro Único de Proveedores y de Contratistas (RUPC).</li>
         <li><span class="bold">Años de experiencia en el mercado:</span> ${quote.experienceYears || 5}</li>
@@ -150,7 +175,7 @@ export function generateAzalTemplate(provider: any, quote: any, items: any[]) {
       </ul>
 
       <div style="text-align: justify; margin-top: 15px; margin-bottom: 30px;">
-        Con la presente oferta económica manifestamos interés en participar en los bienes requeridos por esa dependencia; y se presenta sin compromiso ni obligaciones para ambas partes.
+        Con la presente oferta económica manifestamos interés en participar en los ${isServicios ? 'servicios' : 'bienes'} requeridos por esa dependencia; y se presenta sin compromiso ni obligaciones para ambas partes.
       </div>
 
       <div class="professional-signature-section">

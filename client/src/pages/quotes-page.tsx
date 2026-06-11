@@ -268,53 +268,65 @@ export default function QuotesPage() {
 
   const quoteMutation = useMutation({
     mutationFn: async () => {
-      const selectedVendor = vendors.find(v => v.id.toString() === selectedVendorId);
+      // 1. Buscamos automáticamente en tu lista de vendors cuál coincide con la tarjeta seleccionada (AMS, HGW, etc.)
+      const matchedVendor = vendors.find(v => 
+        v.companyName && v.companyName.toUpperCase().includes(selectedCompany.toUpperCase())
+      );
 
-const payload = {
-  internalFolio: amsFormData.attnNombre || "Sin Folio",
-  destinationCompany: amsFormData.attnDependencia || "Sin Asignar",
-  requisitionNumber: amsFormData.attnGrado || "",
-  projectTitle: "",
-  quoteDate: new Date().toISOString().split('T')[0],
-  deliveryPlace: amsFormData.deliveryLocation || amsFormData.deliveryLocations?.[0]?.address || "",
-  deliveryTime: amsFormData.deliveryTime,
-  guaranteeMonths: 12,
-  validityDays: amsFormData.validityDays,
-  paymentDays: 17,
-  contactPerson: amsFormData.attnNombre || "",
-  commercialTerms: "Precios en Moneda Nacional. IVA Incluido.",
-  goodsOrigin: amsFormData.goodsOrigin,
-  providerNationality: "Mexicana",
-  manufacturingTime: amsFormData.hasManufacturingTime ? amsFormData.manufacturingTime : "",
-  complianceWarranty: 10,
-  experienceYears: 5,
-  specialtyYears: 5,
-  similarContracts: 3,
-  bankName: selectedVendor?.bankName || "",
-  bankAccount: selectedVendor?.bankAccount || "",
-  bankBeneficiary: selectedVendor?.bankBeneficiary || "",
-  providerId: Number(selectedVendorId),
-  empresaId: selectedVendorId ? Number(selectedVendorId) : null,
-  templateName: `${selectedCompany}:${quoteType}`,
-  amsType: quoteType,
-  amsDetails: amsFormData,
+      // 2. Si lo encuentra, saca su ID. Si no, le pone 1 (para evitar el NaN).  ¡¡¡ASEGÚRATE DE QUE EL ID 1 EXISTA EN TU DB!!!
+      const provId = matchedVendor ? Number(matchedVendor.id) : 1;
 
-  lineItems: (amsFormData.lineItems ?? []).map(item => ({
-    description: item.description,
-    techRequirements: item.techRequirements,
-    versionReference: item.versionReference,
-    reqDate: item.reqDate,
-    quantity: item.quantity,
-    unit: item.unitMeasure,
-    unitMeasure: item.unitMeasure,
-    unitPrice: item.unitPrice,
-    supplier: item.supplier,
-    purchaseCost: item.purchaseCost,
-    profitFactor: item.profitFactor,
-    importe: item.importe,
-    previo: item.previo,
-  }))
-};
+      const payload = {
+        internalFolio: amsFormData.attnNombre || "Sin Folio",
+        destinationCompany: amsFormData.attnDependencia || "Sin Asignar",
+        requisitionNumber: amsFormData.attnGrado || "",
+        companyOrigin: selectedCompany,
+        proposalType: quoteType,        
+        projectTitle: amsFormData.attnNombreProcedimiento || "Sin Título",
+        quoteDate: new Date().toISOString().split('T')[0],
+        deliveryPlace: amsFormData.deliveryLocation || amsFormData.deliveryLocations?.[0]?.address || "Por definir",
+        deliveryTime: amsFormData.deliveryTime || "Por definir",
+        guaranteeMonths: 12,
+        validityDays: amsFormData.validityDays || 30,
+        paymentDays: 17,
+        contactPerson: amsFormData.attnNombre || "Sin contacto",
+        commercialTerms: "Precios en Moneda Nacional. IVA Incluido.",
+        
+        providerId: provId, 
+        
+        goodsOrigin: amsFormData.goodsOrigin || "Nacional",
+        providerNationality: "Mexicana",
+        manufacturingTime: amsFormData.hasManufacturingTime ? amsFormData.manufacturingTime : "",
+        complianceWarranty: 10,
+        experienceYears: 5,
+        specialtyYears: 5,
+        similarContracts: 3,
+        
+        // 3. También tomamos los datos bancarios automáticos de ese proveedor
+        bankName: matchedVendor?.bankName || "",
+        bankAccount: matchedVendor?.bankAccount || "",
+        bankBeneficiary: matchedVendor?.bankBeneficiary || "",
+        empresaId: provId,
+        templateName: `${selectedCompany}:${quoteType}`,
+        amsType: quoteType,
+        amsDetails: amsFormData,
+
+        lineItems: (amsFormData.lineItems ?? []).map(item => ({
+          description: item.description,
+          techRequirements: item.techRequirements,
+          versionReference: item.versionReference,
+          reqDate: item.reqDate,
+          quantity: item.quantity,
+          unit: item.unitMeasure,
+          unitMeasure: item.unitMeasure,
+          unitPrice: item.unitPrice,
+          supplier: item.supplier,
+          purchaseCost: item.purchaseCost,
+          profitFactor: item.profitFactor,
+          importe: item.importe,
+          previo: item.previo,
+        }))
+      };
 
       const res = await fetch("/api/quotes", {
         method: "POST",
@@ -705,5 +717,3 @@ const payload = {
     </div>
   );
 }
-
-
