@@ -35,7 +35,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  ArrowLeft,
   Folder,
+  FolderOpen,
   MoreVertical,
   Download,
   Upload,
@@ -47,7 +49,7 @@ import {
   X,
   Edit2,
 } from "lucide-react";
-import { FileIcon, formatFileSize, getFileTypeName } from "@/components/file-icon";
+import { FileIcon, formatFileSize } from "@/components/file-icon";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -82,6 +84,7 @@ export default function FolderPage() {
   const [replaceFileTarget, setReplaceFileTarget] = useState<any | null>(null);
   const replaceFileTargetRef = useRef<any>(null);
   const [renameFolderDialog, setRenameFolderDialog] = useState<{ open: boolean; folder: any }>({ open: false, folder: null });
+  const [renameFileDialog, setRenameFileDialog] = useState<{ open: boolean; file: any }>({ open: false, file: null });
   const [renameLoading, setRenameLoading] = useState(false);
 
   /* upload */
@@ -323,24 +326,82 @@ export default function FolderPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ name: newName }),
+        body: JSON.stringify({ name: newName.trim() }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || "Error al renombrar carpeta");
+      }
       setRenameFolderDialog({ open: false, folder: null });
       await loadFolder();
-      queryClient.invalidateQueries({ queryKey: ["/api/folders/root"] });
-      toast({ title: "Carpeta renombrada", description: `"${folder.name}" se renombró a "${newName}"` });
+      queryClient.invalidateQueries({ queryKey: ["/api/folders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/microsoft-folders"] });
+      toast({ title: "Carpeta renombrada", description: `"${folder.name}" se renombró a "${newName.trim()}"` });
     } catch (err: any) {
       toast({
         title: "Error al renombrar",
-        description: (err as Error)?.message || "Error al renombrar carpeta",
+        description: err.message || "Error al renombrar carpeta",
         variant: "destructive",
       });
     } finally {
       setRenameLoading(false);
     }
   };
+
+  const handleRenameFileConfirm = async (newName: string) => {
+    const file = renameFileDialog.file;
+    if (!file || !user?.isAdmin) return;
+    setRenameLoading(true);
+    try {
+      const res = await fetch(`/api/files/${file.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: newName.trim() }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || "Error al renombrar archivo");
+      }
+      setRenameFileDialog({ open: false, file: null });
+      await loadFolder();
+      queryClient.invalidateQueries({ queryKey: ["/api/files/recent"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/files-all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      toast({ title: "Archivo renombrado", description: `"${file.originalName}" se renombró a "${newName.trim()}"` });
+    } catch (err: any) {
+      toast({
+        title: "Error al renombrar",
+        description: err.message || "Error al renombrar archivo",
+        variant: "destructive",
+      });
+    } finally {
+      setRenameLoading(false);
+    }
+  };
+
+  const parentFolderId = data?.path?.length > 1 ? data.path[data.path.length - 2].id : null;
+
+  const canGoBack = !!data && data.path?.length > 0;
+  const goBack = () => {
+    if (!data) return;
+
+    // Prefer using the browser history when available so we restore the
+    // previous view/state (e.g. the original Root instance) instead of
+    // navigating programmatically which can recreate a new root instance.
+    if (window.history && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+
+    // Fallback: navigate to the parent folder if available, otherwise to root.
+    if (parentFolderId) {
+      setLocation(`/folders/${parentFolderId}`);
+      return;
+    }
+    setLocation("/folders");
+  };
+
 
   const downloadFolderAsZip = async (targetFolder: any) => {
     try {
@@ -427,10 +488,23 @@ export default function FolderPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Folder className="h-6 w-6" />
-            {data.folder.name}
-          </h1>
+          <div className="flex items-center gap-3">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={goBack}
+              disabled={!canGoBack}
+              className="h-9 px-3"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Atrás
+            </Button>
+
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Folder className="h-6 w-6" />
+              {data.folder.name}
+            </h1>
+          </div>
 
           <p className="text-sm text-muted-foreground mt-1">
             {data.path.map((p: any, i: number) => (
@@ -525,32 +599,20 @@ export default function FolderPage() {
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setLocation(`/folders/${folder.id}`)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Abrir
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => downloadFolderAsZip(folder)}>
-                              <Download className="mr-2 h-4 w-4" />
-                              Descargar carpeta
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setShareDialog({ open: true, folder })}>
-                              <Share2 className="mr-2 h-4 w-4" />
-                              Compartir
-                            </DropdownMenuItem>
-                            {user?.isAdmin && (
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setLocation(`/folders/${folder.id}`)}>
+                                <FolderOpen className="mr-3 h-4 w-4" /> Abrir
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => setRenameFolderDialog({ open: true, folder })}>
-                                <Edit2 className="mr-2 h-4 w-4" />
-                                Renombrar carpeta
+                                <Plus className="mr-3 h-4 w-4" /> Renombrar
                               </DropdownMenuItem>
-                            )}
-                            {user?.isAdmin && (
-                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteFolderDialog({ open: true, folder })}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Eliminar carpeta
+                              <DropdownMenuItem onClick={() => setShareDialog({ open: true, folder })}>
+                                <Share2 className="mr-3 h-4 w-4" /> Compartir
                               </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
+                              <DropdownMenuItem className="text-destructive" onClick={() => setDeleteFolderDialog({ open: true, folder })}>
+                                <Trash2 className="mr-3 h-4 w-4" /> Eliminar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
@@ -653,6 +715,12 @@ export default function FolderPage() {
                             <Share2 className="mr-2 h-4 w-4" />
                             Compartir
                           </DropdownMenuItem>
+                          {user?.isAdmin && (
+                            <DropdownMenuItem onClick={() => setRenameFileDialog({ open: true, file })}>
+                              <Edit2 className="mr-2 h-4 w-4" />
+                              Renombrar archivo
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => {
@@ -808,53 +876,6 @@ export default function FolderPage() {
         }}
       />
 
-      <PromptDialog
-        open={renameFolderDialog.open}
-        onOpenChange={(open) => setRenameFolderDialog({ open, folder: open ? renameFolderDialog.folder : null })}
-        title="Renombrar carpeta"
-        description="Introduce el nuevo nombre para la carpeta"
-        placeholder="Nuevo nombre"
-        defaultValue={renameFolderDialog.folder?.name || ""}
-        submitLabel="Renombrar"
-  onSubmit={async (newName: string) => {
-    const folder = renameFolderDialog.folder;
-    if (!folder || !user?.isAdmin) return;
-    setRenameLoading(true);
-    try {
-      // 🚀 DETECCIÓN: Si el ID no es un número, usamos la API de Microsoft
-      const isMs = Number.isNaN(Number(folder.id));
-      const url = isMs ? `/api/folders/${folder.id}` : `/api/folders/${folder.id}`; 
-      // Nota: Aunque la URL sea igual, el backend ahora manejará el String ID correctamente
-
-      const res = await fetch(url, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ name: newName.trim() }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Error al renombrar");
-      }
-      
-      await loadFolder();
-      queryClient.invalidateQueries({ queryKey: ["/api/folders/root"] });
-      toast({ title: "Carpeta renombrada", description: `"${folder.name}" se renombró a "${newName}"` });
-      setRenameFolderDialog({ open: false, folder: null });
-    } catch (err: any) {
-      toast({
-        title: "Error al renombrar",
-        description: err.message,
-        variant: "destructive",
-      });
-    } finally {
-      setRenameLoading(false);
-    }
-  }}
-/>
-
-
       <ShareDialog
   
   open={shareDialog.open}
@@ -904,32 +925,18 @@ export default function FolderPage() {
         placeholder="Nuevo nombre"
         defaultValue={renameFolderDialog.folder?.name || ""}
         submitLabel="Renombrar"
-        onSubmit={async (newName: string) => {
-          const folder = renameFolderDialog.folder;
-          if (!folder || !user?.isAdmin) return;
-          setRenameLoading(true);
-          try {
-            const res = await fetch(`/api/folders/${folder.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify({ name: newName }),
-            });
-            if (!res.ok) throw new Error(await res.text());
-            await loadFolder();
-            queryClient.invalidateQueries({ queryKey: ["/api/folders/root"] });
-            toast({ title: "Carpeta renombrada", description: `"${folder.name}" se renombró a "${newName}"` });
-            setRenameFolderDialog({ open: false, folder: null });
-          } catch (err: any) {
-            toast({
-              title: "Error al renombrar",
-              description: (err as Error)?.message || "Error",
-              variant: "destructive",
-            });
-          } finally {
-            setRenameLoading(false);
-          }
-        }}
+        onSubmit={handleRenameFolderConfirm}
+      />
+
+      <PromptDialog
+        open={renameFileDialog.open}
+        onOpenChange={(open) => setRenameFileDialog({ open, file: open ? renameFileDialog.file : null })}
+        title="Renombrar archivo"
+        description="Introduce el nuevo nombre para el archivo"
+        placeholder="Nuevo nombre"
+        defaultValue={renameFileDialog.file?.originalName || ""}
+        submitLabel="Renombrar"
+        onSubmit={handleRenameFileConfirm}
       />
 
       {/* File preview dialog */}

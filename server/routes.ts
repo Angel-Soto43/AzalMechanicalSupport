@@ -260,27 +260,52 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.delete("/api/folders/:id", requireAuth, async (req: any, res) => {
     try {
       const folderIdParam = req.params.id;
+      const isMicrosoft = Number.isNaN(Number(folderIdParam));
 
-      if (!req.user.accessToken) {
-        return res.status(401).json({ error: "Sesión de Microsoft expirada" });
+      if (isMicrosoft) {
+        if (!req.user.accessToken) {
+          return res.status(401).json({ error: "Sesión de Microsoft expirada" });
+        }
+
+        await deleteMicrosoftItem(
+          req.user.accessToken,
+          req.user.refreshToken,
+          req.user.id,
+          folderIdParam
+        );
+
+        await storage.createAuditLog({
+          userId: req.user.id,
+          action: "Eliminar carpeta",
+          details: `Se eliminó una carpeta directamente de OneDrive.`,
+        });
+
+        return res.status(204).end();
       }
 
-      await deleteMicrosoftItem(
-        req.user.accessToken,
-        req.user.refreshToken,
-        req.user.id,
-        folderIdParam
-      );
-      
+      const folderId = Number(folderIdParam);
+      if (Number.isNaN(folderId)) {
+        return res.status(400).json({ error: "ID de carpeta inválido" });
+      }
+
+      const folder = await storage.getFolderById(folderId);
+      if (!folder) {
+        return res.status(404).json({ error: "Carpeta no encontrada" });
+      }
+      if (folder.userId !== req.user.id) {
+        return res.status(403).json({ error: "No autorizado" });
+      }
+
+      await storage.deleteFolder(folderId);
       await storage.createAuditLog({
         userId: req.user.id,
         action: "Eliminar carpeta",
-        details: `Se eliminó una carpeta directamente de OneDrive.`
+        details: `Se eliminó la carpeta local "${folder.name}" y su contenido.`,
       });
 
       return res.status(204).end();
     } catch (e: any) {
-      console.error("❌ Error al eliminar carpeta de Microsoft:", e.message || e);
+      console.error("❌ Error al eliminar carpeta:", e.message || e);
       return res.status(500).json({ error: e.message || "Error al eliminar carpeta" });
     }
   });
@@ -928,6 +953,57 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.patch("/api/files/:id", requireAuth, async (req: any, res) => {
+    try {
+      const fileIdParam = req.params.id;
+      const name = (req.body.name || "").trim();
+      if (!name) return res.status(400).json({ error: "El nombre es obligatorio" });
+
+      const isMicrosoft = Number.isNaN(Number(fileIdParam));
+      if (isMicrosoft) {
+        if (!req.user.accessToken) return res.status(401).json({ error: "Sesión de Microsoft expirada" });
+        try {
+          const updated = await renameMicrosoftItem(
+            req.user.accessToken,
+            req.user.refreshToken,
+            req.user.id,
+            fileIdParam,
+            name
+          );
+          return res.status(200).json(updated);
+        } catch (cloudErr: any) {
+          console.error("❌ Error renombrar archivo de Microsoft:", cloudErr.message || cloudErr);
+          return res.status(500).json({ error: cloudErr.message || "Error al renombrar archivo de Microsoft" });
+        }
+      }
+
+      const fileId = Number(fileIdParam);
+      if (Number.isNaN(fileId)) return res.status(400).json({ error: "ID de archivo inválido" });
+
+      const file = await storage.getFileById(fileId);
+      if (!file) return res.status(404).json({ error: "Archivo no encontrado" });
+      if (file.uploadedBy !== req.user.id && !req.user.isAdmin) return res.status(403).json({ error: "No autorizado" });
+
+      const [updatedFile] = await db
+        .update(files)
+        .set({ originalName: name })
+        .where(eq(files.id, fileId))
+        .returning();
+
+      await storage.createAuditLog({
+        userId: req.user.id,
+        correo: req.user.correo || req.user.email || null,
+        action: "Renombrar archivo",
+        details: `Se renombró el archivo local "${file.originalName}" a "${name}".`,
+      });
+
+      return res.status(200).json(updatedFile || {});
+    } catch (e: any) {
+      console.error("❌ Error al renombrar archivo:", e.message || e);
+      res.status(500).json({ error: e.message || "Error al renombrar archivo" });
     }
   });
 

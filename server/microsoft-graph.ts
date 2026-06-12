@@ -316,10 +316,17 @@ export async function getMicrosoftFilesPaginated(accessToken: string, refreshTok
 }
 
 export async function getMicrosoftFolderContent(accessToken: string, refreshToken: string, userId: number, folderId: string) {
-  const meta = await fetchWithTokenRefresh(`https://graph.microsoft.com/v1.0/me/drive/items/${folderId}`, accessToken, refreshToken, userId);
+  const isRoot = folderId === "root" || !folderId;
+  const metaUrl = isRoot
+    ? `https://graph.microsoft.com/v1.0/me/drive/root`
+    : `https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(folderId)}`;
+
+  const meta = await fetchWithTokenRefresh(metaUrl, accessToken, refreshToken, userId);
   
   // 🛡️ Obligamos a Microsoft a devolver 'description' usando $select
-  const childrenUrl = `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children?$select=id,name,description,size,file,folder,createdDateTime,lastModifiedDateTime,createdBy,webUrl`;
+  const childrenUrl = isRoot
+    ? `https://graph.microsoft.com/v1.0/me/drive/root/children?$select=id,name,description,size,file,folder,createdDateTime,lastModifiedDateTime,createdBy,webUrl`
+    : `https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(folderId)}/children?$select=id,name,description,size,file,folder,createdDateTime,lastModifiedDateTime,createdBy,webUrl`;
   const children = await fetchWithTokenRefresh(childrenUrl, meta.accessToken, refreshToken, userId);
   
   const folderData = await meta.response.json();

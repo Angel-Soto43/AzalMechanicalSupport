@@ -189,11 +189,15 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select({
         id: files.id,
+        filename: files.filename,
         originalName: files.originalName,
         size: files.size,
         uploadedAt: files.uploadedAt,
         mimeType: files.mimeType,
         contractId: files.contractId,
+        supplier: files.supplier,
+        folderId: files.folderId,
+        uploadedBy: files.uploadedBy,
         correo: users.correo,
       })
       .from(files)
