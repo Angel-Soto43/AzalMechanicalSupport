@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Users, FileText, Clock, Award, Building, Folder, MoreVertical, Download, Edit3 } from "lucide-react";
+// 🚀 AÑADIDOS LOS ICONOS NUEVOS PARA LAS TARJETAS (Building2, Package, Wrench, ArrowLeft)
+import { Plus, Trash2, Users, FileText, Clock, Award, Building, Folder, MoreVertical, Download, Edit3, Building2, Package, Wrench, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,6 +12,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { DynamicFormRenderer } from "@/components/quotations/DynamicFormRenderer";
+import type { AMSFormData, QuoteFormType } from "@/components/quotations/forms/form-types";
+import { defaultAMSFormData } from "@/components/quotations/forms/form-types";
 
 interface LineItem {
   id: number;
@@ -20,8 +24,7 @@ interface LineItem {
   reqDate: string;
   quantity: number;
   unitMeasure: string;
-  unitPrice: number; // Actúa como el Precio de Venta en el PDF
-  // 🚀 NUEVOS CAMPOS INTERNOS (No se imprimen en el PDF)
+  unitPrice: number; 
   supplier: string;
   purchaseCost: number;
   profitMargin: number;
@@ -47,8 +50,13 @@ export default function QuotesPage() {
   
   const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+
+  // 🚀 NUEVOS ESTADOS PARA EL WIZARD (PASOS)
+  const [wizardStep, setWizardStep] = useState(1);
+  const [selectedCompany, setSelectedCompany] = useState("");
+  const [selectedType, setSelectedType] = useState("");
   
-// ================= ESTADOS DE PROVEEDORES (VENDORS) =================
+  // ================= ESTADOS DE PROVEEDORES (VENDORS) =================
   const [vendorData, setVendorData] = useState({
     companyName: "",       
     businessActivity: "",  
@@ -88,6 +96,9 @@ export default function QuotesPage() {
     bankAccount: "000",
     bankBeneficiary: "Azal"
   });
+
+  const [quoteType, setQuoteType] = useState<QuoteFormType>("bienes");
+  const [amsFormData, setAmsFormData] = useState<AMSFormData>(defaultAMSFormData);
 
   // 🚀 INICIALIZAMOS LOS NUEVOS CAMPOS INTERNOS EN LA PARTIDA VACÍA
   const [lineItems, setLineItems] = useState<LineItem[]>([
@@ -177,6 +188,8 @@ export default function QuotesPage() {
     refetchIntervalInBackground: true
   });
 
+  const selectedVendor = vendors.find(v => v.id?.toString() === selectedVendorId);
+
   const { data: quotes = [], isLoading: loadingQuotes } = useQuery<any[]>({ 
     queryKey: ["/api/quotes"],
     refetchInterval: 2000,
@@ -254,52 +267,64 @@ export default function QuotesPage() {
   });
 
   const quoteMutation = useMutation({
-
     mutationFn: async () => {
-      const selectedVendor = vendors.find(v => v.id.toString() === selectedVendorId);
+      // 1. Buscamos automáticamente en tu lista de vendors cuál coincide con la tarjeta seleccionada (AMS, HGW, etc.)
+      const matchedVendor = vendors.find(v => 
+        v.companyName && v.companyName.toUpperCase().includes(selectedCompany.toUpperCase())
+      );
+
+      // 2. Si lo encuentra, saca su ID. Si no, le pone 1 (para evitar el NaN).  ¡¡¡ASEGÚRATE DE QUE EL ID 1 EXISTA EN TU DB!!!
+      const provId = matchedVendor ? Number(matchedVendor.id) : 1;
 
       const payload = {
-        internalFolio: quoteData.folio,
-        destinationCompany: quoteData.destinationCompany || "Sin Asignar", 
-        requisitionNumber: quoteData.requisitionNumber,
-        projectTitle: quoteData.projectTitle,
-        quoteDate: quoteData.date,
-        deliveryPlace: quoteData.deliveryLocation,
-        deliveryTime: quoteData.deliveryTime,
-        guaranteeMonths: quoteData.warrantyMonths,
-        validityDays: quoteData.validityDays,
-        paymentDays: quoteData.paymentDays,
-        contactPerson: quoteData.contactPerson,
-        commercialTerms: quoteData.commercialTerms,
-        goodsOrigin: quoteData.goodsOrigin,
-        providerNationality: quoteData.providerNationality,
-        manufacturingTime: quoteData.manufacturingTime,
-        complianceWarranty: quoteData.complianceWarranty,
-        experienceYears: quoteData.experienceYears,
-        specialtyYears: quoteData.specialtyYears,
-        similarContracts: quoteData.similarContracts,
-        bankName: quoteData.bankName,
-        bankAccount: quoteData.bankAccount,
-        bankBeneficiary: quoteData.bankBeneficiary,
-        providerId: Number(selectedVendorId),
+        internalFolio: amsFormData.attnNombre || "Sin Folio",
+        destinationCompany: amsFormData.attnDependencia || "Sin Asignar",
+        requisitionNumber: amsFormData.attnGrado || "",
+        companyOrigin: selectedCompany,
+        proposalType: quoteType,        
+        projectTitle: amsFormData.attnNombreProcedimiento || "Sin Título",
+        quoteDate: new Date().toISOString().split('T')[0],
+        deliveryPlace: amsFormData.deliveryLocation || amsFormData.deliveryLocations?.[0]?.address || "Por definir",
+        deliveryTime: amsFormData.deliveryTime || "Por definir",
+        guaranteeMonths: 12,
+        validityDays: amsFormData.validityDays || 30,
+        paymentDays: 17,
+        contactPerson: amsFormData.attnNombre || "Sin contacto",
+        commercialTerms: "Precios en Moneda Nacional. IVA Incluido.",
         
-        empresaId: selectedVendorId ? Number(selectedVendorId) : null,
-        templateName: "azal_official", 
+        providerId: provId, 
+        
+        goodsOrigin: amsFormData.goodsOrigin || "Nacional",
+        providerNationality: "Mexicana",
+        manufacturingTime: amsFormData.hasManufacturingTime ? amsFormData.manufacturingTime : "",
+        complianceWarranty: 10,
+        experienceYears: 5,
+        specialtyYears: 5,
+        similarContracts: 3,
+        
+        // 3. También tomamos los datos bancarios automáticos de ese proveedor
+        bankName: matchedVendor?.bankName || "",
+        bankAccount: matchedVendor?.bankAccount || "",
+        bankBeneficiary: matchedVendor?.bankBeneficiary || "",
+        empresaId: provId,
+        templateName: `${selectedCompany}:${quoteType}`,
+        amsType: quoteType,
+        amsDetails: amsFormData,
 
-        lineItems: lineItems.map(item => ({
+        lineItems: (amsFormData.lineItems ?? []).map(item => ({
           description: item.description,
           techRequirements: item.techRequirements,
           versionReference: item.versionReference,
           reqDate: item.reqDate,
           quantity: item.quantity,
-          unit: item.unitMeasure, 
+          unit: item.unitMeasure,
           unitMeasure: item.unitMeasure,
           unitPrice: item.unitPrice,
-          
           supplier: item.supplier,
           purchaseCost: item.purchaseCost,
-          profitMargin: item.profitMargin,
-          profitFactor: item.profitFactor
+          profitFactor: item.profitFactor,
+          importe: item.importe,
+          previo: item.previo,
         }))
       };
 
@@ -333,7 +358,7 @@ export default function QuotesPage() {
   
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col dark:bg-[linear-gradient(180deg,#0B132B_0%,#1C2541_100%)]">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       <main className="flex-1 p-6 flex flex-col gap-6 w-full">
         
         {/* BOTONERA SUPERIOR */}
@@ -381,9 +406,9 @@ export default function QuotesPage() {
                 <Button 
                   className="bg-[#1E40AF] text-white hover:bg-blue-800" 
                   onClick={() => vendorMutation.mutate()}
-                  disabled={vendorMutation.isPending}
+                  disabled={vendorMutation.status === 'pending'}
                 >
-                  {vendorMutation.isPending ? "Guardando..." : "Guardar Proveedor"}
+                  {vendorMutation.status === 'pending' ? "Guardando..." : "Guardar Proveedor"}
                 </Button>
               </div>
             </DialogContent>
@@ -436,206 +461,116 @@ export default function QuotesPage() {
             </DialogContent>
           </Dialog>
 
-          {/* MODAL: NUEVA PROPUESTA ECONÓMICA */}
+          {/* MODAL: NUEVA PROPUESTA ECONÓMICA CON WIZARD */}
           <Dialog open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white shadow-md px-6 font-semibold">
+              <Button 
+                onClick={() => {
+                  setWizardStep(1);
+                  setSelectedCompany("");
+                  setSelectedType("");
+                }} 
+                className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white shadow-md px-6 font-semibold"
+              >
                 <Plus className="mr-2 h-4 w-4" /> Nueva Propuesta Económica
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] overflow-y-auto shadow-2xl dark:bg-slate-950 dark:backdrop-blur-md">
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold flex items-center gap-2 dark:text-white">
-                  <FileText className="text-blue-600" /> Detalle de la Propuesta (Planilla Oficial)
+                  <FileText className="text-blue-600" /> 
+                  {wizardStep === 1 && "Selecciona la Empresa"}
+                  {wizardStep === 2 && `Tipo de Propuesta - ${selectedCompany}`}
+                  {wizardStep === 3 && `Detalle de la Propuesta (${selectedCompany} - ${selectedType})`}
                 </DialogTitle>
               </DialogHeader>
               
               <div className="space-y-6 py-4">
-                
-                {/* 1. DATOS GENERALES */}
-                <div className="grid grid-cols-2 gap-6 p-4 bg-slate-50 dark:bg-slate-900/60 dark:backdrop-blur-md border rounded-xl">
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Folio Interno AZAL</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. AZAL-2026-001" value={quoteData.folio} onChange={e => setQuoteData({...quoteData, folio: e.target.value})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Número de Requisición</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. FP06-R003-01/2026" value={quoteData.requisitionNumber} onChange={e => setQuoteData({...quoteData, requisitionNumber: e.target.value})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Empresa Destino / Cliente</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Secretaría de la Defensa Nacional" value={quoteData.destinationCompany} onChange={e => setQuoteData({...quoteData, destinationCompany: e.target.value})} />
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Empresa / Proveedor</label>
-                      <Select onValueChange={setSelectedVendorId} value={selectedVendorId}>
-                        <SelectTrigger className="bg-white dark:bg-slate-900/60 dark:text-white border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400"><SelectValue placeholder="Seleccione Proveedor" /></SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-slate-900/95 dark:text-white">
-                          {vendors.map(v => <SelectItem key={v.id} value={v.id.toString()} className="dark:text-white dark:hover:bg-slate-800">{v.companyName}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Objeto de Adquisición</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Adquisición de diversos Aluminios" value={quoteData.projectTitle} onChange={e => setQuoteData({...quoteData, projectTitle: e.target.value})} />
-                    </div>
-                  </div>
+              {/* 🚀 PASO 1: TARJETAS DE EMPRESA */}
+              {wizardStep === 1 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 p-4 mt-8">
+                  {['AMS', 'HGW', 'DEMA', 'HERMAL', 'HYH'].map(company => (
+                    <Card 
+                      key={company} 
+                      className="cursor-pointer border-2 border-transparent hover:border-blue-500 hover:shadow-lg transition-all duration-300 bg-white dark:bg-slate-900" 
+                      onClick={() => { setSelectedCompany(company); setWizardStep(2); }}
+                    >
+                      <CardContent className="flex flex-col items-center justify-center p-8 h-48">
+                        <Building2 size={56} className="mb-4 text-slate-400 dark:text-slate-300 group-hover:text-blue-500 transition-colors" />
+                        <span className="font-bold text-2xl dark:text-white">{company}</span>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
+              )}
 
-                {/* 2. CONDICIONES COMERCIALES */}
-                <div className="grid grid-cols-4 gap-4 p-4 border rounded-xl bg-white shadow-sm dark:bg-slate-900/60 dark:backdrop-blur-md">
-                  <div className="col-span-4 mb-2 border-b pb-2"><h3 className="text-sm font-bold text-slate-700 dark:text-white flex items-center gap-2"><Clock size={16}/> Condiciones Comerciales y Entrega</h3></div>
+              {/* 🚀 PASO 2: TARJETAS DE TIPO (BIENES O SERVICIOS) */}
+              {wizardStep === 2 && (
+                <div className="flex flex-col items-center justify-center min-h-[50vh]">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-3xl px-4">
+                    <Card 
+                      className="cursor-pointer border-2 border-transparent hover:border-blue-500 hover:shadow-lg transition-all duration-300 bg-white dark:bg-slate-900" 
+                      onClick={() => { setSelectedType('Bienes'); setQuoteType('bienes'); setWizardStep(3); }}
+                    >
+                      <CardContent className="flex flex-col items-center justify-center p-8 h-56">
+                        <Package size={72} className="mb-6 text-blue-500" />
+                        <span className="font-bold text-3xl dark:text-white">Bienes</span>
+                      </CardContent>
+                    </Card>
+
+                    <Card 
+                      className="cursor-pointer border-2 border-transparent hover:border-emerald-500 hover:shadow-lg transition-all duration-300 bg-white dark:bg-slate-900" 
+                      onClick={() => { setSelectedType('Servicios'); setQuoteType('servicios'); setWizardStep(3); }}
+                    >
+                      <CardContent className="flex flex-col items-center justify-center p-8 h-56">
+                        <Wrench size={72} className="mb-6 text-emerald-500" />
+                        <span className="font-bold text-3xl dark:text-white">Servicios</span>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  <Button variant="ghost" className="mt-12 dark:text-slate-300" onClick={() => setWizardStep(1)}>
+                    <ArrowLeft className="w-4 h-4 mr-2" /> Volver a Selección de Empresa
+                  </Button>
+                </div>
+              )}
+
+              {/* 🚀 PASO 3: EL FORMULARIO */}
+              {wizardStep === 3 && (
+                <div className="space-y-6 py-4">
                   
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Vigencia (Días)</label>
-                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.validityDays} onChange={e => setQuoteData({...quoteData, validityDays: Number(e.target.value)})} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Días para Pago</label>
-                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.paymentDays} onChange={e => setQuoteData({...quoteData, paymentDays: Number(e.target.value)})} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Garantía Calidad (Meses)</label>
-                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.warrantyMonths} onChange={e => setQuoteData({...quoteData, warrantyMonths: Number(e.target.value)})} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Fecha Emisión</label>
-                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="date" value={quoteData.date} onChange={e => setQuoteData({...quoteData, date: e.target.value})} />
-                  </div>
-
-                  <div className="col-span-2 space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Lugar de Entrega</label>
-                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" value={quoteData.deliveryLocation} onChange={e => setQuoteData({...quoteData, deliveryLocation: e.target.value})} />
-                  </div>
-                  <div className="col-span-2 space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Persona de Contacto</label>
-                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" value={quoteData.contactPerson} onChange={e => setQuoteData({...quoteData, contactPerson: e.target.value})} />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Tiempo Fabricación</label>
-                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. 2 meses" value={quoteData.manufacturingTime} onChange={e => setQuoteData({...quoteData, manufacturingTime: e.target.value})} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Origen de Bienes</label>
-                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Nacional" value={quoteData.goodsOrigin} onChange={e => setQuoteData({...quoteData, goodsOrigin: e.target.value})} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Nacionalidad Prov.</label>
-                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. mexicana" value={quoteData.providerNationality} onChange={e => setQuoteData({...quoteData, providerNationality: e.target.value})} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Tiempo Entrega</label>
-                    <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. 3 meses" value={quoteData.deliveryTime} onChange={e => setQuoteData({...quoteData, deliveryTime: e.target.value})} />
-                  </div>
-                </div>
-
-                {/* 3. EXPERIENCIA Y CUMPLIMIENTO */}
-                <div className="grid grid-cols-1 gap-6">
-                  <div className="grid grid-cols-4 gap-4 p-4 border rounded-xl bg-white shadow-sm dark:bg-slate-900/60 dark:backdrop-blur-md">
-                    <div className="col-span-4 mb-2 border-b pb-2"><h3 className="text-sm font-bold text-slate-700 dark:text-white flex items-center gap-2"><Award size={16}/> Experiencia y Cumplimiento</h3></div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">% Gar. Cumplimiento</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.complianceWarranty} onChange={e => setQuoteData({...quoteData, complianceWarranty: Number(e.target.value)})} />
+                  {/* BANNER DE SELECCIÓN */}
+                  <div className="mb-4 flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800/50">
+                    <div>
+                      <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Empresa seleccionada:</span> 
+                      <Badge variant="outline" className="ml-2 mr-6 text-blue-700 dark:text-blue-300 border-blue-300 bg-white dark:bg-slate-800 text-sm">{selectedCompany}</Badge>
+                      <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Tipo:</span> 
+                      <Badge variant="outline" className="ml-2 text-emerald-700 dark:text-emerald-300 border-emerald-300 bg-white dark:bg-slate-800 text-sm">{selectedType}</Badge>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Años Experiencia</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.experienceYears} onChange={e => setQuoteData({...quoteData, experienceYears: Number(e.target.value)})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Años Especialidad</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.specialtyYears} onChange={e => setQuoteData({...quoteData, specialtyYears: Number(e.target.value)})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Contratos Afines</label>
-                      <Input className="bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={quoteData.similarContracts} onChange={e => setQuoteData({...quoteData, similarContracts: Number(e.target.value)})} />
-                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setWizardStep(2)} className="dark:text-white dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700">
+                      Cambiar Selección
+                    </Button>
+                  </div>
+
+
+                  <div className="col-span-4">
+                    <DynamicFormRenderer
+                      type={quoteType}
+                      company={selectedCompany}
+                      companyName={selectedVendor?.companyName}
+                      data={amsFormData}
+                      onChange={setAmsFormData}
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+                    <Button variant="ghost" onClick={() => setIsQuoteModalOpen(false)}>Cancelar</Button>
+                    <Button onClick={() => quoteMutation.mutate()} disabled={quoteMutation.status === 'pending'} className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white px-10 font-bold">
+                      {quoteMutation.status === 'pending' ? "Generando..." : "Finalizar y Generar PDF"}
+                    </Button>
                   </div>
                 </div>
-
-                {/* 4. TABLA DE PARTIDAS (ACTUALIZADA) */}
-                <div className="border rounded-xl overflow-hidden shadow-sm dark:border-slate-800 dark:shadow-none dark:bg-slate-950/20">
-                  <Table>
-                    <TableHeader className="bg-[#0F172A]">
-                      <TableRow>
-                        <TableHead className="text-white w-12 text-center font-bold text-xs">#</TableHead>
-                        {/* 🚀 1. DESCRIPCIÓN MUCHO MÁS ANCHA */}
-                        <TableHead className="text-white font-bold text-xs w-[30%] min-w-[350px]">Descripción / Especificación Técnica</TableHead>
-                        {/* 🚀 2. REQUERIMIENTOS COMPACTO */}
-                        <TableHead className="text-white font-bold text-xs w-[190px] min-w-[190px]">Req. Técnicos / Versión / Fecha</TableHead>
-                        <TableHead className="text-emerald-300 font-bold text-xs border-l border-slate-700 bg-slate-800 text-center">Datos Internos</TableHead>
-                        <TableHead className="text-white w-20 text-center font-bold text-xs">Cant.</TableHead>
-                        <TableHead className="text-white w-20 font-bold text-xs">U.M.</TableHead>
-                        <TableHead className="text-white w-28 font-bold text-xs text-center">P. Venta (Unitario)</TableHead>
-                        <TableHead className="text-white w-12"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {lineItems.map((item, index) => (
-                        <TableRow key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                          <TableCell className="text-center font-bold text-slate-400 dark:text-slate-300 align-top pt-4">{index + 1}</TableCell>
-                          
-                          {/* DESCRIPCIÓN */}
-                          <TableCell className="align-top pt-3">
-                            <Input className="text-xs bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. Cinta de aluminio UNS..." value={item.description} onChange={e => updateLineItem(item.id, 'description', e.target.value)} />
-                          </TableCell>
-                          
-                          {/* REQUERIMIENTOS - TAMAÑO FIJO Y ESTRECHO */}
-                          <TableCell className="align-top pt-3">
-                            <div className="w-full space-y-1">
-                              <Input className="text-[10px] h-6 w-full bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Req: FET(H)..." value={item.techRequirements} onChange={e => updateLineItem(item.id, 'techRequirements', e.target.value)} />
-                              <div className="flex gap-1">
-                                <Input className="text-[10px] h-6 w-1/2 bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Versión: 05" value={item.versionReference} onChange={e => updateLineItem(item.id, 'versionReference', e.target.value)} />
-                                <Input className="text-[10px] h-6 w-1/2 bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Fecha: 04/JUN/24" value={item.reqDate} onChange={e => updateLineItem(item.id, 'reqDate', e.target.value)} />
-                              </div>
-                            </div>
-                          </TableCell>
-
-                          {/* DATOS INTERNOS */}
-                          <TableCell className="border-l border-slate-200 dark:border-slate-800 bg-emerald-50/30 dark:bg-emerald-950/20 align-top pt-3">
-                            <div className="flex flex-col gap-1 min-w-[18rem]">
-                              <Input className="text-[10px] h-7 w-full bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" placeholder="Proveedor" title="Proveedor" value={item.supplier} onChange={e => updateLineItem(item.id, 'supplier', e.target.value)} />
-                              <div className="grid grid-cols-3 gap-1">
-                                <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" type="number" placeholder="Costo Compra $" title="Costo Compra" value={item.purchaseCost || ''} onChange={e => updateLineItem(item.id, 'purchaseCost', e.target.value)} />
-                                <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" type="number" placeholder="Factor" title="Factor de Utilidad" value={item.profitFactor || ''} onChange={e => updateLineItem(item.id, 'profitFactor', e.target.value)} />
-                                <Input className="text-[10px] h-7 bg-white dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-700" type="number" placeholder="% Utilidad" title="Porcentaje de Utilidad" value={item.profitMargin || ''} onChange={e => updateLineItem(item.id, 'profitMargin', e.target.value)} />
-                              </div>
-                            </div>
-                          </TableCell>
-
-                          <TableCell className="align-top pt-3"><Input className="text-xs w-20 min-w-[5rem] bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" type="number" value={item.quantity} onChange={e => updateLineItem(item.id, 'quantity', Number(e.target.value))} /></TableCell>
-                          
-                          <TableCell className="align-top pt-3"><Input className="text-xs w-20 min-w-[5rem] uppercase bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition" placeholder="Ej. KG" value={item.unitMeasure} onChange={e => updateLineItem(item.id, 'unitMeasure', e.target.value)} /></TableCell>
-                          
-                          <TableCell className="align-top pt-3"><Input className="text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 transition" type="number" value={item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', Number(e.target.value))} /></TableCell>
-                          
-                          <TableCell className="align-top pt-3"><Button variant="ghost" size="icon" onClick={() => setLineItems(lineItems.filter(i => i.id !== item.id))} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"><Trash2 size={16}/></Button></TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100 dark:bg-blue-950/20 dark:border-blue-900/50">
-                  <Button variant="outline" onClick={addLineItem} className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white font-medium border-0">
-                    <Plus className="mr-2 h-4 w-4" /> Agregar Material
-                  </Button>
-                  <div className="text-right">
-                    <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">Total Venta (Pesos)</p>
-                    <p className="text-3xl font-black text-[#1E40AF] dark:text-blue-300">${lineItems.reduce((acc, i) => acc + (i.quantity * i.unitPrice), 0).toLocaleString()}</p>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-                  <Button variant="ghost" onClick={() => setIsQuoteModalOpen(false)}>Cancelar</Button>
-                  <Button onClick={() => quoteMutation.mutate()} disabled={quoteMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white px-10 font-bold">
-                    {quoteMutation.isPending ? "Generando..." : "Finalizar y Generar PDF"}
-                  </Button>
-                </div>
-              </div>
+              )}
+            </div>
             </DialogContent>
           </Dialog>
         </div>
@@ -726,13 +661,21 @@ export default function QuotesPage() {
                                 quantity: Number(li.quantity || 1),
                                 unitMeasure: normalizeUnitMeasure(li.unitMeasure || li.unit || "Kilogramo"),
                                 unitPrice: Number(li.unitPrice || 0),
-                                // 🚀 RECUPERAR DATOS INTERNOS AL EDITAR
                                 supplier: li.supplier || "",
                                 purchaseCost: Number(li.purchaseCost || 0),
                                 profitMargin: Number(li.profitMargin || 0),
                                 profitFactor: Number(li.profitFactor || 1)
                               })));
                             }
+                            
+                            // Recuperar empresa y tipo desde templateName ("EMPRESA:tipo")
+                            const [tplCompany, tplType] = (q.templateName || "AMS:bienes").split(":");
+                            const resolvedCompany = tplCompany?.toUpperCase() || "AMS";
+                            const resolvedType = (tplType || "bienes") as QuoteFormType;
+                            setSelectedCompany(resolvedCompany);
+                            setSelectedType(resolvedType === "bienes" ? "Bienes" : "Servicios");
+                            setQuoteType(resolvedType);
+                            setWizardStep(3);
                             setIsQuoteModalOpen(true);
                           }}
                           className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 rounded hover:bg-slate-100 cursor-pointer"

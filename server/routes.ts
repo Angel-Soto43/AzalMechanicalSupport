@@ -9,7 +9,6 @@ import multer from "multer";
 import puppeteer from "puppeteer";
 import { storage } from "./storage";
 import { getTemplateForProvider } from "./templates/manager";
-import { getTemplateForProvider } from "./templates/manager";
 import {
   validateQuoteItems,
   amountToSpanishText,
@@ -146,10 +145,16 @@ function buildQuotePdfFileName(quote: any) {
   const folio = quote.internalFolio || `Q${quote.id}`;
   const cliente = quote.destinationCompany || quote.projectTitle || 'PropuestaEconomica';
   const fecha = quote.quoteDate ? new Date(quote.quoteDate).toISOString().split('T')[0] : '';
+
+  // 🚀 EXTRAEMOS EL TIPO DE PROPUESTA (Bienes/Servicios)
+  const tipo = quote.proposalType ? `${quote.proposalType.toUpperCase()}-` : ''; 
+  
   const safeCliente = sanitizeFileName(cliente);
   const safeFolio = sanitizeFileName(folio);
   const safeFecha = sanitizeFileName(fecha);
-  const filename = `COT-${safeFolio}_${safeCliente}${safeFecha ? `_${safeFecha}` : ''}.pdf`;
+  
+  // 🚀 ARMAMOS EL NOMBRE CON EL TIPO INCLUIDO
+  const filename = `COT-${tipo}${safeFolio}_${safeCliente}${safeFecha ? `_${safeFecha}` : ''}.pdf`;
   return filename.replace(/__+/g, '_');
 }
 
@@ -623,6 +628,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           empresaDestino: quote.destinationCompany,
           total,
           totalText: amountToSpanishText(total),
+          companyOrigin: quote.companyOrigin,
+          proposalType: quote.proposalType,
           requisitionNumber: quote.requisitionNumber,
           projectTitle: quote.projectTitle,
           validityDays: quote.validityDays,
@@ -634,9 +641,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           deliveryPlace: quote.deliveryPlace,
           contactPerson: quote.contactPerson,
         };
+        
       }));
       res.json(enriched);
     } catch (e: any) {
+      console.error("Error en GET /api/quotes:", e);
       res.status(500).json({ error: e.message });
     }
   });
@@ -683,6 +692,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // 🚀 RUTA PRINCIPAL DE DESCARGA DE PDF 🚀
   app.get("/api/quotes/:id/pdf", requireAuth, async (req: any, res) => {
     try {
       const quoteId = Number(req.params.id);
@@ -719,8 +729,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
       const pdfBuffer = await generateQuotePdfBuffer(quoteWithText, provider, lineItems);
 
+      // 👉 AQUÍ MANDAMOS A LLAMAR TU FUNCIÓN INTELIGENTE PARA EL NOMBRE:
+      const filename = buildQuotePdfFileName(quoteWithText);
+
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="Cotizacion_${quote.internalFolio}.pdf"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       
       res.send(Buffer.from(pdfBuffer));
 
@@ -771,6 +784,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const guaranteeMonths = Number.isFinite(guaranteeMonthsRaw) && Number.isInteger(guaranteeMonthsRaw) && guaranteeMonthsRaw >= 0 ? guaranteeMonthsRaw : 0;
       const compliancePercentage = Number.isFinite(compliancePercentageRaw) && compliancePercentageRaw >= 0 ? compliancePercentageRaw : 0;
 
+
+      console.log("Datos recibidos en el backend:", { 
+  internalFolio, destinationCompany, requisitionNumber, projectTitle, quoteDate, commercialTerms, deliveryPlace, contactPerson, providerId 
+});
       if (!internalFolio || !destinationCompany || !requisitionNumber || !projectTitle || !quoteDate || !commercialTerms || !deliveryPlace || !contactPerson || Number.isNaN(providerId)) {
         return res.status(400).json({ error: "Todos los campos principales de la cotización son requeridos." });
       }
@@ -1587,6 +1604,72 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.status(201).json(nueva);
     } catch (e: any) {
       res.status(400).json({ error: e.message });
+    }
+
+    
+  });
+
+ 
+  // Ruta para guardar el PDF en una carpeta específica (Soporta OneDrive y Local)
+  app.post("/api/quotes/:id/pdf/save", requireAuth, async (req: any, res) => {
+    try {
+      const quoteId = parseInt(req.params.id);
+      const { folderId } = req.body;
+
+      if (!folderId) {
+        return res.status(400).json({ error: "Debe seleccionar una carpeta" });
+      }
+
+      // Obtener datos necesarios para el PDF
+      const quote = await storage.getQuoteById(quoteId);
+      if (!quote || !quote.providerId) {
+        return res.status(404).json({ error: "Cotización o proveedor no encontrado" });
+      }
+
+      const provider = await storage.getProviderById(Number(quote.providerId));
+      const rawItems = await storage.getQuoteItems(quoteId);
+      const lineItems = convertQuoteItemsFromDb(rawItems);
+
+      // Generar el buffer del PDF y un buen nombre de archivo
+      const pdfBuffer = await generateQuotePdfBuffer(quote, provider, lineItems);
+      const filename = buildQuotePdfFileName(quote);
+
+      // Saber si la carpeta es de Microsoft (tiene letras) o local (solo números)
+      const isMicrosoft = Number.isNaN(Number(folderId));
+
+      if (isMicrosoft) {
+        // ☁️ SUBIR A ONEDRIVE
+        if (!req.user.accessToken) {
+          return res.status(401).json({ error: "Sesión de Microsoft expirada" });
+        }
+        
+        await uploadFileToGraph(
+          req.user.accessToken,
+          req.user.refreshToken,
+          req.user.id,
+          pdfBuffer,
+          filename,
+          "application/pdf",
+          folderId
+        );
+
+        return res.status(200).json({ success: true, fileName: filename });
+      } else {
+        // 💻 GUARDAR EN BASE DE DATOS LOCAL
+        const newFile = await storage.createFile({
+          filename: filename,
+          originalName: filename,
+          mimeType: "application/pdf",
+          size: pdfBuffer.length,
+          folderId: parseInt(folderId),
+          uploadedBy: req.user.id
+        });
+
+        return res.status(200).json({ success: true, fileName: newFile.filename });
+      }
+    } catch (error: any) {
+      console.error("Error al guardar en carpeta:", error);
+      return res.status(500).json({ error: "Error al guardar PDF: " + error.message });
     }
   });
 

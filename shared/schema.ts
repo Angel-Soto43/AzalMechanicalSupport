@@ -112,6 +112,9 @@ export const quotes = pgTable("quotes", {
   // 🚀 TAREAS 2 y 3: Campos relacionales añadidos de forma limpia y única
   empresaId: integer("empresa_id").references(() => providers.id), // Llave foránea real hacia empresas
   templateName: varchar("template_name", { length: 100 }).default("azal_official"), // Selección de plantilla
+
+  companyOrigin: text("company_origin").notNull().default("AZAL"), // D-03: Empresa de origen
+  proposalType: text("proposal_type").notNull().default("bienes"), // D-04: 'bienes' o 'servicios
 });
 
 export const quoteItems = pgTable("quote_items", {
