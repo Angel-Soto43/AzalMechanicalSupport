@@ -14,7 +14,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { DynamicFormRenderer } from "@/components/quotations/DynamicFormRenderer";
 import type { AMSFormData, QuoteFormType } from "@/components/quotations/forms/form-types";
-import { defaultAMSFormData } from "@/components/quotations/forms/form-types";
+import { defaultAMSFormData, defaultLineItem } from "@/components/quotations/forms/form-types";
 
 interface LineItem {
   id: number;
@@ -110,6 +110,9 @@ export default function QuotesPage() {
 
   const [selectFolderModalOpen, setSelectFolderModalOpen] = useState(false);
   const [selectedQuoteId, setSelectedQuoteId] = useState<number | null>(null);
+  // Estado de edición: id y folio original de la cotización que se está editando
+  const [editingQuoteId, setEditingQuoteId] = useState<number | null>(null);
+  const [editingFolio, setEditingFolio] = useState<string>("");
   const [rootFolders, setRootFolders] = useState<any[]>([]);
   const [subfolders, setSubfolders] = useState<any[]>([]);
   const [currentPathBreadcrumbs, setCurrentPathBreadcrumbs] = useState<any[]>([]);
@@ -239,6 +242,87 @@ export default function QuotesPage() {
     }));
   };
 
+  // Carga todos los datos de una cotización existente en el formulario AMS
+  const handleEditQuote = async (q: any) => {
+    try {
+      const res = await fetch(`/api/quotes/${q.id}`, { credentials: "include" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Error al cargar la cotización" }));
+        throw new Error(err.error || "No se pudo cargar la cotización");
+      }
+      const data = await res.json();
+      const { quote: fullQuote, lineItems: fullLineItems } = data;
+
+      // Mapear campos del backend al formato exacto de AMSFormData
+      const hasManufacturingTimeBool = fullQuote.hasManufacturingTime ?? !!(fullQuote.manufacturingTime?.trim());
+      const mapped: AMSFormData = {
+        ...defaultAMSFormData,
+        // ─── Sección 1 ──────────────────────────────────────────────────────
+        attnDia: fullQuote.attnDia || "",
+        attnMes: fullQuote.attnMes || "",
+        attnAnio: fullQuote.attnAnio || "",
+        attnLugar: fullQuote.attnLugar || "",
+        attnGrado: fullQuote.attnGrado || "",
+        attnNombre: fullQuote.contactPerson || "",
+        attnDependencia: fullQuote.destinationCompany || "",
+        attnArea: fullQuote.attnArea || "",
+        attnUbicacion: fullQuote.attnUbicacion || "",
+        attnDireccion: fullQuote.attnDireccion || "",
+        attnNombreProcedimiento: fullQuote.requisitionNumber || fullQuote.projectTitle || "",
+        attnContacto: fullQuote.attnContacto || "",
+        attnCargo: fullQuote.attnCargo || "",
+        // ─── Sección 2 ──────────────────────────────────────────────────────
+        validityDays: Number(fullQuote.validityDays) || 120,
+        paymentTerms: fullQuote.paymentTerms || "",
+        goodsOrigin: fullQuote.goodsOrigin || "Nacional",
+        deliveryTime: fullQuote.deliveryTime || "",
+        manufacturingTime: fullQuote.manufacturingTime || "",
+        hasManufacturingTime: hasManufacturingTimeBool,
+        deliverySingle: fullQuote.deliverySingle ?? true,
+        deliveryLocation: fullQuote.deliveryPlace || "",
+        deliveryLocations: Array.isArray(fullQuote.deliveryLocations) ? fullQuote.deliveryLocations : [],
+        // ─── Sección 3 ──────────────────────────────────────────────────────
+        qualityGuarantees: Array.isArray(fullQuote.qualityGuarantees) && fullQuote.qualityGuarantees.length > 0
+          ? fullQuote.qualityGuarantees
+          : [""],
+        selectedSocialObjects: Array.isArray(fullQuote.selectedSocialObjects) ? fullQuote.selectedSocialObjects : [],
+        // ─── Partidas ────────────────────────────────────────────────────────
+        lineItems: Array.isArray(fullLineItems) && fullLineItems.length > 0
+          ? fullLineItems.map((li: any, idx: number) => ({
+              id: li.id || idx + 1,
+              noPartida: li.noPartida || "",
+              description: li.description || "",
+              techRequirements: li.techRequirements || "",
+              versionReference: li.versionReference || "",
+              reqDate: li.reqDate || "",
+              quantity: Number(li.quantity) || 1,
+              unitMeasure: li.unitMeasure || li.unit || "PZA",
+              unitPrice: Number(li.unitPrice) || 0,
+              supplier: li.supplier || "",
+              purchaseCost: Number(li.purchaseCost) || 0,
+              profitFactor: Number(li.profitFactor) || 1,
+              previo: (Number(li.purchaseCost) || 0) * (Number(li.profitFactor) || 1),
+              importe: (Number(li.purchaseCost) || 0) * (Number(li.quantity) || 1),
+            }))
+          : [{ ...defaultLineItem }],
+      };
+
+      setAmsFormData(mapped);
+      setEditingQuoteId(q.id);
+      setEditingFolio(fullQuote.internalFolio || fullQuote.folio || "");
+
+      const resolvedCompany = (fullQuote.companyOrigin || "AMS").toUpperCase();
+      const resolvedType = (fullQuote.proposalType || "bienes") as QuoteFormType;
+      setSelectedCompany(resolvedCompany);
+      setSelectedType(resolvedType === "bienes" ? "Bienes" : "Servicios");
+      setQuoteType(resolvedType);
+      setWizardStep(3);
+      setIsQuoteModalOpen(true);
+    } catch (err: any) {
+      toast({ title: "Error al cargar la cotización", description: err.message, variant: "destructive" });
+    }
+  };
+
   const vendorMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/providers", {
@@ -268,91 +352,159 @@ export default function QuotesPage() {
 
   const quoteMutation = useMutation({
     mutationFn: async () => {
-      // 1. Buscamos automáticamente en tu lista de vendors cuál coincide con la tarjeta seleccionada (AMS, HGW, etc.)
-      const matchedVendor = vendors.find(v => 
+      // M-04: Validación previa con mensajes descriptivos
+      if (!amsFormData.attnDependencia?.trim()) {
+        throw new Error("El campo 'Dependencia' es obligatorio.");
+      }
+      if (!amsFormData.attnNombreProcedimiento?.trim()) {
+        throw new Error("El campo 'Nombre del procedimiento' es obligatorio.");
+      }
+      if (!amsFormData.attnNombre?.trim()) {
+        throw new Error("El campo 'Nombre' (persona de contacto) es obligatorio.");
+      }
+
+      const items = amsFormData.lineItems ?? [];
+      if (items.length === 0) {
+        throw new Error("Debe agregar al menos una partida antes de generar la propuesta.");
+      }
+      const emptyDescItems = items.filter(i => !i.description?.trim());
+      if (emptyDescItems.length > 0) {
+        throw new Error("Todas las partidas deben tener descripción.");
+      }
+      const invalidQtyItems = items.filter(i => !Number.isInteger(Number(i.quantity)) || Number(i.quantity) <= 0);
+      if (invalidQtyItems.length > 0) {
+        throw new Error("La cantidad de cada partida debe ser un número entero mayor a cero.");
+      }
+
+      // M-01/M-02: Buscar proveedor correspondiente a la empresa seleccionada
+      const matchedVendor = vendors.find(v =>
         v.companyName && v.companyName.toUpperCase().includes(selectedCompany.toUpperCase())
       );
+      if (!matchedVendor) {
+        throw new Error(`No se encontró un proveedor registrado para "${selectedCompany}". Regístralo primero en "Nuevo Proveedor".`);
+      }
+      const provId = Number(matchedVendor.id);
 
-      // 2. Si lo encuentra, saca su ID. Si no, le pone 1 (para evitar el NaN).  ¡¡¡ASEGÚRATE DE QUE EL ID 1 EXISTA EN TU DB!!!
-      const provId = matchedVendor ? Number(matchedVendor.id) : 1;
+      // En edición se conserva el folio original; en creación se genera uno único
+      const isEditing = editingQuoteId !== null;
+      const folio = isEditing
+        ? editingFolio
+        : `${selectedCompany.toUpperCase()}-${quoteType === 'bienes' ? 'B' : 'S'}-${Date.now()}`;
 
+      // M-03: Payload construido con el formato exacto que espera el backend
       const payload = {
-        internalFolio: amsFormData.attnNombre || "Sin Folio",
-        destinationCompany: amsFormData.attnDependencia || "Sin Asignar",
-        requisitionNumber: amsFormData.attnGrado || "",
+        internalFolio: folio,
+        destinationCompany: amsFormData.attnDependencia.trim(),
+        // El campo Nombre del procedimiento contiene el número de requisición
+        requisitionNumber: amsFormData.attnNombreProcedimiento.trim() || amsFormData.attnGrado || "S/N",
         companyOrigin: selectedCompany,
-        proposalType: quoteType,        
-        projectTitle: amsFormData.attnNombreProcedimiento || "Sin Título",
+        proposalType: quoteType,
+        projectTitle: amsFormData.attnNombreProcedimiento.trim() || "Sin Título",
         quoteDate: new Date().toISOString().split('T')[0],
-        deliveryPlace: amsFormData.deliveryLocation || amsFormData.deliveryLocations?.[0]?.address || "Por definir",
+        deliveryPlace: amsFormData.deliveryLocation?.trim() || amsFormData.deliveryLocations?.[0]?.address?.trim() || "Por definir",
         deliveryTime: amsFormData.deliveryTime || "Por definir",
         guaranteeMonths: 12,
-        validityDays: amsFormData.validityDays || 30,
+        validityDays: Number(amsFormData.validityDays) || 120,
         paymentDays: 17,
-        contactPerson: amsFormData.attnNombre || "Sin contacto",
+        contactPerson: amsFormData.attnNombre.trim(),
         commercialTerms: "Precios en Moneda Nacional. IVA Incluido.",
-        
-        providerId: provId, 
-        
+
+        providerId: provId,
+
         goodsOrigin: amsFormData.goodsOrigin || "Nacional",
         providerNationality: "Mexicana",
-        manufacturingTime: amsFormData.hasManufacturingTime ? amsFormData.manufacturingTime : "",
+        manufacturingTime: amsFormData.hasManufacturingTime ? (amsFormData.manufacturingTime || "") : "",
         complianceWarranty: 10,
         experienceYears: 5,
         specialtyYears: 5,
         similarContracts: 3,
-        
-        // 3. También tomamos los datos bancarios automáticos de ese proveedor
-        bankName: matchedVendor?.bankName || "",
-        bankAccount: matchedVendor?.bankAccount || "",
-        bankBeneficiary: matchedVendor?.bankBeneficiary || "",
+
+        bankName: matchedVendor.bankName || "",
+        bankAccount: matchedVendor.bankAccount || "",
+        bankBeneficiary: matchedVendor.bankBeneficiary || "",
         empresaId: provId,
         templateName: `${selectedCompany}:${quoteType}`,
-        amsType: quoteType,
-        amsDetails: amsFormData,
 
-        lineItems: (amsFormData.lineItems ?? []).map(item => ({
+        // ─── Sección 1 "Atención" ──────────────────────────────────────────
+        attnDia: amsFormData.attnDia || "",
+        attnMes: amsFormData.attnMes || "",
+        attnAnio: amsFormData.attnAnio || "",
+        attnLugar: amsFormData.attnLugar || "",
+        attnGrado: amsFormData.attnGrado || "",
+        attnArea: amsFormData.attnArea || "",
+        attnUbicacion: amsFormData.attnUbicacion || "",
+        attnDireccion: amsFormData.attnDireccion || "",
+        attnCargo: amsFormData.attnCargo || "",
+        attnContacto: amsFormData.attnContacto || "",
+
+        // ─── Sección 2 "Condiciones" ───────────────────────────────────────
+        paymentTerms: amsFormData.paymentTerms || "",
+        hasManufacturingTime: amsFormData.hasManufacturingTime ?? false,
+        deliverySingle: amsFormData.deliverySingle ?? true,
+        deliveryLocations: amsFormData.deliveryLocations || [],
+
+        // ─── Sección 3 "Garantías y objetos sociales" ─────────────────────
+        qualityGuarantees: amsFormData.qualityGuarantees || [],
+        selectedSocialObjects: amsFormData.selectedSocialObjects || [],
+
+        lineItems: items.map(item => ({
+          noPartida: item.noPartida || "",
           description: item.description,
-          techRequirements: item.techRequirements,
-          versionReference: item.versionReference,
-          reqDate: item.reqDate,
-          quantity: item.quantity,
-          unit: item.unitMeasure,
-          unitMeasure: item.unitMeasure,
-          unitPrice: item.unitPrice,
-          supplier: item.supplier,
-          purchaseCost: item.purchaseCost,
-          profitFactor: item.profitFactor,
-          importe: item.importe,
-          previo: item.previo,
-        }))
+          techRequirements: item.techRequirements || "",
+          versionReference: item.versionReference || "",
+          reqDate: item.reqDate || "",
+          quantity: Math.round(Number(item.quantity)),
+          unit: item.unitMeasure || "PZA",
+          unitMeasure: item.unitMeasure || "PZA",
+          unitPrice: Number(item.unitPrice) || 0,
+          supplier: item.supplier || "",
+          purchaseCost: Number(item.purchaseCost) || 0,
+          profitFactor: Number(item.profitFactor) || 1,
+          importe: Number(item.importe) || 0,
+          previo: Number(item.previo) || 0,
+        })),
       };
 
-      const res = await fetch("/api/quotes", {
-        method: "POST",
+      const url = isEditing ? `/api/quotes/${editingQuoteId}` : "/api/quotes";
+      const method = isEditing ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Error al generar la cotización");
+        const err = await res.json().catch(() => ({ error: "Error de red al procesar la solicitud." }));
+        throw new Error(err.error || "Error al generar la cotización.");
       }
 
       return res.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
-      toast({ title: "¡Éxito!", description: "Cotización generada correctamente." });
+      const wasEditing = editingQuoteId !== null;
+      const folio = data.quote?.internalFolio || data.internalFolio || "";
+      toast({
+        title: wasEditing ? "¡Propuesta actualizada!" : "¡Propuesta generada con éxito!",
+        description: folio ? `Folio: ${folio}` : "La operación se realizó correctamente.",
+      });
       setIsQuoteModalOpen(false);
-      const generatedId = data.id || data.quote?.id;
-      if (generatedId) {
-        setSelectedQuoteId(generatedId);
-        setSelectFolderModalOpen(true);
+      setAmsFormData(defaultAMSFormData);
+      setEditingQuoteId(null);
+      setEditingFolio("");
+      // Abrir selector de carpeta sólo al crear (no al actualizar)
+      if (!wasEditing) {
+        const generatedId = data.id || data.quote?.id;
+        if (generatedId) {
+          setSelectedQuoteId(generatedId);
+          setSelectFolderModalOpen(true);
+        }
       }
     },
     onError: (error: any) => {
-      toast({ title: "Error en el formulario", description: error.message, variant: "destructive" });
+      const title = editingQuoteId !== null ? "Error al actualizar propuesta" : "Error al generar propuesta";
+      toast({ title, description: error.message, variant: "destructive" });
     }
   });
   
@@ -462,14 +614,20 @@ export default function QuotesPage() {
           </Dialog>
 
           {/* MODAL: NUEVA PROPUESTA ECONÓMICA CON WIZARD */}
-          <Dialog open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen}>
+          <Dialog open={isQuoteModalOpen} onOpenChange={(open) => {
+            setIsQuoteModalOpen(open);
+            if (!open) { setEditingQuoteId(null); setEditingFolio(""); }
+          }}>
             <DialogTrigger asChild>
-              <Button 
+              <Button
                 onClick={() => {
                   setWizardStep(1);
                   setSelectedCompany("");
                   setSelectedType("");
-                }} 
+                  setEditingQuoteId(null);
+                  setEditingFolio("");
+                  setAmsFormData(defaultAMSFormData);
+                }}
                 className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white shadow-md px-6 font-semibold"
               >
                 <Plus className="mr-2 h-4 w-4" /> Nueva Propuesta Económica
@@ -563,7 +721,7 @@ export default function QuotesPage() {
                   </div>
 
                   <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-                    <Button variant="ghost" onClick={() => setIsQuoteModalOpen(false)}>Cancelar</Button>
+                    <Button variant="ghost" onClick={() => { setIsQuoteModalOpen(false); setEditingQuoteId(null); setEditingFolio(""); }}>Cancelar</Button>
                     <Button onClick={() => quoteMutation.mutate()} disabled={quoteMutation.status === 'pending'} className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white px-10 font-bold">
                       {quoteMutation.status === 'pending' ? "Generando..." : "Finalizar y Generar PDF"}
                     </Button>
@@ -623,61 +781,8 @@ export default function QuotesPage() {
                           <span>Descargar PDF</span>
                         </DropdownMenuItem>
 
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            setQuoteData({
-                              folio: q.internalFolio || q.folio || "",
-                              destinationCompany: q.destinationCompany || "",
-                              requisitionNumber: q.requisitionNumber || "",
-                              projectTitle: q.projectTitle || "",
-                              date: q.quoteDate || new Date().toISOString().split('T')[0],
-                              deliveryLocation: q.deliveryPlace || "Campo Militar No. 25-E, Oriental, Puebla",
-                              deliveryTime: q.deliveryTime || "3 meses posteriores al fallo",
-                              warrantyMonths: Number(q.guaranteeMonths || 12),
-                              validityDays: Number(q.validityDays || 120),
-                              paymentDays: Number(q.paymentDays || 17),
-                              contactPerson: q.contactPerson || "Tte. Cor. Ing. Ind. Omar Luna Ramírez",
-                              commercialTerms: q.commercialTerms || "Precios en Moneda Nacional. IVA Incluido.",
-                              goodsOrigin: q.goodsOrigin || "Nacional",
-                              providerNationality: q.providerNationality || "mexicana",
-                              manufacturingTime: q.manufacturingTime || "2 meses",
-                              complianceWarranty: Number(q.complianceWarranty || 10),
-                              experienceYears: Number(q.experienceYears || 5),
-                              specialtyYears: Number(q.specialtyYears || 5),
-                              similarContracts: Number(q.similarContracts || 3),
-                              bankName: q.bankName || "GRUPO FINANCIERO INBURSA",
-                              bankAccount: q.bankAccount || "000",
-                              bankBeneficiary: q.bankBeneficiary || "Azal"
-                            });
-                            setSelectedVendorId(q.providerId?.toString() || "");
-                            
-                            if (q.lineItems && q.lineItems.length > 0) {
-                              setLineItems(q.lineItems.map((li: any, idx: number) => ({
-                                id: li.id || idx,
-                                description: li.description || "",
-                                techRequirements: li.techRequirements || "",
-                                versionReference: li.versionReference || "",
-                                reqDate: li.reqDate || "",
-                                quantity: Number(li.quantity || 1),
-                                unitMeasure: normalizeUnitMeasure(li.unitMeasure || li.unit || "Kilogramo"),
-                                unitPrice: Number(li.unitPrice || 0),
-                                supplier: li.supplier || "",
-                                purchaseCost: Number(li.purchaseCost || 0),
-                                profitMargin: Number(li.profitMargin || 0),
-                                profitFactor: Number(li.profitFactor || 1)
-                              })));
-                            }
-                            
-                            // Recuperar empresa y tipo desde templateName ("EMPRESA:tipo")
-                            const [tplCompany, tplType] = (q.templateName || "AMS:bienes").split(":");
-                            const resolvedCompany = tplCompany?.toUpperCase() || "AMS";
-                            const resolvedType = (tplType || "bienes") as QuoteFormType;
-                            setSelectedCompany(resolvedCompany);
-                            setSelectedType(resolvedType === "bienes" ? "Bienes" : "Servicios");
-                            setQuoteType(resolvedType);
-                            setWizardStep(3);
-                            setIsQuoteModalOpen(true);
-                          }}
+                        <DropdownMenuItem
+                          onClick={() => handleEditQuote(q)}
                           className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 rounded hover:bg-slate-100 cursor-pointer"
                         >
                           <Edit3 size={14} className="text-emerald-600" />

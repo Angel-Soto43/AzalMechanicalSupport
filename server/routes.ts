@@ -551,6 +551,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         phone,
         email,
         website,
+        bankName,
+        bankAccount,
+        bankBeneficiary,
       });
 
       res.status(201).json(provider);
@@ -667,6 +670,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const totalCents = rawItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
       const total = fromCents(totalCents);
 
+      const safeParse = (val: string | null | undefined): any[] => {
+        try { return JSON.parse(val || "[]"); } catch { return []; }
+      };
+
       res.json({
         quote: {
           ...quote,
@@ -674,16 +681,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           empresaDestino: quote.destinationCompany,
           total,
           totalText: amountToSpanishText(total),
-          requisitionNumber: quote.requisitionNumber,
-          projectTitle: quote.projectTitle,
-          validityDays: quote.validityDays,
-          paymentDays: quote.paymentDays,
-          deliveryTime: quote.deliveryTime,
-          manufacturingTime: quote.manufacturingTime,
-          guaranteeMonths: quote.guaranteeMonths,
-          compliancePercentage: quote.compliancePercentage,
-          deliveryPlace: quote.deliveryPlace,
-          contactPerson: quote.contactPerson,
+          // Campos JSON deserializados como arrays para el frontend
+          qualityGuarantees: safeParse(quote.qualityGuaranteesJson),
+          selectedSocialObjects: safeParse(quote.selectedSocialObjectsJson),
+          deliveryLocations: safeParse(quote.deliveryLocationsJson),
         },
         lineItems,
       });
@@ -778,16 +779,35 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
       const empresaId = req.body.empresaId ? Number(req.body.empresaId) : providerId;
       const templateName = (req.body.templateName || "azal_official").toString().trim();
+      const companyOrigin = (req.body.companyOrigin || "AZAL").toString().trim();
+      const proposalType = (req.body.proposalType || "bienes").toString().trim();
+
+      // ─── Campos AMS extendidos ────────────────────────────────────────────
+      const attnDia = (req.body.attnDia || "").toString().trim();
+      const attnMes = (req.body.attnMes || "").toString().trim();
+      const attnAnio = (req.body.attnAnio || "").toString().trim();
+      const attnLugar = (req.body.attnLugar || "").toString().trim();
+      const attnGrado = (req.body.attnGrado || "").toString().trim();
+      const attnArea = (req.body.attnArea || "").toString().trim();
+      const attnUbicacion = (req.body.attnUbicacion || "").toString().trim();
+      const attnDireccion = (req.body.attnDireccion || "").toString().trim();
+      const attnCargo = (req.body.attnCargo || "").toString().trim();
+      const attnContacto = (req.body.attnContacto || "").toString().trim();
+      const paymentTerms = (req.body.paymentTerms || "").toString().trim();
+      const hasManufacturingTime = req.body.hasManufacturingTime === true || req.body.hasManufacturingTime === "true";
+      const deliverySingleVal = req.body.deliverySingle !== false && req.body.deliverySingle !== "false";
+      const deliveryLocationsJson = JSON.stringify(Array.isArray(req.body.deliveryLocations) ? req.body.deliveryLocations : []);
+      const qualityGuaranteesJson = JSON.stringify(Array.isArray(req.body.qualityGuarantees) ? req.body.qualityGuarantees : []);
+      const selectedSocialObjectsJson = JSON.stringify(Array.isArray(req.body.selectedSocialObjects) ? req.body.selectedSocialObjects : []);
 
       const validityDays = Number.isFinite(validityDaysRaw) && Number.isInteger(validityDaysRaw) && validityDaysRaw > 0 ? validityDaysRaw : 120;
       const paymentDays = Number.isFinite(paymentDaysRaw) && Number.isInteger(paymentDaysRaw) && paymentDaysRaw >= 0 ? paymentDaysRaw : 0;
       const guaranteeMonths = Number.isFinite(guaranteeMonthsRaw) && Number.isInteger(guaranteeMonthsRaw) && guaranteeMonthsRaw >= 0 ? guaranteeMonthsRaw : 0;
       const compliancePercentage = Number.isFinite(compliancePercentageRaw) && compliancePercentageRaw >= 0 ? compliancePercentageRaw : 0;
 
-
-      console.log("Datos recibidos en el backend:", { 
-  internalFolio, destinationCompany, requisitionNumber, projectTitle, quoteDate, commercialTerms, deliveryPlace, contactPerson, providerId 
-});
+      console.log("Datos recibidos en el backend:", {
+        internalFolio, destinationCompany, requisitionNumber, projectTitle, quoteDate, commercialTerms, deliveryPlace, contactPerson, providerId
+      });
       if (!internalFolio || !destinationCompany || !requisitionNumber || !projectTitle || !quoteDate || !commercialTerms || !deliveryPlace || !contactPerson || Number.isNaN(providerId)) {
         return res.status(400).json({ error: "Todos los campos principales de la cotización son requeridos." });
       }
@@ -828,7 +848,25 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         bankAccount,
         bankBeneficiary,
         empresaId,
-        templateName
+        templateName,
+        companyOrigin,
+        proposalType,
+        attnDia,
+        attnMes,
+        attnAnio,
+        attnLugar,
+        attnGrado,
+        attnArea,
+        attnUbicacion,
+        attnDireccion,
+        attnCargo,
+        attnContacto,
+        paymentTerms,
+        hasManufacturingTime,
+        deliverySingle: deliverySingleVal,
+        deliveryLocationsJson,
+        qualityGuaranteesJson,
+        selectedSocialObjectsJson,
       });
 
       const createdItems = [];
@@ -847,11 +885,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           reqDate: (rawItem.reqDate || "").toString().trim(),
           unitPrice: item.unitPriceCents,
           amount: item.amountCents,
-          // 🚀 AQUÍ ESTÁN LOS 4 CAMPOS NUEVOS AGREGADOS:
           supplier: item.supplier,
-          purchaseCost: item.purchaseCost ? String(item.purchaseCost) : "0", 
+          purchaseCost: item.purchaseCost ? String(item.purchaseCost) : "0",
           profitMargin: item.profitMargin ? String(item.profitMargin) : "0",
-          profitFactor: item.profitFactor ? String(item.profitFactor) : "1"
+          profitFactor: item.profitFactor ? String(item.profitFactor) : "1",
+          noPartida: (rawItem.noPartida || "").toString().trim(),
         });
         createdItems.push(convertQuoteItemFromDb(createdItem));
       }
@@ -894,6 +932,196 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       });
 
       res.status(204).end();
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.patch("/api/quotes/:id", requireAuth, async (req: any, res) => {
+    try {
+      const quoteId = Number(req.params.id);
+      if (Number.isNaN(quoteId)) {
+        return res.status(400).json({ error: "ID de cotización inválido" });
+      }
+
+      const existing = await storage.getQuoteById(quoteId);
+      if (!existing) {
+        return res.status(404).json({ error: "Cotización no encontrada" });
+      }
+
+      // Merge: si el campo llega en req.body se usa, si no se conserva el valor existente
+      const destinationCompany = (req.body.destinationCompany || existing.destinationCompany).toString().trim();
+      const requisitionNumber = (req.body.requisitionNumber || existing.requisitionNumber).toString().trim();
+      const projectTitle = (req.body.projectTitle || existing.projectTitle).toString().trim();
+      const quoteDate = (req.body.quoteDate || existing.quoteDate).toString().trim();
+      const commercialTerms = (req.body.commercialTerms || existing.commercialTerms).toString().trim();
+      const validityDaysRaw = Number(req.body.validityDays ?? existing.validityDays);
+      const paymentDaysRaw = Number(req.body.paymentDays ?? existing.paymentDays);
+      const deliveryTime = (req.body.deliveryTime ?? existing.deliveryTime ?? "").toString().trim();
+      const manufacturingTime = (req.body.manufacturingTime ?? existing.manufacturingTime ?? "").toString().trim();
+      const guaranteeMonthsRaw = Number(req.body.guaranteeMonths ?? existing.guaranteeMonths ?? 0);
+      const compliancePercentageRaw = Number(req.body.compliancePercentage ?? existing.compliancePercentage ?? 0);
+      const deliveryPlace = (req.body.deliveryPlace || existing.deliveryPlace || "").toString().trim();
+      const contactPerson = (req.body.contactPerson || existing.contactPerson || "").toString().trim();
+      const providerId = Number(req.body.providerId ?? existing.providerId);
+      const goodsOrigin = (req.body.goodsOrigin ?? existing.goodsOrigin ?? "").toString().trim();
+      const providerNationality = (req.body.providerNationality ?? existing.providerNationality ?? "").toString().trim();
+      const complianceWarranty = Number(req.body.complianceWarranty ?? existing.complianceWarranty) || 0;
+      const experienceYears = Number(req.body.experienceYears ?? existing.experienceYears) || 0;
+      const specialtyYears = Number(req.body.specialtyYears ?? existing.specialtyYears) || 0;
+      const similarContracts = Number(req.body.similarContracts ?? existing.similarContracts) || 0;
+      const bankName = (req.body.bankName ?? existing.bankName ?? "").toString().trim();
+      const bankAccount = (req.body.bankAccount ?? existing.bankAccount ?? "").toString().trim();
+      const bankBeneficiary = (req.body.bankBeneficiary ?? existing.bankBeneficiary ?? "").toString().trim();
+      const empresaId = Number(req.body.empresaId ?? existing.empresaId ?? existing.providerId);
+      const templateName = (req.body.templateName || existing.templateName || "azal_official").toString().trim();
+      const companyOrigin = (req.body.companyOrigin || existing.companyOrigin || "AZAL").toString().trim();
+      const proposalType = (req.body.proposalType || existing.proposalType || "bienes").toString().trim();
+
+      // ─── Campos AMS extendidos (PATCH) ───────────────────────────────────
+      const attnDia = (req.body.attnDia ?? existing.attnDia ?? "").toString().trim();
+      const attnMes = (req.body.attnMes ?? existing.attnMes ?? "").toString().trim();
+      const attnAnio = (req.body.attnAnio ?? existing.attnAnio ?? "").toString().trim();
+      const attnLugar = (req.body.attnLugar ?? existing.attnLugar ?? "").toString().trim();
+      const attnGrado = (req.body.attnGrado ?? existing.attnGrado ?? "").toString().trim();
+      const attnArea = (req.body.attnArea ?? existing.attnArea ?? "").toString().trim();
+      const attnUbicacion = (req.body.attnUbicacion ?? existing.attnUbicacion ?? "").toString().trim();
+      const attnDireccion = (req.body.attnDireccion ?? existing.attnDireccion ?? "").toString().trim();
+      const attnCargo = (req.body.attnCargo ?? existing.attnCargo ?? "").toString().trim();
+      const attnContacto = (req.body.attnContacto ?? existing.attnContacto ?? "").toString().trim();
+      const paymentTerms = (req.body.paymentTerms ?? existing.paymentTerms ?? "").toString().trim();
+      const hasManufacturingTime = req.body.hasManufacturingTime !== undefined
+        ? (req.body.hasManufacturingTime === true || req.body.hasManufacturingTime === "true")
+        : (existing.hasManufacturingTime ?? false);
+      const deliverySingleVal = req.body.deliverySingle !== undefined
+        ? (req.body.deliverySingle !== false && req.body.deliverySingle !== "false")
+        : (existing.deliverySingle ?? true);
+      const deliveryLocationsJson = Array.isArray(req.body.deliveryLocations)
+        ? JSON.stringify(req.body.deliveryLocations)
+        : (existing.deliveryLocationsJson ?? "[]");
+      const qualityGuaranteesJson = Array.isArray(req.body.qualityGuarantees)
+        ? JSON.stringify(req.body.qualityGuarantees)
+        : (existing.qualityGuaranteesJson ?? "[]");
+      const selectedSocialObjectsJson = Array.isArray(req.body.selectedSocialObjects)
+        ? JSON.stringify(req.body.selectedSocialObjects)
+        : (existing.selectedSocialObjectsJson ?? "[]");
+
+      const lineItemsRaw = Array.isArray(req.body.lineItems) ? req.body.lineItems : [];
+
+      if (!destinationCompany || !requisitionNumber || !projectTitle || !quoteDate || !commercialTerms || !deliveryPlace || !contactPerson || Number.isNaN(providerId)) {
+        return res.status(400).json({ error: "Todos los campos principales de la cotización son requeridos." });
+      }
+
+      const validityDays = Number.isFinite(validityDaysRaw) && validityDaysRaw > 0 ? Math.round(validityDaysRaw) : 120;
+      const paymentDays = Number.isFinite(paymentDaysRaw) && paymentDaysRaw >= 0 ? Math.round(paymentDaysRaw) : 0;
+      const guaranteeMonths = Number.isFinite(guaranteeMonthsRaw) && guaranteeMonthsRaw >= 0 ? Math.round(guaranteeMonthsRaw) : 0;
+      const compliancePercentage = Number.isFinite(compliancePercentageRaw) && compliancePercentageRaw >= 0 ? compliancePercentageRaw : 0;
+
+      await storage.updateQuote(quoteId, {
+        destinationCompany,
+        requisitionNumber,
+        projectTitle,
+        quoteDate,
+        commercialTerms,
+        validityDays,
+        paymentDays,
+        deliveryTime,
+        manufacturingTime,
+        guaranteeMonths,
+        compliancePercentage: compliancePercentage.toFixed(2),
+        deliveryPlace,
+        contactPerson,
+        providerId,
+        goodsOrigin,
+        providerNationality,
+        complianceWarranty,
+        experienceYears,
+        specialtyYears,
+        similarContracts,
+        bankName,
+        bankAccount,
+        bankBeneficiary,
+        empresaId,
+        templateName,
+        companyOrigin,
+        proposalType,
+        attnDia,
+        attnMes,
+        attnAnio,
+        attnLugar,
+        attnGrado,
+        attnArea,
+        attnUbicacion,
+        attnDireccion,
+        attnCargo,
+        attnContacto,
+        paymentTerms,
+        hasManufacturingTime,
+        deliverySingle: deliverySingleVal,
+        deliveryLocationsJson,
+        qualityGuaranteesJson,
+        selectedSocialObjectsJson,
+      });
+
+      let resultItems: any[] = [];
+      let totalCents = 0;
+
+      if (lineItemsRaw.length > 0) {
+        const validation = validateQuoteItems(lineItemsRaw);
+        if (validation.errors.length > 0) {
+          return res.status(400).json({ error: validation.errors.join("; ") });
+        }
+        totalCents = validation.totalCents;
+
+        await storage.deleteQuoteItems(quoteId);
+
+        for (let i = 0; i < validation.normalizedItems.length; i++) {
+          const item = validation.normalizedItems[i];
+          const rawItem = lineItemsRaw[i];
+          const created = await storage.createQuoteItem({
+            quoteId,
+            description: item.description,
+            quantity: item.quantity,
+            unit: item.unit,
+            unitMeasure: item.unitMeasure,
+            techRequirements: item.techRequirements,
+            versionReference: item.versionReference,
+            reqDate: (rawItem.reqDate || "").toString().trim(),
+            unitPrice: item.unitPriceCents,
+            amount: item.amountCents,
+            supplier: item.supplier,
+            purchaseCost: item.purchaseCost ? String(item.purchaseCost) : "0",
+            profitMargin: item.profitMargin ? String(item.profitMargin) : "0",
+            profitFactor: item.profitFactor ? String(item.profitFactor) : "1",
+            noPartida: (rawItem.noPartida || "").toString().trim(),
+          });
+          resultItems.push(convertQuoteItemFromDb(created));
+        }
+      } else {
+        const rawItems = await storage.getQuoteItems(quoteId);
+        resultItems = convertQuoteItemsFromDb(rawItems);
+        totalCents = rawItems.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+      }
+
+      const total = fromCents(totalCents);
+      const updatedQuote = await storage.getQuoteById(quoteId);
+
+      await storage.createAuditLog({
+        correo: req.user.correo || req.user.email || null,
+        action: "Actualizar cotización",
+        details: `Se actualizó la cotización ${existing.internalFolio}`,
+      });
+
+      return res.status(200).json({
+        quote: {
+          ...updatedQuote,
+          folio: updatedQuote?.internalFolio,
+          empresaDestino: updatedQuote?.destinationCompany,
+          total,
+          totalText: amountToSpanishText(total),
+        },
+        lineItems: resultItems,
+      });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }

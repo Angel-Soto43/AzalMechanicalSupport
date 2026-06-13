@@ -23,28 +23,36 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Folder, Plus, MoreVertical, FolderOpen, Trash2, Share2, Download } from "lucide-react";
+import { Folder, Plus, MoreVertical, FolderOpen, Trash2, Share2, Download, Eye, Edit2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PromptDialog } from "@/components/prompt-dialog";
 import { ShareDialog } from "@/components/share-dialog";
+import { FileIcon, formatFileSize } from "@/components/file-icon";
+import { FilePreviewDialog } from "@/components/file-preview-dialog";
 
 export default function FoldersListPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  
+
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
   const [renameFolderDialog, setRenameFolderDialog] = useState<{ open: boolean; folder: any }>({ open: false, folder: null });
   const [shareDialog, setShareDialog] = useState<{ open: boolean; folder?: any; file?: any }>({ open: false });
   const [deleteFolderDialog, setDeleteFolderDialog] = useState<{ open: boolean; folder: any }>({ open: false, folder: null });
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Obtener carpetas locales y de Microsoft
+  // Estado para archivos raíz
+  const [previewFile, setPreviewFile] = useState<any | null>(null);
+  const [renameFileDialog, setRenameFileDialog] = useState<{ open: boolean; file: any }>({ open: false, file: null });
+  const [deleteFileDialog, setDeleteFileDialog] = useState<{ open: boolean; file: any }>({ open: false, file: null });
+  const [deleteFileLoading, setDeleteFileLoading] = useState(false);
+
   type MicrosoftRootContent = { files: any[] };
 
   const { data: localFolders = [], isLoading: localLoading } = useQuery<any[]>({ queryKey: ["/api/folders"] });
@@ -67,14 +75,12 @@ export default function FoldersListPage() {
         body: JSON.stringify({ name }),
       });
       if (!res.ok) throw new Error("Error en el servidor");
-      
       await queryClient.invalidateQueries({ queryKey: ["/api/microsoft-folders"] });
       toast({ title: "Carpeta creada", description: `"${name}" ya está en tu OneDrive.` });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
-
 
   const handleDeleteFolderConfirm = async () => {
     const folder = deleteFolderDialog.folder;
@@ -91,6 +97,23 @@ export default function FoldersListPage() {
     } finally {
       setDeleteLoading(false);
       setDeleteFolderDialog({ open: false, folder: null });
+    }
+  };
+
+  const handleDeleteFileConfirm = async () => {
+    const file = deleteFileDialog.file;
+    if (!file) return;
+    setDeleteFileLoading(true);
+    try {
+      const res = await fetch(`/api/files/${file.id}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw new Error("No se pudo eliminar el archivo");
+      await queryClient.invalidateQueries({ queryKey: ["/api/microsoft-folders/root/content"] });
+      toast({ title: "Eliminado", description: `"${file.originalName}" fue eliminado.` });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setDeleteFileLoading(false);
+      setDeleteFileDialog({ open: false, file: null });
     }
   };
 
@@ -112,6 +135,7 @@ export default function FoldersListPage() {
         </Button>
       </div>
 
+      {/* Tabla de carpetas raíz */}
       <Card className="border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden rounded-xl">
         <CardHeader className="bg-slate-50/80 dark:bg-slate-800/40 border-b py-4 px-6">
           <CardTitle className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">Directorios Raíz</CardTitle>
@@ -129,16 +153,16 @@ export default function FoldersListPage() {
             </TableHeader>
             <TableBody>
               {folders.map((folder: any) => (
-                <TableRow 
-                  key={folder.id} 
-                  className="group cursor-pointer hover:bg-blue-50/40" 
+                <TableRow
+                  key={folder.id}
+                  className="group cursor-pointer hover:bg-blue-50/40"
                   onClick={() => setLocation(`/folders/${folder.id}`)}
                 >
                   <TableCell className="py-5 pl-6"><Folder className="h-6 w-6 text-amber-400 fill-amber-400/20" /></TableCell>
                   <TableCell className="font-bold text-slate-700">{folder.name}</TableCell>
                   <TableCell className="text-center">
                     <Badge variant={folder.source === 'microsoft' ? 'secondary' : 'default'}>
-                      {folder.source === 'microsoft' ? 'OneDrive' : 'Local'}
+                      {folder.source === 'microsoft' ? 'OneDrive' : 'CoreLinkSystems'}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center text-sm text-slate-500">
@@ -154,11 +178,12 @@ export default function FoldersListPage() {
                           <FolderOpen className="mr-3 h-4 w-4" /> Abrir
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setRenameFolderDialog({ open: true, folder })}>
-                          <Plus className="mr-3 h-4 w-4" /> Renombrar
+                          <Edit2 className="mr-3 h-4 w-4" /> Renombrar
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setShareDialog({ open: true, folder })}>
                           <Share2 className="mr-3 h-4 w-4" /> Compartir
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-red-600" onClick={() => setDeleteFolderDialog({ open: true, folder })}>
                           <Trash2 className="mr-3 h-4 w-4" /> Eliminar
                         </DropdownMenuItem>
@@ -172,7 +197,7 @@ export default function FoldersListPage() {
         </CardContent>
       </Card>
 
-      {/* Contenido: archivos raíz */}
+      {/* Tabla de archivos en directorio raíz (OneDrive) */}
       <Card className="mt-4">
         <CardHeader className="border-b">
           <CardTitle>Contenido</CardTitle>
@@ -186,8 +211,7 @@ export default function FoldersListPage() {
                   <TableHead />
                   <TableHead>Nombre</TableHead>
                   <TableHead>ID</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Subido por</TableHead>
+                  <TableHead>Origen</TableHead>
                   <TableHead>Fecha y hora</TableHead>
                   <TableHead className="text-right">Tamaño</TableHead>
                   <TableHead />
@@ -197,22 +221,32 @@ export default function FoldersListPage() {
                 {(microsoftRootContent?.files || []).map((file: any) => (
                   <TableRow key={file.id} className="cursor-pointer hover:bg-muted/50">
                     <TableCell>
-                      <Folder className="h-5 w-5 text-amber-400" />
+                      <FileIcon mimeType={file.mimeType ?? ""} filename={file.originalName} className="h-5 w-5" />
                     </TableCell>
                     <TableCell className="font-medium text-sm">{file.originalName}</TableCell>
                     <TableCell>
                       <code className="text-xs bg-muted px-2 py-1 rounded">{file.contractId}</code>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{file.supplier ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{file.uploaderName ?? file.correo ?? "—"}</TableCell>
-                    <TableCell>{new Date(file.uploadedAt).toLocaleString()}</TableCell>
-                    <TableCell className="text-right font-mono text-sm">{file.size ? `${(file.size/1024).toFixed(1)} KB` : '—'}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">OneDrive</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {file.uploadedAt
+                        ? format(new Date(file.uploadedAt), "dd/MM/yyyy HH:mm", { locale: es })
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm">
+                      {file.size ? formatFileSize(file.size) : "—"}
+                    </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setPreviewFile(file)}>
+                            <Eye className="mr-2 h-4 w-4" /> Visualizar
+                          </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <a href={`/api/files/${file.id}/download`} download target="_self" rel="noopener noreferrer">
                               <Download className="mr-2 h-4 w-4" /> Descargar
@@ -220,6 +254,13 @@ export default function FoldersListPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setShareDialog({ open: true, file })}>
                             <Share2 className="mr-2 h-4 w-4" /> Compartir
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setRenameFileDialog({ open: true, file })}>
+                            <Edit2 className="mr-2 h-4 w-4" /> Renombrar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-600" onClick={() => setDeleteFileDialog({ open: true, file })}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -232,6 +273,7 @@ export default function FoldersListPage() {
         </CardContent>
       </Card>
 
+      {/* Dialogs de carpetas */}
       <PromptDialog open={newFolderDialogOpen} onOpenChange={setNewFolderDialogOpen} title="Nombre de la carpeta" onSubmit={createFolderWithName} />
       <PromptDialog
         open={renameFolderDialog.open}
@@ -259,13 +301,6 @@ export default function FoldersListPage() {
           setRenameFolderDialog({ open: false, folder: null });
         }}
       />
-      <ShareDialog
-        open={shareDialog.open}
-        onOpenChange={(open) => !open && setShareDialog({ open: false })}
-        title={shareDialog.folder?.name ?? ""}
-        isFolder={!!shareDialog.folder}
-        itemId={shareDialog.folder?.id}
-      />
       <ConfirmDialog
         open={deleteFolderDialog.open}
         onOpenChange={(open) => setDeleteFolderDialog({ open, folder: open ? deleteFolderDialog.folder : null })}
@@ -281,6 +316,59 @@ export default function FoldersListPage() {
         onConfirm={handleDeleteFolderConfirm}
         loading={deleteLoading}
       />
+
+      {/* Dialogs de archivos raíz */}
+      <PromptDialog
+        open={renameFileDialog.open}
+        onOpenChange={(open) => setRenameFileDialog({ open, file: open ? renameFileDialog.file : null })}
+        title="Renombrar archivo"
+        description="Introduce el nuevo nombre para el archivo"
+        placeholder={renameFileDialog.file?.originalName ?? "Nuevo nombre"}
+        submitLabel="Renombrar"
+        onSubmit={async (name: string) => {
+          const file = renameFileDialog.file;
+          if (!file) return;
+          const res = await fetch(`/api/files/${file.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ name: name.trim() }),
+          });
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => null);
+            throw new Error(errorData?.error || "Error al renombrar archivo");
+          }
+          await queryClient.invalidateQueries({ queryKey: ["/api/microsoft-folders/root/content"] });
+          toast({ title: "Archivo renombrado", description: `"${file.originalName}" se renombró a "${name.trim()}"` });
+          setRenameFileDialog({ open: false, file: null });
+        }}
+      />
+      <ConfirmDialog
+        open={deleteFileDialog.open}
+        onOpenChange={(open) => setDeleteFileDialog({ open, file: open ? deleteFileDialog.file : null })}
+        title="Eliminar archivo"
+        description={
+          deleteFileDialog.file
+            ? `¿Eliminar el archivo "${deleteFileDialog.file.originalName}"? Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        variant="destructive"
+        onConfirm={handleDeleteFileConfirm}
+        loading={deleteFileLoading}
+      />
+
+      <ShareDialog
+        open={shareDialog.open}
+        onOpenChange={(open) => !open && setShareDialog({ open: false })}
+        title={shareDialog.folder?.name ?? shareDialog.file?.originalName ?? ""}
+        isFolder={!!shareDialog.folder}
+        isFile={!!shareDialog.file}
+        itemId={shareDialog.folder?.id ?? shareDialog.file?.id}
+      />
+
+      <FilePreviewDialog file={previewFile} onClose={() => setPreviewFile(null)} />
     </div>
   );
 }

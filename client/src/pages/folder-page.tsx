@@ -20,13 +20,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { queryClient } from "@/lib/queryClient";
+import { FilePreviewDialog } from "@/components/file-preview-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -255,7 +250,7 @@ export default function FolderPage() {
 
   const handleDeleteFileConfirm = async () => {
     const file = deleteFileDialog.file;
-    if (!file || !user?.isAdmin) return;
+    if (!file) return;
     try {
       const res = await fetch(`/api/files/${file.id}`, {
         method: "DELETE",
@@ -281,7 +276,7 @@ export default function FolderPage() {
 
   const handleDeleteFolderConfirm = async () => {
   const folder = deleteFolderDialog.folder;
-  if (!folder || !user?.isAdmin) return;
+  if (!folder) return;
   try {
     // 🚀 El backend ahora ya sabe borrar en OneDrive si recibe un ID de texto
     const res = await fetch(`/api/folders/${folder.id}`, {
@@ -319,7 +314,7 @@ export default function FolderPage() {
 
   const handleRenameFolderConfirm = async (newName: string) => {
     const folder = renameFolderDialog.folder;
-    if (!folder || !user?.isAdmin) return;
+    if (!folder) return;
     setRenameLoading(true);
     try {
       const res = await fetch(`/api/folders/${folder.id}`, {
@@ -350,7 +345,7 @@ export default function FolderPage() {
 
   const handleRenameFileConfirm = async (newName: string) => {
     const file = renameFileDialog.file;
-    if (!file || !user?.isAdmin) return;
+    if (!file) return;
     setRenameLoading(true);
     try {
       const res = await fetch(`/api/files/${file.id}`, {
@@ -563,7 +558,7 @@ export default function FolderPage() {
                 <TableRow>
                   <TableHead />
                   <TableHead>Nombre</TableHead>
-                  <TableHead>Creado por</TableHead>
+                  <TableHead className="text-center">Origen</TableHead>
                   <TableHead>Fecha y hora</TableHead>
                   <TableHead className="text-right">Tamaño total</TableHead>
                   <TableHead className="w-[60px]" />
@@ -581,8 +576,10 @@ export default function FolderPage() {
                         <Folder className="h-5 w-5 text-yellow-500" />
                       </TableCell>
                       <TableCell className="font-medium">{folder.name}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {folder.creatorName ?? (folder.userId === user?.id ? "Tú" : "Usuario")}
+                      <TableCell className="text-center">
+                        <Badge variant={isMicrosoftId ? "secondary" : "default"}>
+                          {isMicrosoftId ? "OneDrive" : "CoreLinkSystems"}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-sm">
                         {format(new Date(folder.createdAt), "dd/MM/yyyy HH:mm", { locale: es })}
@@ -645,8 +642,7 @@ export default function FolderPage() {
                   <TableHead />
                   <TableHead>Nombre</TableHead>
                   <TableHead>ID</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Subido por</TableHead>
+                  <TableHead className="text-center">Origen</TableHead>
                   <TableHead>Fecha y hora</TableHead>
                   <TableHead className="text-right">Tamaño</TableHead>
                   <TableHead />
@@ -661,7 +657,7 @@ export default function FolderPage() {
                     onClick={() => setPreviewFile(file)}
                   >
                     <TableCell>
-                      <FileIcon mimeType={file.mimeType} className="h-5 w-5" />
+                      <FileIcon mimeType={file.mimeType} filename={file.originalName} className="h-5 w-5" />
                     </TableCell>
                     <TableCell className="font-medium text-sm">
                       {file.originalName}
@@ -676,11 +672,10 @@ export default function FolderPage() {
                         {file.contractId}
                       </code>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {file.supplier ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {file.uploaderName ?? "—"}
+                    <TableCell className="text-center">
+                      <Badge variant={isMicrosoftId ? "secondary" : "default"}>
+                        {isMicrosoftId ? "OneDrive" : "CoreLinkSystems"}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {format(
@@ -715,12 +710,10 @@ export default function FolderPage() {
                             <Share2 className="mr-2 h-4 w-4" />
                             Compartir
                           </DropdownMenuItem>
-                          {user?.isAdmin && (
-                            <DropdownMenuItem onClick={() => setRenameFileDialog({ open: true, file })}>
-                              <Edit2 className="mr-2 h-4 w-4" />
-                              Renombrar archivo
-                            </DropdownMenuItem>
-                          )}
+                          <DropdownMenuItem onClick={() => setRenameFileDialog({ open: true, file })}>
+                            <Edit2 className="mr-2 h-4 w-4" />
+                            Renombrar archivo
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => {
@@ -732,15 +725,13 @@ export default function FolderPage() {
                             <RefreshCw className="mr-2 h-4 w-4" />
                             Reemplazar archivo
                           </DropdownMenuItem>
-                          {user?.isAdmin && (
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => setDeleteFileDialog({ open: true, file })}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Eliminar archivo
-                            </DropdownMenuItem>
-                          )}
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => setDeleteFileDialog({ open: true, file })}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Eliminar archivo
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -939,106 +930,7 @@ export default function FolderPage() {
         onSubmit={handleRenameFileConfirm}
       />
 
-      {/* File preview dialog */}
-      <Dialog open={!!previewFile} onOpenChange={(open) => !open && setPreviewFile(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="truncate pr-8">
-              {previewFile?.originalName}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-auto bg-slate-50 dark:bg-slate-900 rounded-b-lg">
-            {previewFile && (() => {
-              const mime = previewFile.mimeType || "";
-              const previewUrl = `/api/files/${previewFile.id}/preview`;
-              const downloadUrl = `/api/files/${previewFile.id}/download`;
-              const isPdf = mime.includes("pdf");
-              const isImage = mime.startsWith("image/");
-              const isOffice =
-                mime.includes("word") || mime.includes("document") ||
-                mime.includes("excel") || mime.includes("spreadsheet") ||
-                mime.includes("powerpoint") || mime.includes("presentation");
-
-              if (isPdf) {
-                return (
-                  <div className="flex flex-col h-full">
-                    <div className="p-2 bg-muted flex justify-end">
-                      <Button asChild variant="outline" size="sm">
-                        <a href={downloadUrl} download target="_self" rel="noopener noreferrer">
-                          <Download className="mr-2 h-4 w-4" />
-                          Descargar PDF
-                        </a>
-                      </Button>
-                    </div>
-                    <iframe src={previewUrl} title={previewFile.originalName} className="w-full flex-1 min-h-[70vh] border-0" />
-                  </div>
-                );
-              }
-              if (isImage) {
-                return (
-                  <div className="flex flex-col items-center justify-center p-6 h-full space-y-4">
-                    <img src={previewUrl} alt={previewFile.originalName} className="max-w-full max-h-[65vh] object-contain rounded-lg shadow-sm" />
-                    <Button asChild variant="outline" size="sm">
-                      <a href={downloadUrl} download target="_self" rel="noopener noreferrer">
-                        <Download className="mr-2 h-4 w-4" />
-                        Descargar Imagen
-                      </a>
-                    </Button>
-                  </div>
-                );
-              }
-              if (isOffice) {
-                // 🚀 Llamamos a la nueva ruta que nos devuelve el visor de Microsoft
-                const embedUrl = `/api/files/${previewFile.id}/embed`;
-                
-                return (
-                  <div className="flex flex-col h-full">
-                    {/* Barra de herramientas superior */}
-                    <div className="p-2 bg-muted flex items-center justify-between border-b">
-                      <span className="text-sm font-semibold text-muted-foreground ml-2">
-                        Vista previa de Office
-                      </span>
-                      <div className="flex gap-2">
-                        <Button asChild variant="default" size="sm" className="bg-blue-600 hover:bg-blue-700 shadow-sm">
-                          <a href={`/api/files/${previewFile.id}/edit-office`} target="_blank" rel="noopener noreferrer">
-                            <Eye className="mr-2 h-4 w-4" />
-                            Editar en Office Online
-                          </a>
-                        </Button>
-                        <Button asChild variant="outline" size="sm">
-                          <a href={downloadUrl} download target="_self" rel="noopener noreferrer">
-                            <Download className="mr-2 h-4 w-4" />
-                            Descargar
-                          </a>
-                        </Button>
-                      </div>
-                    </div>
-                    {/* 🚀 El iframe que dibuja el documento */}
-                    <iframe 
-                      src={embedUrl} 
-                      title={previewFile.originalName} 
-                      className="w-full flex-1 min-h-[70vh] border-0 bg-white" 
-                    />
-                  </div>
-                );
-              }
-              // Caso genérico (ZIPs, etc.)
-              return (
-                <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
-                  <FileIcon mimeType={mime} className="h-16 w-16 text-muted-foreground" />
-                  <p className="text-muted-foreground font-medium">Este formato de archivo no admite vista previa web.</p>
-                  <Button asChild variant="default">
-                    <a href={downloadUrl} download target="_self" rel="noopener noreferrer">
-                      <Download className="mr-2 h-4 w-4" />
-                      Descargar archivo
-                    </a>
-                  </Button>
-                </div>
-              );
-            })()}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <FilePreviewDialog file={previewFile} onClose={() => setPreviewFile(null)} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ export type QuoteFormType = "bienes" | "servicios";
 
 export interface LineItem {
   id: number;
+  noPartida: string;
   description: string;
   techRequirements: string;
   versionReference: string;
@@ -18,6 +19,7 @@ export interface LineItem {
 
 export const defaultLineItem: LineItem = {
   id: 1,
+  noPartida: "",
   description: "",
   techRequirements: "",
   versionReference: "",

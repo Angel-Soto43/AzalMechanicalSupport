@@ -113,8 +113,30 @@ export const quotes = pgTable("quotes", {
   empresaId: integer("empresa_id").references(() => providers.id), // Llave foránea real hacia empresas
   templateName: varchar("template_name", { length: 100 }).default("azal_official"), // Selección de plantilla
 
-  companyOrigin: text("company_origin").notNull().default("AZAL"), // D-03: Empresa de origen
-  proposalType: text("proposal_type").notNull().default("bienes"), // D-04: 'bienes' o 'servicios
+  companyOrigin: text("company_origin").notNull().default("AZAL"),
+  proposalType: text("proposal_type").notNull().default("bienes"),
+
+  // ─── Sección 1 "Atención" ────────────────────────────────────────────────
+  attnDia: text("attn_dia").notNull().default(""),
+  attnMes: text("attn_mes").notNull().default(""),
+  attnAnio: text("attn_anio").notNull().default(""),
+  attnLugar: text("attn_lugar").notNull().default(""),
+  attnGrado: text("attn_grado").notNull().default(""),
+  attnArea: text("attn_area").notNull().default(""),
+  attnUbicacion: text("attn_ubicacion").notNull().default(""),
+  attnDireccion: text("attn_direccion").notNull().default(""),
+  attnCargo: text("attn_cargo").notNull().default(""),
+  attnContacto: text("attn_contacto").notNull().default(""),
+
+  // ─── Sección 2 "Condiciones comerciales" ─────────────────────────────────
+  paymentTerms: text("payment_terms").notNull().default(""),
+  hasManufacturingTime: boolean("has_manufacturing_time").notNull().default(false),
+  deliverySingle: boolean("delivery_single").notNull().default(true),
+  deliveryLocationsJson: text("delivery_locations_json").notNull().default("[]"),
+
+  // ─── Sección 3 "Garantías y objetos sociales" ────────────────────────────
+  qualityGuaranteesJson: text("quality_guarantees_json").notNull().default("[]"),
+  selectedSocialObjectsJson: text("selected_social_objects_json").notNull().default("[]"),
 });
 
 export const quoteItems = pgTable("quote_items", {
@@ -131,11 +153,12 @@ export const quoteItems = pgTable("quote_items", {
   amount: integer("amount").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   
-  // 🚀 DATOS INTERNOS DE GESTIÓN (OCULTOS EN EL PDF FINAL)
+  // DATOS INTERNOS DE GESTIÓN (OCULTOS EN EL PDF FINAL)
   supplier: text("supplier").default(""),
   purchaseCost: numeric("purchase_cost", { precision: 15, scale: 2 }).default("0"),
   profitMargin: numeric("profit_margin", { precision: 10, scale: 2 }).default("0"),
   profitFactor: numeric("profit_factor", { precision: 10, scale: 2 }).default("1"),
+  noPartida: text("no_partida").notNull().default(""),
 });
 
 export const users = pgTable("users", {

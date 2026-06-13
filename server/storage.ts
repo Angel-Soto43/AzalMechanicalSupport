@@ -29,7 +29,9 @@ export interface IStorage {
   getQuotes(): Promise<Quote[]>;
   createQuote(quote: InsertQuote): Promise<Quote>;
   getQuoteById(id: number): Promise<Quote | undefined>;
-  deleteQuote(id: number): Promise<void>; // 🚀 INTERFAZ DECLARADA CON ÉXITO
+  updateQuote(id: number, data: Partial<InsertQuote>): Promise<Quote | undefined>;
+  deleteQuote(id: number): Promise<void>;
+  deleteQuoteItems(quoteId: number): Promise<void>;
   getQuoteItems(quoteId: number): Promise<QuoteItem[]>;
   createQuoteItem(item: InsertQuoteItem): Promise<QuoteItem>;
   getQuotePriceHistory(materialDescription: string): Promise<Array<QuoteItem & { quoteDate: string; internalFolio: string }>>;
@@ -279,10 +281,18 @@ export class DatabaseStorage implements IStorage {
     return quote;
   }
 
-  // 🚀 IMPLEMENTACIÓN NATIVA DE BORRADO DE COTIZACIÓN ASOCIADA
+  async updateQuote(id: number, data: Partial<InsertQuote>): Promise<Quote | undefined> {
+    const [updated] = await db.update(quotes).set(data).where(eq(quotes.id, id)).returning();
+    return updated;
+  }
+
   async deleteQuote(id: number): Promise<void> {
     await db.delete(quoteItems).where(eq(quoteItems.quoteId, id));
     await db.delete(quotes).where(eq(quotes.id, id));
+  }
+
+  async deleteQuoteItems(quoteId: number): Promise<void> {
+    await db.delete(quoteItems).where(eq(quoteItems.quoteId, quoteId));
   }
 
   async getQuoteItems(quoteId: number): Promise<QuoteItem[]> {
