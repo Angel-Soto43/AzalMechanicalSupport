@@ -83,8 +83,6 @@ export default function FolderPage() {
   const [renameLoading, setRenameLoading] = useState(false);
 
   /* upload */
-  const [contractId, setContractId] = useState("");
-  const [client, setClient] = useState("");
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -152,24 +150,13 @@ export default function FolderPage() {
 
   const uploadSelectedFiles = async () => {
     if (!selectedFiles.length) return;
-    if (!contractId || !client) {
-      toast({
-        title: "Datos requeridos",
-        description: "Completa ID de contrato y cliente antes de subir",
-        variant: "destructive",
-      });
-      return;
-    }
 
     setUploading(true);
     setUploadSuccess(false);
     try {
       for (const file of selectedFiles) {
         const form = new FormData();
-        // ⚠️ CLAVE: Los campos de texto DEBEN ir ANTES del archivo para que el servidor los lea
-        form.append("contractId", contractId);
-        form.append("supplier", client);
-        form.append("folderId", String(rawFolderId)); 
+        form.append("folderId", String(rawFolderId));
         form.append("parentId", String(rawFolderId)); // Lo mandamos doble por seguridad
         
         // El archivo siempre se empaqueta al final
@@ -195,8 +182,6 @@ export default function FolderPage() {
         }
       }
       setSelectedFiles([]);
-      setContractId("");
-      setClient("");
       loadFolder();
       queryClient.invalidateQueries({ queryKey: ["/api/files/recent"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
@@ -521,26 +506,9 @@ export default function FolderPage() {
             className="w-64 border border-gray-300"
           />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button className="bg-blue-600 text-white hover:bg-blue-700">
-                <Plus className="mr-2 h-4 w-4" />
-                Nuevo
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {user?.isAdmin && (
-                <DropdownMenuItem onClick={() => setNewFolderDialogOpen(true)}>
-                  <Folder className="mr-2 h-4 w-4" />
-                  Nueva carpeta
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                <Upload className="mr-2 h-4 w-4" />
-                Subir archivo
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button onClick={() => setNewFolderDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700 shadow-lg text-white">
+            <Plus className="mr-2 h-4 w-4" /> Nueva carpeta
+          </Button>
 
         </div>
       </div>
@@ -641,7 +609,6 @@ export default function FolderPage() {
                 <TableRow>
                   <TableHead />
                   <TableHead>Nombre</TableHead>
-                  <TableHead>ID</TableHead>
                   <TableHead className="text-center">Origen</TableHead>
                   <TableHead>Fecha y hora</TableHead>
                   <TableHead className="text-right">Tamaño</TableHead>
@@ -666,11 +633,6 @@ export default function FolderPage() {
                           v{file.version}
                         </Badge>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <code className="text-xs bg-muted px-2 py-1 rounded">
-                        {file.contractId}
-                      </code>
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant={isMicrosoftId ? "secondary" : "default"}>
@@ -754,17 +716,6 @@ export default function FolderPage() {
           </CardHeader>
 
           <CardContent className="space-y-4">
-            <Input
-              placeholder="ID de contrato (Ej: CONT-2024-001)"
-              value={contractId}
-              onChange={(e) => setContractId(e.target.value)}
-            />
-            <Input
-              placeholder="Cliente (Ej: Empresa XYZ S.A.)"
-              value={client}
-              onChange={(e) => setClient(e.target.value)}
-            />
-
             <div
               onClick={() => fileInputRef.current?.click()}
               onDrop={(e) => {

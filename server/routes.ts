@@ -370,26 +370,21 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
             }
 
             if (child.file) {
-              let downloadUrl = child['@microsoft.graph.downloadUrl'];
-              if (!downloadUrl) {
-                downloadUrl = await getMicrosoftItemDownloadUrl(
-                  req.user.accessToken,
-                  req.user.refreshToken,
-                  req.user.id,
-                  child.id
-                );
-              }
-
-              const fileResponse = await fetch(downloadUrl);
+              const fileResponse = await getMicrosoftItemContentStream(
+                req.user.accessToken,
+                req.user.refreshToken,
+                req.user.id,
+                child.id
+              );
               if (!fileResponse.ok) {
                 const errorText = await fileResponse.text();
-                throw new Error(`Error al descargar archivo de Graph: ${errorText}`);
+                throw new Error(`Error al descargar ${child.name} (${fileResponse.status}): ${errorText}`);
               }
               if (!fileResponse.body) {
-                throw new Error("No se recibió stream del archivo de Graph");
+                throw new Error(`Sin contenido para ${child.name}`);
               }
-
-              archive.append(Readable.fromWeb(fileResponse.body as any), { name: `${currentPath}${child.name}` });
+              const buffer = Buffer.from(await fileResponse.arrayBuffer());
+              archive.append(buffer, { name: `${currentPath}${child.name}` });
             }
           }
         };
@@ -1764,19 +1759,15 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       archive.pipe(res);
 
       for (const file of filesToBackup) {
-        let downloadUrl = file['@microsoft.graph.downloadUrl'];
-        if (!downloadUrl) {
-          downloadUrl = await getMicrosoftItemDownloadUrl(
-            user.accessToken,
-            user.refreshToken,
-            user.id,
-            file.id
-          );
-        }
-
-        const fileRes = await fetch(downloadUrl);
+        const fileRes = await getMicrosoftItemContentStream(
+          user.accessToken,
+          user.refreshToken,
+          user.id,
+          file.id
+        );
         if (fileRes.ok && fileRes.body) {
-          archive.append(Readable.fromWeb(fileRes.body as any), { name: file.name });
+          const buffer = Buffer.from(await fileRes.arrayBuffer());
+          archive.append(buffer, { name: file.name });
         }
       }
 

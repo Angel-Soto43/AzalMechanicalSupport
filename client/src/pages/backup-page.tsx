@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Database, Download, Calendar, Loader2 } from "lucide-react";
+import { Database, Download, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 
@@ -32,8 +32,6 @@ export default function BackupPage() {
   const [downloading, setDownloading] = useState(false);
 
   const handleDownload = async () => {
-    if (!user?.isAdmin) return;
-
     let url = `/api/backup?range=${encodeURIComponent(range)}`;
     if (range === "custom") {
       if (!customStart || !customEnd) {
@@ -51,7 +49,7 @@ export default function BackupPage() {
     
     try {
       // 1. Esperamos REALMENTE a que el servidor termine de armar el ZIP
-      const response = await fetch(url);
+      const response = await fetch(url, { credentials: "include" });
 
       if (!response.ok) {
         throw new Error("No se encontraron archivos en este rango o hubo un error.");
@@ -85,14 +83,6 @@ export default function BackupPage() {
       <div className="p-6 space-y-4">
         <Skeleton className="h-6 w-64" />
         <Skeleton className="h-10 w-full" />
-      </div>
-    );
-  }
-
-  if (!user.isAdmin) {
-    return (
-      <div className="p-6">
-        <p className="text-destructive">No tienes permisos para acceder a esta sección.</p>
       </div>
     );
   }

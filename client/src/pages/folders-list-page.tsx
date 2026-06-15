@@ -210,7 +210,6 @@ export default function FoldersListPage() {
                 <TableRow>
                   <TableHead />
                   <TableHead>Nombre</TableHead>
-                  <TableHead>ID</TableHead>
                   <TableHead>Origen</TableHead>
                   <TableHead>Fecha y hora</TableHead>
                   <TableHead className="text-right">Tamaño</TableHead>
@@ -224,9 +223,6 @@ export default function FoldersListPage() {
                       <FileIcon mimeType={file.mimeType ?? ""} filename={file.originalName} className="h-5 w-5" />
                     </TableCell>
                     <TableCell className="font-medium text-sm">{file.originalName}</TableCell>
-                    <TableCell>
-                      <code className="text-xs bg-muted px-2 py-1 rounded">{file.contractId}</code>
-                    </TableCell>
                     <TableCell>
                       <Badge variant="secondary">OneDrive</Badge>
                     </TableCell>

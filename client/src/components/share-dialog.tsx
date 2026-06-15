@@ -60,8 +60,24 @@ export function ShareDialog({
     if (!successful) throw new Error("No se pudo copiar el enlace al portapapeles");
   };
 
-  /* ─── WhatsApp: envía el archivo/ZIP real ──────────────────────────────── */
+  /* ─── WhatsApp: flujo diferenciado móvil / escritorio ─────────────────── */
   const handleShareViaWhatsApp = async () => {
+    // Detección de dispositivo móvil por user agent.
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
+    // Abre WhatsApp Web SIEMPRE dentro del gesto del usuario, antes de cualquier await,
+    // para evitar que el navegador bloquee el popup (aplica a todos los dispositivos).
+    const whatsappWindow = window.open("https://web.whatsapp.com/", "_blank");
+
+    // En escritorio: copia el mensaje al portapapeles también antes del fetch.
+    if (!isMobile) {
+      try {
+        await writeTextToClipboard("Te comparto el archivo solicitado.");
+      } catch {
+        // No es crítico si el portapapeles no está disponible
+      }
+    }
+
     try {
       setLoadingAction("whatsapp");
 
@@ -78,8 +94,6 @@ export function ShareDialog({
       const blob = await res.blob();
       const fileName = isFolder ? `${title}.zip` : title;
 
-      // Resolve the MIME type from the file extension so canShare() accepts it.
-      // Microsoft's CDN sometimes returns application/octet-stream even for Office/image files.
       const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
       const MIME_BY_EXT: Record<string, string> = {
         pdf:  "application/pdf",
@@ -103,41 +117,56 @@ export function ShareDialog({
         "7z": "application/x-7z-compressed",
       };
       const resolvedType = MIME_BY_EXT[ext] || blob.type || "application/octet-stream";
-
       const shareFile = new File([blob], fileName, { type: resolvedType });
 
-      // Intenta Web Share API (soportada en móvil Chrome/Safari y algunos escritorios)
+      // ── MÓVIL: Web Share API nativa ──────────────────────────────────────
       if (
+        isMobile &&
         typeof navigator.share === "function" &&
-        navigator.canShare &&
-        navigator.canShare({ files: [shareFile] })
+        navigator.canShare?.({ files: [shareFile] })
       ) {
-        await navigator.share({ files: [shareFile] });
-        onOpenChange(false);
-      } else {
-        // Fallback: descarga el archivo al dispositivo y abre WhatsApp para adjuntarlo
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-
-        const text = encodeURIComponent(
-          `Hola, te comparto este ${isFile ? "archivo" : "carpeta"} desde Azal Mechanical Support:\n*${title}*`
-        );
-        window.open(`https://wa.me/?text=${text}`, "_blank");
-
-        toast({
-          title: "Archivo descargado",
-          description:
-            "El archivo se guardó en tu dispositivo. Adjúntalo manualmente en WhatsApp para enviarlo.",
-        });
-        onOpenChange(false);
+        try {
+          await navigator.share({ files: [shareFile] });
+          onOpenChange(false);
+          return;
+        } catch (shareErr: any) {
+          if (shareErr.name === "AbortError") {
+            // Usuario canceló el selector nativo
+            onOpenChange(false);
+            return;
+          }
+          // Otro error en share nativo → cae al fallback de descarga
+        }
       }
+
+      // ── FALLBACK (escritorio siempre / móvil sin Web Share API) ──────────
+      // WhatsApp Web ya está abierto en escritorio. En móvil sin share API
+      // se descarga el archivo y se muestra instrucción al usuario.
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: isMobile
+          ? "Archivo descargado"
+          : isFile
+            ? "WhatsApp abierto"
+            : "Archivo descargado — WhatsApp abierto",
+        description: isMobile
+          ? "El archivo se guardó en tu dispositivo. Adjúntalo manualmente en WhatsApp para enviarlo."
+          : isFile
+            ? "WhatsApp se abrió correctamente y el mensaje fue copiado al portapapeles."
+            : "El archivo ZIP se descargó. Adjúntalo en la pestaña de WhatsApp que se abrió.",
+      });
+      onOpenChange(false);
+
     } catch (error: any) {
+      whatsappWindow?.close();
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setLoadingAction(null);
