@@ -162,7 +162,7 @@ export function generateAzalTemplate(provider: any, quote: any, items: any[]) {
         <li><span class="bold">Domicilio legal:</span> ${provider.legalAddress}</li>
         <li><span class="bold">Teléfono:</span> ${provider.phone}</li>
         <li><span class="bold">RFC:</span> ${provider.rfc}</li>
-        <li><span class="bold">Nombre del representante legal:</span> ${provider.legalRepresentative}</li>
+         <li><span class="bold">Nombre del representante legal:</span> ${provider.legalRepresentative}</li>
         <li><span class="bold">Correo electrónico:</span> ${provider.email}</li>
         <li><span class="bold">Página web:</span> ${provider.website || ''}</li>
       </ul>

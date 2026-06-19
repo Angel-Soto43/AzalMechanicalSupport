@@ -43,16 +43,27 @@ const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
-
 //  FUNCIÓN MAESTRA: INYECCIÓN DE IMÁGENES AL BORDE DE LA HOJA
 async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[]) {
-  // 🚀 AHORA USAMOS EL MANAGER DINÁMICO
-  const html = getTemplateForProvider(provider, {
+  
+  // 🚀 SOLUCIÓN: Desempaquetamos los JSON de la Base de Datos para que la plantilla los lea como Arreglos
+  const safeParse = (val: string | null | undefined): any[] => {
+    try { return JSON.parse(val || "[]"); } catch { return []; }
+  };
+
+  const enrichedQuote = {
     ...quote,
     folio: quote.internalFolio,
     destinationCompany: quote.destinationCompany,
-    totalText: quote.totalText
-  }, lineItems);
+    totalText: quote.totalText,
+    // Si la info viene empaquetada como JSON desde la BD, la convertimos a Arreglo real:
+    qualityGuarantees: quote.qualityGuarantees || safeParse(quote.qualityGuaranteesJson),
+    selectedSocialObjects: quote.selectedSocialObjects || safeParse(quote.selectedSocialObjectsJson),
+    deliveryLocations: quote.deliveryLocations || safeParse(quote.deliveryLocationsJson),
+  };
+
+  // 🚀 AHORA USAMOS EL MANAGER DINÁMICO CON LA DATA YA CORREGIDA
+  const html = getTemplateForProvider(provider, enrichedQuote, lineItems);
 
   // 🚀 VALIDACIÓN DE EMPRESA: Detectamos si es Azal o alguna de las otras
   const companyName = (provider.companyName || "").toUpperCase();
@@ -71,13 +82,6 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
     if (fs.existsSync(footerPath)) {
       footerBase64 = `data:image/png;base64,${fs.readFileSync(footerPath).toString('base64')}`;
     }
-  }
-
-  const dateParts = (quote.quoteDate || "").split('-');
-  let formattedDate = "";
-  if (dateParts.length === 3) {
-    const quoteDateObj = new Date(Number(dateParts[0]), Number(dateParts[1]) - 1, Number(dateParts[2]));
-    formattedDate = quoteDateObj.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
   }
 
   const browser = await puppeteer.launch({
@@ -106,10 +110,6 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
         <style>html, body { margin: 0; padding: 0; }</style>
         <div style="position: absolute; top: 0; left: 0; width: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; -webkit-print-color-adjust: exact;">
           ${headerBase64 ? `<img src="${headerBase64}" style="width: 100%; height: auto; display: block;" />` : ''}
-          <div style="position: absolute; right: 45px; bottom: 15px; text-align: right; font-size: 10px; color: #7f8c8d; line-height: 1.3;">
-            Nicolás Romero, Estado de México<br>
-            a ${formattedDate}
-          </div>
         </div>
       `;
       pdfOptions.footerTemplate = `
@@ -118,7 +118,7 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
           ${footerBase64 ? `<img src="${footerBase64}" style="width: 100%; height: auto; display: block;" />` : ''}
         </div>
       `;
-      pdfOptions.margin = { top: '270px', right: '0px', bottom: '150px', left: '0px' };
+      pdfOptions.margin = { top: '180px', right: '0px', bottom: '150px', left: '0px' };
     } else {
       // Para HGW, DEMA, etc., apagamos el header/footer inyectado y quitamos los márgenes de Puppeteer
       pdfOptions.displayHeaderFooter = false;
