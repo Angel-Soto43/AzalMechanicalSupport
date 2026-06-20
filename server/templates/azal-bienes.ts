@@ -24,31 +24,42 @@ export function generateAzalBienesTemplate(provider: any, quote: any, items: any
   }
   const lugarExpedicion = quote.attnLugar || "Nicolás Romero, Estado de México";
 
-  // 2. LÓGICA DE LUGARES DE ENTREGA
+  // 2. LÓGICA DE LUGARES DE ENTREGA Y CONTACTO CONDICIONAL
   let lugaresEntregaHtml = "";
+  let contactoGlobalHtml = ""; // Variable para apagar el contacto si hay tabla
+
+  // Soporte por si viene de la BD como JSON string o directo del frontend
+  let deliveryLocs = quote.deliveryLocations || quote.deliveryLocationsJson;
+  if (typeof deliveryLocs === 'string') {
+    try { deliveryLocs = JSON.parse(deliveryLocs); } catch (e) { deliveryLocs = []; }
+  }
+
   if (quote.deliverySingle !== false) {
     lugaresEntregaHtml = quote.deliveryPlace || quote.deliveryLocation || "Por definir";
-  } else if (quote.deliveryLocations && Array.isArray(quote.deliveryLocations) && quote.deliveryLocations.length > 0) {
+    contactoGlobalHtml = `<li><span class="bold">Contacto:</span> ${quote.attnContacto || quote.contactPerson}</li>`;
+  } else if (Array.isArray(deliveryLocs) && deliveryLocs.length > 0) {
     lugaresEntregaHtml = `
-      <table style="width: 90%; margin-top: 5px; font-size: 8pt;">
+      <br><br>
+      <table style="width: 100%; border-collapse: collapse; margin-top: 5px; margin-bottom: 5px; font-size: 9pt;">
         <thead>
           <tr>
-            <th>No. Partida</th>
-            <th>Dirección</th>
-            <th>Contacto</th>
+            <th style="background-color: #ffffff; color: #000000; width: 12%; text-align: center;">NO.<br>PARTIDA</th>
+            <th style="background-color: #ffffff; color: #000000; width: 44%; text-align: center;">DIRECCIÓN</th>
+            <th style="background-color: #ffffff; color: #000000; width: 44%; text-align: center;">CONTACTO</th>
           </tr>
         </thead>
         <tbody>
-          ${quote.deliveryLocations.map((loc: any) => `
+          ${deliveryLocs.map((loc: any) => `
             <tr>
-              <td>${loc.noPartida || ''}</td>
-              <td class="text-left">${loc.address || ''}</td>
-              <td class="text-left">${loc.contact || ''}</td>
+              <td style="text-align: center; vertical-align: middle;">${loc.noPartida || ''}</td>
+              <td class="text-left" style="padding: 8px;">${loc.address || ''}</td>
+              <td class="text-left" style="padding: 8px;">${loc.contact || ''}</td>
             </tr>
           `).join('')}
         </tbody>
       </table>
     `;
+    contactoGlobalHtml = ""; // APAGAMOS el contacto global
   }
 
   // 3. LÓGICA CONDICIONAL: Tiempo de Fabricación
@@ -57,7 +68,7 @@ export function generateAzalBienesTemplate(provider: any, quote: any, items: any
     : '';
 
   // 4. LÓGICA DINÁMICA: Objeto Social
-  let socialObjs = quote.selectedSocialObjects;
+  let socialObjs = quote.selectedSocialObjects || quote.selectedSocialObjectsJson;
   if (typeof socialObjs === 'string') {
     try { socialObjs = JSON.parse(socialObjs); } catch (e) { socialObjs = []; }
   }
@@ -69,18 +80,16 @@ export function generateAzalBienesTemplate(provider: any, quote: any, items: any
     objetoSocialHtml = "Adquirir, fabricar, ensamblar, procesar, preparar, reparar, vender, comprar, distribuir, importar, exportar e instalar todo tipo de componentes...";
   }
 
-  // 5. LÓGICA DINÁMICA: Garantías de Calidad (EXACTAMENTE LO DEL FORMULARIO)
-  let qGuarantees = quote.qualityGuarantees;
+  // 5. LÓGICA DINÁMICA: Garantías de Calidad
+  let qGuarantees = quote.qualityGuarantees || quote.qualityGuaranteesJson;
   if (typeof qGuarantees === 'string') {
     try { qGuarantees = JSON.parse(qGuarantees); } catch (e) { qGuarantees = []; }
   }
 
   let garantiasHtml = "";
   if (Array.isArray(qGuarantees) && qGuarantees.length > 0) {
-    // Solo toma las cajas de texto que sí tengan información
     const validGuarantees = qGuarantees.filter((g: any) => typeof g === 'string' && g.trim() !== "");
     if (validGuarantees.length > 0) {
-      // Inyecta cada garantía como un punto de lista (<li>)
       garantiasHtml = validGuarantees.map((g: string) => `<li style="margin-bottom: 8px;">${g}</li>`).join('');
     }
   }
@@ -196,8 +205,11 @@ export function generateAzalBienesTemplate(provider: any, quote: any, items: any
         <li><span class="bold">Nacionalidad del proveedor:</span> mexicana.</li>
         <li><span class="bold">Condiciones de pago:</span> Mi representada tiene considerado que el pago será a los <span class="bold">${quote.paymentTerms || '17 días hábiles'}</span> posteriores a la entrega de la factura, previa entrega de los bienes a satisfacción del Área requirente. Así mismo, el pago será mediante transferencia electrónica.</li>
         <li><span class="bold">Tiempo de entrega:</span> Azal Mechanical Supports S.A. de C.V., realizará la entrega de los bienes requeridos y documentación completa a partir del día natural siguiente a la comunicación del fallo y a más tardar ${quote.deliveryTime || '3 meses'}.</li>
+        
         <li><span class="bold">Lugar de la entrega:</span> Azal Mechanical Supports S.A. de C.V., entregará los bienes en las instalaciones que a continuación se indica:<br>${lugaresEntregaHtml}</li>
-        <li><span class="bold">Contacto:</span> ${quote.attnContacto || quote.contactPerson}</li>
+        
+        ${contactoGlobalHtml}
+        
         ${tiempoFabricacionHtml}
       </ul>
 
