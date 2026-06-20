@@ -43,6 +43,7 @@ const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
+
 //  FUNCIÓN MAESTRA: INYECCIÓN DE IMÁGENES AL BORDE DE LA HOJA
 async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[]) {
   
@@ -118,7 +119,7 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
           ${footerBase64 ? `<img src="${footerBase64}" style="width: 100%; height: auto; display: block;" />` : ''}
         </div>
       `;
-      pdfOptions.margin = { top: '180px', right: '0px', bottom: '150px', left: '0px' };
+      pdfOptions.margin = { top: '190px', right: '0px', bottom: '150px', left: '0px'};
     } else {
       // Para HGW, DEMA, etc., apagamos el header/footer inyectado y quitamos los márgenes de Puppeteer
       pdfOptions.displayHeaderFooter = false;
@@ -700,7 +701,24 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       if (!quote) {
         return res.status(404).json({ error: "Cotización no encontrada" });
       }
+      
+      // 👇 REGLA 5: SOLUCIÓN AL PROBLEMA DEL JSON 👇
+      let parsedGuarantees = [];
+      let parsedObjetos = [];
+      
+      try {
+        if (quote.qualityGuaranteesJson) {
+          parsedGuarantees = JSON.parse(quote.qualityGuaranteesJson);
+        }
+        if (quote.socialObjectsJson) {
+          parsedObjetos = JSON.parse(quote.socialObjectsJson);
+        }
+      } catch (parseError) {
+        console.error("Error parseando arreglos JSON desde la BD:", parseError);
+      }
+      // 👆 FIN DE LA SOLUCIÓN 👆
 
+      // 👉 AQUÍ ESTÁ EL CÓDIGO QUE FALTABA (Obtener proveedor y partidas) 👈
       if (!quote.providerId) {
         return res.status(404).json({ error: "Proveedor no encontrado" });
       }
@@ -711,21 +729,24 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
       const rawItems = await storage.getQuoteItems(quoteId);
       const lineItems = convertQuoteItemsFromDb(rawItems);
+      // 👉 FIN DEL CÓDIGO QUE FALTABA 👈
 
-      const totalCents = rawItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-      const total = fromCents(totalCents);
-      const totalText = amountToSpanishText(total);
+      const totalCents = rawItems.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+      const totalText = amountToSpanishText(fromCents(totalCents));
 
+      // Empaquetamos todo limpio para mandarlo a la plantilla
       const quoteWithText = {
         ...quote,
         folio: quote.internalFolio,
         destinationCompany: quote.destinationCompany,
-        totalText: totalText 
+        totalText: totalText,
+        // Inyectamos los arrays ya convertidos a objetos iterables
+        parsedGuarantees: parsedGuarantees, 
+        parsedObjetos: parsedObjetos 
       };
 
+      // Ahora sí, se va a azal.ts
       const pdfBuffer = await generateQuotePdfBuffer(quoteWithText, provider, lineItems);
-
-      // 👉 AQUÍ MANDAMOS A LLAMAR TU FUNCIÓN INTELIGENTE PARA EL NOMBRE:
       const filename = buildQuotePdfFileName(quoteWithText);
 
       res.setHeader('Content-Type', 'application/pdf');
@@ -1830,6 +1851,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
  
   // Ruta para guardar el PDF en una carpeta específica (Soporta OneDrive y Local)
+
   app.post("/api/quotes/:id/pdf/save", requireAuth, async (req: any, res) => {
     try {
       const quoteId = parseInt(req.params.id);
@@ -1849,9 +1871,18 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const rawItems = await storage.getQuoteItems(quoteId);
       const lineItems = convertQuoteItemsFromDb(rawItems);
 
-      // Generar el buffer del PDF y un buen nombre de archivo
-      const pdfBuffer = await generateQuotePdfBuffer(quote, provider, lineItems);
-      const filename = buildQuotePdfFileName(quote);
+      // 🚀 CALCULAMOS EL TOTAL Y EL TEXTO EN LETRAS PARA QUE LA PLANTILLA NO TRUENE
+      const totalCents = rawItems.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+      const totalText = amountToSpanishText(fromCents(totalCents));
+
+      const quoteWithText = {
+        ...quote,
+        totalText: totalText
+      };
+
+      // Generar el buffer del PDF y un buen nombre de archivo con la data enriquecida
+      const pdfBuffer = await generateQuotePdfBuffer(quoteWithText, provider, lineItems);
+      const filename = buildQuotePdfFileName(quoteWithText);
 
       // Saber si la carpeta es de Microsoft (tiene letras) o local (solo números)
       const isMicrosoft = Number.isNaN(Number(folderId));
