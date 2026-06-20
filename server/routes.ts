@@ -65,19 +65,24 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
 
   const companyName = (provider.companyName || "").toUpperCase();
   const isAzal = !companyName.includes("DEMA") && !companyName.includes("HERMAL") && !companyName.includes("HGW") && !companyName.includes("HYH");
+  const isHgw = companyName.includes("HGW");
 
+  // Lógica para Azal
   let headerBase64 = '';
   let footerBase64 = '';
   const headerPath = path.join(process.cwd(), 'server', 'assets', 'encabezado.png');
   const footerPath = path.join(process.cwd(), 'server', 'assets', 'pie.png');
 
   if (isAzal) {
-    if (fs.existsSync(headerPath)) {
-      headerBase64 = `data:image/png;base64,${fs.readFileSync(headerPath).toString('base64')}`;
-    }
-    if (fs.existsSync(footerPath)) {
-      footerBase64 = `data:image/png;base64,${fs.readFileSync(footerPath).toString('base64')}`;
-    }
+    if (fs.existsSync(headerPath)) headerBase64 = `data:image/png;base64,${fs.readFileSync(headerPath).toString('base64')}`;
+    if (fs.existsSync(footerPath)) footerBase64 = `data:image/png;base64,${fs.readFileSync(footerPath).toString('base64')}`;
+  }
+
+  // 🚀 NUEVO: Lógica para cargar el fondo de HGW
+  let hgwBgBase64 = '';
+  if (isHgw) {
+    const bgPath = path.join(process.cwd(), 'server', 'assets', 'hgw.png');
+    if (fs.existsSync(bgPath)) hgwBgBase64 = `data:image/png;base64,${fs.readFileSync(bgPath).toString('base64')}`;
   }
 
   const browser = await puppeteer.launch({
@@ -113,6 +118,36 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
         </div>
       `;
       pdfOptions.margin = { top: '190px', right: '0px', bottom: '150px', left: '0px'};
+    
+    } else if (isHgw) {
+      // 🚀 CONFIGURACIÓN ESTRELLA PARA HGW
+      pdfOptions.displayHeaderFooter = true;
+      
+      // Inyectamos el fondo a tamaño A4 absoluto en el header para que cubra toda la hoja
+      pdfOptions.headerTemplate = `
+        <style>html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; }</style>
+        <div style="position: absolute; top: 0; left: 0; width: 210mm; height: 297mm; z-index: -1;">
+          ${hgwBgBase64 ? `<img src="${hgwBgBase64}" style="width: 100%; height: 100%; object-fit: cover;" />` : ''}
+        </div>
+      `;
+      
+      // Footer con la info de HGW y las clases mágicas de Puppeteer (pageNumber y totalPages)
+      pdfOptions.footerTemplate = `
+        <style>html, body { margin: 0; padding: 0; font-family: 'Arial Narrow', Arial, sans-serif; -webkit-print-color-adjust: exact; }</style>
+        <div style="width: 100%; font-size: 8.5pt; color: #a3a3a3; padding: 0 45px 15px 45px; display: flex; justify-content: space-between; align-items: flex-end;">
+           <div style="line-height: 1.3;">
+             hgw@hgwprocessolutions.com<br>
+             Av. Jorge Jiménez Cantú No. Ext. 1, No. Int. 124, Valle Escondido, 52937, Atizapán de Zaragoza, Estado de México<br>
+             Teléfonos: 56 1080 9920 – 55 4556 6367
+           </div>
+           <div style="text-align: right; padding-bottom: 2px;">
+             Página <span class="pageNumber"></span> de <span class="totalPages"></span>
+           </div>
+        </div>
+      `;
+      // Dejamos 90px abajo para que no se empalme el texto con el footer
+      pdfOptions.margin = { top: '0px', right: '0px', bottom: '90px', left: '0px' };
+    
     } else {
       pdfOptions.displayHeaderFooter = false;
       pdfOptions.margin = { top: '0px', right: '0px', bottom: '0px', left: '0px' };

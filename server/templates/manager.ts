@@ -1,8 +1,13 @@
 import { generateAzalBienesTemplate } from './azal-bienes';
 // import { generateAzalServiciosTemplate } from './azal-servicios'; // La activaremos cuando hagamos la de servicios
+
 import { generateDemaTemplate } from './dema';
 import { generateHermalTemplate } from './hermal';
-import { generateHgwTemplate } from './hgw';
+
+// 🚀 Cambié la importación para que llame exactamente a la función que armamos para HGW
+import { generateHgwBienesTemplate } from './hgw-bienes'; 
+// import { generateHgwServiciosTemplate } from './hgw-servicios'; // Para el futuro
+
 import { generateHyhTemplate } from './hyh';
 
 export function getTemplateForProvider(provider: any, quote: any, items: any[]): string {
@@ -16,13 +21,22 @@ export function getTemplateForProvider(provider: any, quote: any, items: any[]):
   } else if (companyName.includes("HERMAL")) {
     return generateHermalTemplate(provider, quote, items);
   } else if (companyName.includes("HGW")) {
-    return generateHgwTemplate(provider, quote, items);
+    
+    // 🚀 LÓGICA DE RUTEO PARA HGW (Bienes vs Servicios)
+    if (proposalType === "servicios") {
+      // Comodín temporal mientras arman la de servicios
+      return generateHgwBienesTemplate(provider, quote, items);
+    } else {
+      // Cotización de Bienes de HGW
+      return generateHgwBienesTemplate(provider, quote, items);
+    }
+
   } else if (companyName.includes("HYH")) {
     return generateHyhTemplate(provider, quote, items);
   } else {
     // Si no es ninguna de las anteriores, asumimos que es AZAL
     if (proposalType === "servicios") {
-      // 🚀 Por ahora mandamos la de bienes como comodín, pero aquí irá la de servicios pronto
+      // 🚀 Por ahora mandamos la de bienes como comodín
       // return generateAzalServiciosTemplate(provider, quote, items);
       return generateAzalBienesTemplate(provider, quote, items);
     } else {
