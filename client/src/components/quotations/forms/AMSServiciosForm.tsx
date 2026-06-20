@@ -22,8 +22,8 @@ const SOCIAL_OBJECTS = [
 ];
 
 type FormValues = Pick<AMSFormData,
-  | "attnLugar" | "attnDia" | "attnMes" | "attnAnio" | "attnGrado" | "attnNombre" | "attnDependencia" | "attnArea" | "attnUbicacion" | "attnDireccion"
-  | "attnNombreProcedimiento" | "attnContacto" | "attnCargo"
+  | "attnLugar" | "attnDia" | "attnMes" | "attnAnio" | "attnGrado" | "contactPerson" | "destinationCompany" | "attnArea" | "attnUbicacion" | "attnDireccion"
+  | "projectTitle" | "attnContacto" | "attnCargo"
   | "validityDays" | "paymentTerms" | "goodsOrigin" | "deliveryTime"
   | "deliverySingle" | "deliveryLocation" | "deliveryLocations" | "deliveryConditions"
   | "qualityGuarantees" | "selectedSocialObjects"

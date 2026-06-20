@@ -43,12 +43,15 @@ export interface AMSFormData {
   attnMes: string;
   attnAnio: string;
   attnGrado: string;
-  attnNombre: string;
-  attnDependencia: string;
+  
+  // 🚀 AQUÍ ESTÁN LOS 3 NOMBRES YA CORREGIDOS 🚀
+  contactPerson: string; 
+  destinationCompany: string; 
+  projectTitle: string; 
+  
   attnArea: string;
   attnUbicacion: string;
   attnDireccion: string;
-  attnNombreProcedimiento: string;
   attnContacto: string;
   attnCargo: string;
 
@@ -94,12 +97,15 @@ export const defaultAMSFormData: AMSFormData = {
   attnMes: "",
   attnAnio: "",
   attnGrado: "",
-  attnNombre: "",
-  attnDependencia: "",
+  
+  // 🚀 TAMBIÉN LOS CORREGIMOS EN LOS VALORES POR DEFECTO 🚀
+  contactPerson: "",
+  destinationCompany: "",
+  projectTitle: "",
+  
   attnArea: "",
   attnUbicacion: "",
   attnDireccion: "",
-  attnNombreProcedimiento: "",
   attnContacto: "",
   attnCargo: "",
   validityDays: 120,
