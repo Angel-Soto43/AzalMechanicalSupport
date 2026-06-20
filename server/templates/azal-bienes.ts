@@ -1,4 +1,6 @@
 import { amountToSpanishText } from "../quotes";
+import fs from "fs";
+import path from "path";
 
 export function generateAzalBienesTemplate(provider: any, quote: any, items: any[]) {
   // Cálculos matemáticos
@@ -26,17 +28,19 @@ export function generateAzalBienesTemplate(provider: any, quote: any, items: any
 
   // 2. LÓGICA DE LUGARES DE ENTREGA Y CONTACTO CONDICIONAL
   let lugaresEntregaHtml = "";
-  let contactoGlobalHtml = ""; // Variable para apagar el contacto si hay tabla
+  let contactoGlobalHtml = "";
 
-  // Soporte por si viene de la BD como JSON string o directo del frontend
   let deliveryLocs = quote.deliveryLocations || quote.deliveryLocationsJson;
   if (typeof deliveryLocs === 'string') {
     try { deliveryLocs = JSON.parse(deliveryLocs); } catch (e) { deliveryLocs = []; }
   }
 
+  // Búsqueda del nombre de contacto general para la viñeta de "Contacto:"
+  const nombreAtencion = quote.attnNombre || quote.contactPerson || quote.contacto || '';
+
   if (quote.deliverySingle !== false) {
     lugaresEntregaHtml = quote.deliveryPlace || quote.deliveryLocation || "Por definir";
-    contactoGlobalHtml = `<li><span class="bold">Contacto:</span> ${quote.attnContacto || quote.contactPerson}</li>`;
+    contactoGlobalHtml = `<li><span class="bold">Contacto:</span> ${quote.attnContacto || nombreAtencion}</li>`;
   } else if (Array.isArray(deliveryLocs) && deliveryLocs.length > 0) {
     lugaresEntregaHtml = `
       <br><br>
@@ -59,7 +63,7 @@ export function generateAzalBienesTemplate(provider: any, quote: any, items: any
         </tbody>
       </table>
     `;
-    contactoGlobalHtml = ""; // APAGAMOS el contacto global
+    contactoGlobalHtml = "";
   }
 
   // 3. LÓGICA CONDICIONAL: Tiempo de Fabricación
@@ -94,24 +98,38 @@ export function generateAzalBienesTemplate(provider: any, quote: any, items: any
     }
   }
 
+  // LÓGICA PARA LEER LA FIRMA DE AZAL EN BASE64
+  let firmaBase64 = "";
+  try {
+    const firmaPath = path.join(process.cwd(), 'server', 'assets', 'firma-azal.png');
+    if (fs.existsSync(firmaPath)) {
+      firmaBase64 = `data:image/png;base64,${fs.readFileSync(firmaPath).toString('base64')}`;
+    }
+  } catch (error) {
+    console.warn("No se pudo cargar la firma de Azal:", error);
+  }
+
   return `
     <!DOCTYPE html>
     <html lang="es">
     <head>
       <meta charset="UTF-8">
       <style>
-        body { margin: 0; padding: 10px 45px 45px 45px; font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #000000; line-height: 1.5; background: #ffffff; }
+        body { margin: 0; padding: 10px 45px 45px 45px; font-family: "Aptos Narrow", Arial, sans-serif; font-size: 11pt; color: #000000; line-height: 1.5; background: #ffffff; }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .text-left { text-align: left; }
         .bold { font-weight: bold; }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 15px; font-size: 9pt; }
-        th, td { border: 1px solid #000; padding: 6px 4px; text-align: center; vertical-align: middle; }
-        th { background-color: #f2f2f2; color: black; font-weight: bold; text-transform: uppercase; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 15px; font-size: 10pt; }
+        th, td { border: 1px solid #5A69D4; padding: 6px 4px; text-align: center; vertical-align: middle; }
+        th { background-color: #5A69D4; color: white; font-weight: bold; text-transform: uppercase; }
         
         .list-bullet { list-style-type: disc; padding-left: 25px; margin-top: 5px; margin-bottom: 15px; }
         .list-bullet li { margin-bottom: 6px; text-align: justify; }
+        
+        .list-circle { list-style-type: circle; padding-left: 25px; margin-top: 5px; margin-bottom: 15px; }
+        .list-circle li { margin-bottom: 6px; text-align: justify; }
 
         .signature-section { margin-top: 50px; text-align: center; page-break-inside: avoid; }
         .signature-line { width: 250px; height: 1px; background: #000000; margin: 0 auto 5px auto; }
@@ -124,8 +142,9 @@ export function generateAzalBienesTemplate(provider: any, quote: any, items: any
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px;">
         <div style="line-height: 1.3; width: 60%; text-align: left;">
           <span class="bold">ATENCIÓN:</span><br>
+          <!-- 🚀 CORRECCIÓN DEL ENCABEZADO: Aseguramos que el nombre esté debajo del grado sin romper la estructura -->
           ${quote.attnGrado ? quote.attnGrado + '<br>' : ''}
-          ${quote.contactPerson || quote.attnNombre || ''}<br>
+          ${nombreAtencion ? nombreAtencion + '<br>' : ''}
           ${quote.attnCargo ? quote.attnCargo + '<br>' : ''}
           ${quote.destinationCompany || quote.attnDependencia || ''}<br>
           ${quote.attnArea ? quote.attnArea + '<br>' : ''}
@@ -152,7 +171,7 @@ export function generateAzalBienesTemplate(provider: any, quote: any, items: any
             <th style="width: 8%;">CANT.</th>
             <th style="width: 8%;">U.M.</th>
             <th style="width: 13%;">COSTO UNITARIO</th>
-            <th style="width: 15%;">SUBTOTAL</th>
+            <th style="width: 15%;">COSTO TOTAL</th>
           </tr>
         </thead>
         <tbody>
@@ -177,17 +196,17 @@ export function generateAzalBienesTemplate(provider: any, quote: any, items: any
           }).join('')}
           <tr>
             <td colspan="5" style="border: none;"></td>
-            <td class="bold text-right" style="background-color: #f2f2f2;">SUBTOTAL:</td>
+            <td class="bold text-center">SUBTOTAL</td>
             <td class="bold text-right">${formatCurrency(subtotal)}</td>
           </tr>
           <tr>
             <td colspan="5" style="border: none;"></td>
-            <td class="bold text-right" style="background-color: #f2f2f2;">IVA:</td>
+            <td class="bold text-center">IVA</td>
             <td class="bold text-right">${formatCurrency(iva)}</td>
           </tr>
           <tr>
             <td colspan="5" style="border: none;"></td>
-            <td class="bold text-right" style="background-color: #f2f2f2;">TOTAL:</td>
+            <td class="bold text-center">TOTAL</td>
             <td class="bold text-right">${formatCurrency(total)}</td>
           </tr>
         </tbody>
@@ -211,17 +230,14 @@ export function generateAzalBienesTemplate(provider: any, quote: any, items: any
         ${contactoGlobalHtml}
         
         ${tiempoFabricacionHtml}
-      </ul>
-
-      <ul class="list-bullet" style="list-style-type: none; padding-left: 0;">
+      
         <li>La responsabilidad de <span class="bold">Azal Mechanical Supports, S.A. de C.V.</span>, en relación con esta garantía consistirá en que este, sin ningún costo para la "${quote.attnDependencia || 'Secretaría de la Defensa Nacional'}", reemplazará los "bienes", en un plazo no mayor a 30 días hábiles conforme a los términos y condiciones para su aplicación.</li>
-      </ul>
+        
+        <li>
+          <span class="bold">Garantía de calidad:</span>
+          ${garantiasHtml ? `<ul class="list-circle">${garantiasHtml}</ul>` : ''}
+        </li>
 
-      <div class="bold" style="margin-top: 15px; margin-bottom: 5px;">Garantía de calidad:</div>
-      <ul class="list-bullet">
-        
-        ${garantiasHtml}
-        
         <li>Azal Mechanical Supports, S.A. de C.V., cumplirá con las condiciones de entrega conforme a el Anexo Administrativo.</li>
         <li>Azal Mechanical Supports, S.A. de C.V., cumple con los atributos, normas, garantías y documentación indicada en el Anexo “C”, así como en el Anexo Administrativo y Anexo Técnico.</li>
         <li>Mi representada(o) cuenta con la capacidad técnica para el suministro de los bienes requeridos.</li>
@@ -252,7 +268,9 @@ export function generateAzalBienesTemplate(provider: any, quote: any, items: any
 
       <div class="signature-section">
         <div class="bold">ATENTAMENTE</div>
-        <br><br><br>
+        <div style="margin: 10px 0;">
+          ${firmaBase64 ? `<img src="${firmaBase64}" style="max-height: 90px; width: auto;" />` : '<br><br><br>'}
+        </div>
         <div class="signature-line"></div>
         <div class="bold">ING. VÍCTOR HERNÁNDEZ HERNÁNDEZ</div>
         <div class="bold">DIRECTOR DE OPERACIONES</div>

@@ -47,7 +47,6 @@ if (!fs.existsSync(uploadsDir)) {
 //  FUNCIÓN MAESTRA: INYECCIÓN DE IMÁGENES AL BORDE DE LA HOJA
 async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[]) {
   
-  // 🚀 SOLUCIÓN: Desempaquetamos los JSON de la Base de Datos para que la plantilla los lea como Arreglos
   const safeParse = (val: string | null | undefined): any[] => {
     try { return JSON.parse(val || "[]"); } catch { return []; }
   };
@@ -57,16 +56,13 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
     folio: quote.internalFolio,
     destinationCompany: quote.destinationCompany,
     totalText: quote.totalText,
-    // Si la info viene empaquetada como JSON desde la BD, la convertimos a Arreglo real:
     qualityGuarantees: quote.qualityGuarantees || safeParse(quote.qualityGuaranteesJson),
     selectedSocialObjects: quote.selectedSocialObjects || safeParse(quote.selectedSocialObjectsJson),
     deliveryLocations: quote.deliveryLocations || safeParse(quote.deliveryLocationsJson),
   };
 
-  // 🚀 AHORA USAMOS EL MANAGER DINÁMICO CON LA DATA YA CORREGIDA
   const html = getTemplateForProvider(provider, enrichedQuote, lineItems);
 
-  // 🚀 VALIDACIÓN DE EMPRESA: Detectamos si es Azal o alguna de las otras
   const companyName = (provider.companyName || "").toUpperCase();
   const isAzal = !companyName.includes("DEMA") && !companyName.includes("HERMAL") && !companyName.includes("HGW") && !companyName.includes("HYH");
 
@@ -75,7 +71,6 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
   const headerPath = path.join(process.cwd(), 'server', 'assets', 'encabezado.png');
   const footerPath = path.join(process.cwd(), 'server', 'assets', 'pie.png');
 
-  // Solo cargamos las imágenes de Azal si realmente es Azal
   if (isAzal) {
     if (fs.existsSync(headerPath)) {
       headerBase64 = `data:image/png;base64,${fs.readFileSync(headerPath).toString('base64')}`;
@@ -97,7 +92,6 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle2', timeout: 30000 });
     
-    // 🚀 CONFIGURACIÓN DINÁMICA DEL PDF SEGÚN LA EMPRESA
     const pdfOptions: any = {
       format: 'A4',
       printBackground: true,
@@ -105,7 +99,6 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
     };
 
     if (isAzal) {
-      // Configuraciones exclusivas para Azal
       pdfOptions.displayHeaderFooter = true;
       pdfOptions.headerTemplate = `
         <style>html, body { margin: 0; padding: 0; }</style>
@@ -121,7 +114,6 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
       `;
       pdfOptions.margin = { top: '190px', right: '0px', bottom: '150px', left: '0px'};
     } else {
-      // Para HGW, DEMA, etc., apagamos el header/footer inyectado y quitamos los márgenes de Puppeteer
       pdfOptions.displayHeaderFooter = false;
       pdfOptions.margin = { top: '0px', right: '0px', bottom: '0px', left: '0px' };
       pdfOptions.preferCSSPageSize = true;
@@ -147,14 +139,12 @@ function buildQuotePdfFileName(quote: any) {
   const cliente = quote.destinationCompany || quote.projectTitle || 'PropuestaEconomica';
   const fecha = quote.quoteDate ? new Date(quote.quoteDate).toISOString().split('T')[0] : '';
 
-  // 🚀 EXTRAEMOS EL TIPO DE PROPUESTA (Bienes/Servicios)
   const tipo = quote.proposalType ? `${quote.proposalType.toUpperCase()}-` : ''; 
   
   const safeCliente = sanitizeFileName(cliente);
   const safeFolio = sanitizeFileName(folio);
   const safeFecha = sanitizeFileName(fecha);
   
-  // 🚀 ARMAMOS EL NOMBRE CON EL TIPO INCLUIDO
   const filename = `COT-${tipo}${safeFolio}_${safeCliente}${safeFecha ? `_${safeFecha}` : ''}.pdf`;
   return filename.replace(/__+/g, '_');
 }
@@ -529,7 +519,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const email = (req.body.email || "").trim();
       const website = (req.body.website || "").trim();
 
-      // 🚀 Extrayendo los parámetros bancarios enviados desde el modal del Frontend
       const bankName = (req.body.bankName || "").trim();
       const bankAccount = (req.body.bankAccount || "").trim();
       const bankBeneficiary = (req.body.bankBeneficiary || "").trim();
@@ -677,7 +666,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           empresaDestino: quote.destinationCompany,
           total,
           totalText: amountToSpanishText(total),
-          // Campos JSON deserializados como arrays para el frontend
           qualityGuarantees: safeParse(quote.qualityGuaranteesJson),
           selectedSocialObjects: safeParse(quote.selectedSocialObjectsJson),
           deliveryLocations: safeParse(quote.deliveryLocationsJson),
@@ -689,7 +677,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // 🚀 RUTA PRINCIPAL DE DESCARGA DE PDF 🚀
   app.get("/api/quotes/:id/pdf", requireAuth, async (req: any, res) => {
     try {
       const quoteId = Number(req.params.id);
@@ -702,7 +689,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(404).json({ error: "Cotización no encontrada" });
       }
       
-      // 👇 REGLA 5: SOLUCIÓN AL PROBLEMA DEL JSON 👇
       let parsedGuarantees = [];
       let parsedObjetos = [];
       
@@ -716,9 +702,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       } catch (parseError) {
         console.error("Error parseando arreglos JSON desde la BD:", parseError);
       }
-      // 👆 FIN DE LA SOLUCIÓN 👆
 
-      // 👉 AQUÍ ESTÁ EL CÓDIGO QUE FALTABA (Obtener proveedor y partidas) 👈
       if (!quote.providerId) {
         return res.status(404).json({ error: "Proveedor no encontrado" });
       }
@@ -729,23 +713,19 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
       const rawItems = await storage.getQuoteItems(quoteId);
       const lineItems = convertQuoteItemsFromDb(rawItems);
-      // 👉 FIN DEL CÓDIGO QUE FALTABA 👈
 
       const totalCents = rawItems.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
       const totalText = amountToSpanishText(fromCents(totalCents));
 
-      // Empaquetamos todo limpio para mandarlo a la plantilla
       const quoteWithText = {
         ...quote,
         folio: quote.internalFolio,
         destinationCompany: quote.destinationCompany,
         totalText: totalText,
-        // Inyectamos los arrays ya convertidos a objetos iterables
         parsedGuarantees: parsedGuarantees, 
         parsedObjetos: parsedObjetos 
       };
 
-      // Ahora sí, se va a azal.ts
       const pdfBuffer = await generateQuotePdfBuffer(quoteWithText, provider, lineItems);
       const filename = buildQuotePdfFileName(quoteWithText);
 
@@ -779,7 +759,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const guaranteeMonthsRaw = Number(req.body.guaranteeMonths ?? req.body.garantiaMeses ?? 0);
       const compliancePercentageRaw = Number(req.body.compliancePercentage ?? req.body.porcentajeCumplimiento ?? 0);
       const deliveryPlace = (req.body.deliveryPlace || req.body.lugarEntrega || "").toString().trim();
-      const contactPerson = (req.body.contactPerson || req.body.contacto || req.body.personaContacto || "").toString().trim();
+      
+      // 🚀 AQUÍ ESTÁ LA MAGIA 1: Atrapamos el nombre sin importar cómo lo envíe el Frontend
+      const contactPerson = (req.body.contactPerson || req.body.contacto || req.body.personaContacto || req.body.attnNombre || req.body.nombre || "").toString().trim();
+      
       const providerId = Number(req.body.providerId || req.body.proveedorId);
       const lineItems = Array.isArray(req.body.lineItems || req.body.partidas) ? (req.body.lineItems || req.body.partidas) : [];
 
@@ -798,7 +781,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const companyOrigin = (req.body.companyOrigin || "AZAL").toString().trim();
       const proposalType = (req.body.proposalType || "bienes").toString().trim();
 
-      // ─── Campos AMS extendidos ────────────────────────────────────────────
       const attnDia = (req.body.attnDia || "").toString().trim();
       const attnMes = (req.body.attnMes || "").toString().trim();
       const attnAnio = (req.body.attnAnio || "").toString().trim();
@@ -821,9 +803,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const guaranteeMonths = Number.isFinite(guaranteeMonthsRaw) && Number.isInteger(guaranteeMonthsRaw) && guaranteeMonthsRaw >= 0 ? guaranteeMonthsRaw : 0;
       const compliancePercentage = Number.isFinite(compliancePercentageRaw) && compliancePercentageRaw >= 0 ? compliancePercentageRaw : 0;
 
-      console.log("Datos recibidos en el backend:", {
-        internalFolio, destinationCompany, requisitionNumber, projectTitle, quoteDate, commercialTerms, deliveryPlace, contactPerson, providerId
-      });
       if (!internalFolio || !destinationCompany || !requisitionNumber || !projectTitle || !quoteDate || !commercialTerms || !deliveryPlace || !contactPerson || Number.isNaN(providerId)) {
         return res.status(400).json({ error: "Todos los campos principales de la cotización son requeridos." });
       }
@@ -938,7 +917,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(404).json({ error: "Cotización no encontrada" });
       }
 
-      // Eliminar la cotización (también elimina sus items automáticamente)
       await storage.deleteQuote(quoteId);
 
       await storage.createAuditLog({
@@ -965,7 +943,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(404).json({ error: "Cotización no encontrada" });
       }
 
-      // Merge: si el campo llega en req.body se usa, si no se conserva el valor existente
       const destinationCompany = (req.body.destinationCompany || existing.destinationCompany).toString().trim();
       const requisitionNumber = (req.body.requisitionNumber || existing.requisitionNumber).toString().trim();
       const projectTitle = (req.body.projectTitle || existing.projectTitle).toString().trim();
@@ -978,7 +955,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const guaranteeMonthsRaw = Number(req.body.guaranteeMonths ?? existing.guaranteeMonths ?? 0);
       const compliancePercentageRaw = Number(req.body.compliancePercentage ?? existing.compliancePercentage ?? 0);
       const deliveryPlace = (req.body.deliveryPlace || existing.deliveryPlace || "").toString().trim();
-      const contactPerson = (req.body.contactPerson || existing.contactPerson || "").toString().trim();
+      
+      // 🚀 AQUÍ ESTÁ LA MAGIA 2: Hacemos lo mismo para el PATCH
+      const contactPerson = (req.body.contactPerson || req.body.attnNombre || req.body.nombre || existing.contactPerson || "").toString().trim();
+      
       const providerId = Number(req.body.providerId ?? existing.providerId);
       const goodsOrigin = (req.body.goodsOrigin ?? existing.goodsOrigin ?? "").toString().trim();
       const providerNationality = (req.body.providerNationality ?? existing.providerNationality ?? "").toString().trim();
@@ -994,7 +974,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const companyOrigin = (req.body.companyOrigin || existing.companyOrigin || "AZAL").toString().trim();
       const proposalType = (req.body.proposalType || existing.proposalType || "bienes").toString().trim();
 
-      // ─── Campos AMS extendidos (PATCH) ───────────────────────────────────
       const attnDia = (req.body.attnDia ?? existing.attnDia ?? "").toString().trim();
       const attnMes = (req.body.attnMes ?? existing.attnMes ?? "").toString().trim();
       const attnAnio = (req.body.attnAnio ?? existing.attnAnio ?? "").toString().trim();
@@ -1143,9 +1122,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // ==========================================================================
-  // 🚀 ENDPOINT REST: SELECCIÓN DINÁMICA DE PLANTILLAS (GET /api/templates/:empresa)
-  // ==========================================================================
   app.get("/api/templates/:empresa", requireAuth, async (req, res) => {
     try {
       const empresaKey = req.params.empresa.toUpperCase().trim();
