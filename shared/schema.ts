@@ -133,6 +133,11 @@ export const quotes = pgTable("quotes", {
   hasManufacturingTime: boolean("has_manufacturing_time").notNull().default(false),
   deliverySingle: boolean("delivery_single").notNull().default(true),
   deliveryLocationsJson: text("delivery_locations_json").notNull().default("[]"),
+  
+  // 🚀 NUEVO CAMPO: Arreglo de fechas/condiciones de entrega dinámico
+  deliveryDatesJson: text("delivery_dates_json").notNull().default("[]"),
+  // 🚀 CAMPO NUEVO: Condiciones de entrega anidadas
+  deliveryConditionsJson: text("delivery_conditions_json").notNull().default("[]"),
 
   // ─── Sección 3 "Garantías y objetos sociales" ────────────────────────────
   qualityGuaranteesJson: text("quality_guarantees_json").notNull().default("[]"),

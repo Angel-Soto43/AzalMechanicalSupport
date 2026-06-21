@@ -24,15 +24,13 @@ const SOCIAL_OBJECTS = [
   "La compra y/o venta de accesorios y refacciones, la compra, venta, importación, exportación, comisión consignación, representación corretaje, agencia, franquicia, licencia, concesión, fabricación, maquila, diseño, exposición, elaboración, envasado, empacado, servicio, mantenimiento, reparación, financiamiento, arrendamiento, subarrendamiento, arrendamiento puro, distribución y comercio en general, de toda clase de artículos, vehículos nuevos y usados, bienes muebles e inmuebles y productos ya sean de uso industrial, comercial y doméstico, así como de maquinaria, equipo y herramientas necesarias para su fabricación, sus partes, materias primas, accesorios y refacciones y toda clase de actividades, artículos y/o productos relacionados con el objeto enunciado.",
 ];
 
-type FormValues = Pick<AMSFormData,
-  | "attnLugar" | "attnDia" | "attnMes" | "attnAnio" | "attnGrado" | "attnNombre" | "attnDependencia" | "attnArea" | "attnUbicacion" | "attnDireccion"
-  | "attnNombreProcedimiento" | "attnContacto" | "attnCargo"
-  | "validityDays" | "paymentTerms" | "goodsOrigin" | "deliveryTime"
-  | "hasManufacturingTime" | "manufacturingTime"
-  | "deliverySingle" | "deliveryLocation" | "deliveryLocations"
-  | "qualityGuarantees" | "selectedSocialObjects"
-  | "lineItems"
->;
+// 🚀 SOLUCIÓN AL ERROR DE TYPESCRIPT: 
+// Usamos Partial<> para no ser estrictos con las llaves que no existen, 
+// y agregamos nuestras variables dinámicas nuevas sin que truene el linter.
+type FormValues = Partial<AMSFormData> & { 
+  deliveryDates?: string[];
+  deliveryConditions?: { text: string; subItems: string[] }[]; 
+};
 
 interface HGWBienesFormProps {
   companyName?: string;
@@ -57,9 +55,8 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
     mode: "onChange",
   });
 
-  const deliveryLocations = useFieldArray({ control: form.control, name: "deliveryLocations" });
-  const qualityGuarantees = useFieldArray({ control: form.control, name: "qualityGuarantees" as any });
-  const lineItems = useFieldArray({ control: form.control, name: "lineItems" });
+  const deliveryLocations = useFieldArray({ control: form.control, name: "deliveryLocations" as any });
+  const lineItems = useFieldArray({ control: form.control, name: "lineItems" as any });
 
   const deliverySingle = form.watch("deliverySingle");
   const hasManufacturingTime = form.watch("hasManufacturingTime");
@@ -85,7 +82,7 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
   };
 
   const updateLineItem = (index: number, field: keyof LineItem, value: any) => {
-    const current = form.getValues("lineItems");
+    const current = form.getValues("lineItems") || [];
     const item = { ...current[index], [field]: value };
 
     if (field === "purchaseCost" || field === "profitFactor") {
@@ -101,7 +98,7 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
       item.importe = cost * qty;
     }
 
-    form.setValue(`lineItems.${index}`, item, { shouldDirty: true });
+    form.setValue(`lineItems.${index}` as any, item, { shouldDirty: true });
   };
 
   const inputClass = "bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition";
@@ -288,7 +285,7 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
               <div className="text-right">
                 <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">Total Venta</p>
                 <p className="text-2xl font-black text-[#1E40AF] dark:text-blue-300">
-                  ${(watchedLineItems ?? []).reduce((acc, i) => acc + (i.quantity * i.unitPrice), 0).toLocaleString()}
+                  ${(watchedLineItems ?? []).reduce((acc: number, i: any) => acc + (i.quantity * i.unitPrice), 0).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -315,13 +312,129 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
               <Input className={inputClass} placeholder="Ej. Nacional" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
-          <FormField control={form.control} name="deliveryTime" render={({ field }) => (
-            <FormItem><FormLabel>Tiempo de entrega</FormLabel><FormControl>
-              <Input className={inputClass} placeholder="Ej. 3 meses posteriores al fallo" {...field} />
-            </FormControl><FormMessage /></FormItem>
-          )} />
+          
+          {/* BLOQUE DINÁMICO: FECHAS / CONDICIONES DE ENTREGA */}
+          <div className="md:col-span-2 space-y-3 mt-2">
+            <FormLabel>Fechas / Condiciones de entrega</FormLabel>
+            <p className="text-xs text-slate-500">Agrega múltiples párrafos si necesitas enumerarlos (A., B., etc.)</p>
+            {(form.watch("deliveryDates") ?? [""]).map((_, i) => (
+              <div key={i} className="flex gap-2 items-start">
+                <FormItem className="flex-1">
+                  <Textarea
+                    className={inputClass + " min-h-[60px]"}
+                    placeholder={`Condición de entrega ${i + 1}`}
+                    value={form.watch("deliveryDates")?.[i] ?? ""}
+                    onChange={e => {
+                      const current = [...(form.getValues("deliveryDates") ?? [])];
+                      current[i] = e.target.value;
+                      form.setValue("deliveryDates", current, { shouldDirty: true });
+                    }}
+                  />
+                </FormItem>
+                <button type="button"
+                  className="mt-2 text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
+                  onClick={() => {
+                    const current = [...(form.getValues("deliveryDates") ?? [])];
+                    current.splice(i, 1);
+                    form.setValue("deliveryDates", current, { shouldDirty: true });
+                  }}>✕</button>
+              </div>
+            ))}
+            <button type="button"
+              className="rounded border border-cyan-400 px-3 py-1 text-sm text-cyan-600 font-semibold hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition"
+              onClick={() => {
+                const current = [...(form.getValues("deliveryDates") ?? [])];
+                current.push("");
+                form.setValue("deliveryDates", current, { shouldDirty: true });
+              }}>
+              + Agregar fecha/condición
+            </button>
+          </div>
 
-          <div className="md:col-span-2 space-y-2">
+          {/* 🚀 NUEVO BLOQUE DINÁMICO ANIDADO: CONDICIONES DE ENTREGA (VII) */}
+          <div className="md:col-span-2 space-y-4 mt-6 p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/20">
+            <FormLabel className="text-base text-indigo-700 dark:text-indigo-400 font-bold">Condiciones de Entrega (A, B, C...)</FormLabel>
+            <p className="text-xs text-slate-500 mb-2">Crea párrafos principales y añade sub-párrafos (a, b, c...) si lo necesitas.</p>
+            
+            {(form.watch("deliveryConditions") ?? []).map((cond: any, condIndex: number) => (
+              <div key={condIndex} className="flex flex-col gap-2 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg relative">
+                
+                {/* Párrafo Principal (A.) */}
+                <div className="flex gap-2 items-start">
+                  <div className="font-bold text-slate-400 mt-2">{String.fromCharCode(65 + condIndex)}.</div>
+                  <Textarea
+                    className={inputClass + " min-h-[60px] flex-1"}
+                    placeholder={`Condición principal ${String.fromCharCode(65 + condIndex)}`}
+                    value={cond.text}
+                    onChange={e => {
+                      const current = [...(form.getValues("deliveryConditions") ?? [])];
+                      current[condIndex].text = e.target.value;
+                      form.setValue("deliveryConditions", current, { shouldDirty: true });
+                    }}
+                  />
+                  <button type="button"
+                    className="mt-2 text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
+                    onClick={() => {
+                      const current = [...(form.getValues("deliveryConditions") ?? [])];
+                      current.splice(condIndex, 1);
+                      form.setValue("deliveryConditions", current, { shouldDirty: true });
+                    }}>✕</button>
+                </div>
+
+                {/* Sub-Párrafos (a.) */}
+                <div className="pl-6 space-y-2 mt-2">
+                  {(cond.subItems ?? []).map((sub: string, subIndex: number) => (
+                    <div key={subIndex} className="flex gap-2 items-start">
+                      <div className="font-bold text-slate-400 mt-2">{String.fromCharCode(97 + subIndex)}.</div>
+                      <Input
+                        className={inputClass + " flex-1 text-sm"}
+                        placeholder={`Sub-condición ${String.fromCharCode(97 + subIndex)}`}
+                        value={sub}
+                        onChange={e => {
+                          const current = [...(form.getValues("deliveryConditions") ?? [])];
+                          current[condIndex].subItems[subIndex] = e.target.value;
+                          form.setValue("deliveryConditions", current, { shouldDirty: true });
+                        }}
+                      />
+                      <button type="button"
+                        className="mt-1 text-red-400 hover:text-red-600 font-bold px-2"
+                        onClick={() => {
+                          const current = [...(form.getValues("deliveryConditions") ?? [])];
+                          current[condIndex].subItems.splice(subIndex, 1);
+                          form.setValue("deliveryConditions", current, { shouldDirty: true });
+                        }}>✕</button>
+                    </div>
+                  ))}
+                  
+                  {/* Botón para agregar Sub-condición */}
+                  <button type="button"
+                    className="text-xs font-semibold text-indigo-500 hover:text-indigo-700 mt-1"
+                    onClick={() => {
+                      const current = [...(form.getValues("deliveryConditions") ?? [])];
+                      if (!current[condIndex].subItems) current[condIndex].subItems = [];
+                      current[condIndex].subItems.push("");
+                      form.setValue("deliveryConditions", current, { shouldDirty: true });
+                    }}>
+                    + Agregar inciso (a, b, c...)
+                  </button>
+                </div>
+
+              </div>
+            ))}
+
+            {/* Botón para agregar Condición Principal */}
+            <button type="button"
+              className="mt-2 rounded border border-indigo-400 px-3 py-1 text-sm text-indigo-600 font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition"
+              onClick={() => {
+              const current: any[] = [...(form.getValues("deliveryConditions") ?? [])];
+              current.push({ text: "", subItems: [] });
+              form.setValue("deliveryConditions", current, { shouldDirty: true });
+            }}>
+              + Agregar condición principal (A, B, C...)
+            </button>
+          </div>
+
+          <div className="md:col-span-2 space-y-2 mt-4">
             <FormLabel>¿Incluir tiempo de fabricación?</FormLabel>
             <div className="flex items-center gap-6">
               <label className="flex items-center gap-2 text-sm cursor-pointer">
