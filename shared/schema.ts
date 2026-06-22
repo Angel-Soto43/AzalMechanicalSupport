@@ -148,6 +148,11 @@ export const quotes = pgTable("quotes", {
   warrantyPercentageApplies: boolean("warranty_percentage_applies").notNull().default(false),
   warrantyPercentage: numeric("warranty_percentage", { precision: 5, scale: 2 }).default("0"),
   deliveryNotes: text("delivery_notes").notNull().default(""),
+
+  // ─── Campos DEMA: Documentación requerida y tablas de normas ─────────────
+  requiredDocumentsJson: text("required_documents_json").notNull().default("[]"),
+  normsTableJson: text("norms_table_json").notNull().default("[]"),
+  serviceNormsTableJson: text("service_norms_table_json").notNull().default("[]"),
 });
 
 export const quoteItems = pgTable("quote_items", {

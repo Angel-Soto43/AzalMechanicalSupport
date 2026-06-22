@@ -710,6 +710,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           warrantyPercentageApplies: quote.warrantyPercentageApplies ?? false,
           warrantyPercentage: Number(quote.warrantyPercentage) || 0,
           deliveryNotes: quote.deliveryNotes ?? "",
+          requiredDocuments: safeParse(quote.requiredDocumentsJson),
+          normsTable: safeParse(quote.normsTableJson),
+          serviceNormsTable: safeParse(quote.serviceNormsTableJson),
         },
         lineItems,
       });
@@ -841,6 +844,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       
       const deliveryDatesJson = JSON.stringify(Array.isArray(req.body.deliveryDates) ? req.body.deliveryDates : []);
       const deliveryConditionsJson = JSON.stringify(Array.isArray(req.body.deliveryConditions) ? req.body.deliveryConditions : []);
+      const requiredDocumentsJson = JSON.stringify(Array.isArray(req.body.requiredDocuments) ? req.body.requiredDocuments : []);
+      const normsTableJson = JSON.stringify(Array.isArray(req.body.normsTable) ? req.body.normsTable : []);
+      const serviceNormsTableJson = JSON.stringify(Array.isArray(req.body.serviceNormsTable) ? req.body.serviceNormsTable : []);
 
       const hasRegionalMilitary = req.body.hasRegionalMilitary === true || req.body.hasRegionalMilitary === "true";
       const warrantyPercentageApplies = req.body.warrantyPercentageApplies === true || req.body.warrantyPercentageApplies === "true";
@@ -913,6 +919,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         selectedSocialObjectsJson,
         deliveryDatesJson,
         deliveryConditionsJson,
+        requiredDocumentsJson,
+        normsTableJson,
+        serviceNormsTableJson,
         hasRegionalMilitary,
         warrantyPercentageApplies,
         warrantyPercentage: warrantyPercentage.toFixed(2),
@@ -1061,6 +1070,15 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const deliveryConditionsJson = Array.isArray(req.body.deliveryConditions)
         ? JSON.stringify(req.body.deliveryConditions)
         : (existing.deliveryConditionsJson ?? "[]");
+      const requiredDocumentsJson = Array.isArray(req.body.requiredDocuments)
+        ? JSON.stringify(req.body.requiredDocuments)
+        : (existing.requiredDocumentsJson ?? "[]");
+      const normsTableJson = Array.isArray(req.body.normsTable)
+        ? JSON.stringify(req.body.normsTable)
+        : (existing.normsTableJson ?? "[]");
+      const serviceNormsTableJson = Array.isArray(req.body.serviceNormsTable)
+        ? JSON.stringify(req.body.serviceNormsTable)
+        : (existing.serviceNormsTableJson ?? "[]");
 
       const hasRegionalMilitary = req.body.hasRegionalMilitary !== undefined
         ? (req.body.hasRegionalMilitary === true || req.body.hasRegionalMilitary === "true")
@@ -1132,6 +1150,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         selectedSocialObjectsJson,
         deliveryDatesJson,
         deliveryConditionsJson,
+        requiredDocumentsJson,
+        normsTableJson,
+        serviceNormsTableJson,
         hasRegionalMilitary,
         warrantyPercentageApplies,
         warrantyPercentage: warrantyPercentage.toFixed(2),
