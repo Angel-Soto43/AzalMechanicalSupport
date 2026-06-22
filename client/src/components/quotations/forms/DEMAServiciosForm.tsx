@@ -215,7 +215,14 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
                 <tbody>
                   {lineItems.fields.map((f, i) => (
                     <tr key={f.id} className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
-                      <td className="px-2 py-2 text-center font-bold text-slate-400">{i + 1}</td>
+                      <td className="px-2 py-2">
+                        <Input
+                          className={inputClass + " text-xs w-14 text-center"}
+                          placeholder={String(i + 1)}
+                          value={watchedLineItems?.[i]?.noPartida ?? ""}
+                          onChange={e => updateLineItem(i, "noPartida", e.target.value)}
+                        />
+                      </td>
                       <td className="px-2 py-2">
                         <Input className={inputClass + " text-xs"} placeholder="Ej. Servicio de mantenimiento..."
                           value={watchedLineItems?.[i]?.description ?? ""}

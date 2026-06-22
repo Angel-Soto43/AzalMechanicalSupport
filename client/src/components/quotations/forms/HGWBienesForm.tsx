@@ -120,6 +120,10 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
     form.setValue(`lineItems.${index}` as any, item, { shouldDirty: true });
   };
 
+  const watchedDeliveryNotes = (form.watch("deliveryNotes" as any) ?? "") as string;
+  const observations = watchedDeliveryNotes ? watchedDeliveryNotes.split("\n") : [""];
+  const setObservations = (arr: string[]) => form.setValue("deliveryNotes" as any, arr.join("\n"), { shouldDirty: true });
+
   const inputClass = "bg-white dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-400 border border-slate-200 dark:border-slate-700 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200/20 dark:focus:ring-cyan-400/25 transition";
 
   return (
@@ -212,7 +216,14 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
                 <tbody>
                   {lineItems.fields.map((f, i) => (
                     <tr key={f.id} className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
-                      <td className="px-2 py-2 text-center font-bold text-slate-400">{i + 1}</td>
+                      <td className="px-2 py-2">
+                        <Input
+                          className={inputClass + " text-xs w-14 text-center"}
+                          placeholder={String(i + 1)}
+                          value={watchedLineItems?.[i]?.noPartida ?? ""}
+                          onChange={e => updateLineItem(i, "noPartida", e.target.value)}
+                        />
+                      </td>
                       <td className="px-2 py-2">
                         <Input className={inputClass + " text-xs"} placeholder="Ej. Cinta de aluminio..."
                           value={watchedLineItems?.[i]?.description ?? ""}
@@ -413,19 +424,37 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
                 </label>
               </div>
             </div>
-            <FormField control={form.control} name={"deliveryNotes" as any} render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-xs text-slate-500">Observaciones / Información previa</FormLabel>
-                <FormControl>
+            <div className="space-y-2">
+              <FormLabel className="text-xs text-slate-500">Observaciones / Información previa</FormLabel>
+              {observations.map((obs, i) => (
+                <div key={i} className="flex gap-2 items-start">
                   <Textarea
-                    className={inputClass + " min-h-[60px]"}
+                    className={inputClass + " min-h-[60px] flex-1"}
                     placeholder="Ej. Consideraciones especiales, instrucciones de entrega, observaciones logísticas..."
-                    {...field}
+                    value={obs}
+                    onChange={e => {
+                      const arr = [...observations];
+                      arr[i] = e.target.value;
+                      setObservations(arr);
+                    }}
                   />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+                  {observations.length > 1 && (
+                    <button type="button"
+                      className="mt-2 text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
+                      onClick={() => {
+                        const arr = [...observations];
+                        arr.splice(i, 1);
+                        setObservations(arr);
+                      }}>✕</button>
+                  )}
+                </div>
+              ))}
+              <button type="button"
+                className="rounded border border-cyan-400 px-3 py-1 text-sm text-cyan-600 font-semibold hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition"
+                onClick={() => setObservations([...observations, ""])}>
+                + Agregar observación
+              </button>
+            </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <FormLabel>Tabla de lugares</FormLabel>
