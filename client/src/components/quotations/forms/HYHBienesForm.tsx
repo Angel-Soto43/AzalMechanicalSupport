@@ -28,8 +28,8 @@ const SOCIAL_OBJECTS = [
 ];
 
 type FormValues = Pick<AMSFormData,
-  | "attnLugar" | "attnDia" | "attnMes" | "attnAnio" | "attnGrado" | "attnNombre" | "attnDependencia" | "attnArea" | "attnUbicacion" | "attnDireccion"
-  | "attnNombreProcedimiento" | "attnContacto" | "attnCargo"
+  | "attnLugar" | "attnDia" | "attnMes" | "attnAnio" | "attnGrado" | "contactPerson" | "destinationCompany" | "attnArea" | "attnUbicacion" | "attnDireccion"
+  | "projectTitle" | "attnContacto" | "attnCargo"
   | "validityDays" | "paymentTerms" | "goodsOrigin" | "deliveryTime"
   | "hasManufacturingTime" | "manufacturingTime"
   | "deliverySingle" | "deliveryLocation" | "deliveryLocations"
@@ -142,12 +142,12 @@ export function HYHBienesForm({ companyName, values, onChange }: HYHBienesFormPr
               <Input className={inputClass} placeholder="Ej. C. Tte. Cor. Inf." {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
-          <FormField control={form.control} name="attnNombre" render={({ field }) => (
+          <FormField control={form.control} name="contactPerson" render={({ field }) => (
             <FormItem><FormLabel>Nombre</FormLabel><FormControl>
               <Input className={inputClass} placeholder="Ej. Vicente Herrera Valdez" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
-          <FormField control={form.control} name="attnDependencia" render={({ field }) => (
+          <FormField control={form.control} name="destinationCompany" render={({ field }) => (
             <FormItem><FormLabel>Dependencia</FormLabel><FormControl>
               <Input className={inputClass} placeholder="Ej. SecretarÃ­a de la Defensa Nacional" {...field} />
             </FormControl><FormMessage /></FormItem>
@@ -173,7 +173,7 @@ export function HYHBienesForm({ companyName, values, onChange }: HYHBienesFormPr
             </FormControl><FormMessage /></FormItem>
           )} />
           <div className="md:col-span-2">
-            <FormField control={form.control} name="attnNombreProcedimiento" render={({ field }) => (
+            <FormField control={form.control} name="projectTitle" render={({ field }) => (
               <FormItem><FormLabel>Nombre del procedimiento</FormLabel><FormControl>
                 <Input className={inputClass} placeholder={'Ej. RequisiciÃ³n No. FA09-R001/2026, "AdquisiciÃ³n de polÃ­meros A".'} {...field} />
               </FormControl><FormMessage /></FormItem>
