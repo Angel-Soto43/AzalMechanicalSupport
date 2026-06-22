@@ -3,6 +3,7 @@ export type QuoteFormType = "bienes" | "servicios";
 export interface LineItem {
   id: number;
   noPartida: string;
+  regionMilitar?: string;
   description: string;
   techRequirements: string;
   versionReference: string;
@@ -64,7 +65,7 @@ export interface AMSFormData {
   hasManufacturingTime: boolean;
   deliverySingle: boolean;
   deliveryLocation: string;
-  deliveryLocations: Array<{ noPartida: string; address: string; contact: string }>;
+  deliveryLocations: Array<{ noPartida: string; regionMilitar?: string; address: string; contact: string }>;
   deliveryConditions: string[];
 
   // ─── Sección 3 "Garantía de calidad" ────────────────────

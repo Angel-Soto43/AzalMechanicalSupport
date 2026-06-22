@@ -142,6 +142,12 @@ export const quotes = pgTable("quotes", {
   // ─── Sección 3 "Garantías y objetos sociales" ────────────────────────────
   qualityGuaranteesJson: text("quality_guarantees_json").notNull().default("[]"),
   selectedSocialObjectsJson: text("selected_social_objects_json").notNull().default("[]"),
+
+  // ─── Campos HGW: Región Militar y Porcentaje de Garantía ─────────────────
+  hasRegionalMilitary: boolean("has_regional_military").notNull().default(false),
+  warrantyPercentageApplies: boolean("warranty_percentage_applies").notNull().default(false),
+  warrantyPercentage: numeric("warranty_percentage", { precision: 5, scale: 2 }).default("0"),
+  deliveryNotes: text("delivery_notes").notNull().default(""),
 });
 
 export const quoteItems = pgTable("quote_items", {

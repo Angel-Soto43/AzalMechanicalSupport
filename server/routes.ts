@@ -704,6 +704,12 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           qualityGuarantees: safeParse(quote.qualityGuaranteesJson),
           selectedSocialObjects: safeParse(quote.selectedSocialObjectsJson),
           deliveryLocations: safeParse(quote.deliveryLocationsJson),
+          deliveryDates: safeParse(quote.deliveryDatesJson),
+          deliveryConditions: safeParse(quote.deliveryConditionsJson),
+          hasRegionalMilitary: quote.hasRegionalMilitary ?? false,
+          warrantyPercentageApplies: quote.warrantyPercentageApplies ?? false,
+          warrantyPercentage: Number(quote.warrantyPercentage) || 0,
+          deliveryNotes: quote.deliveryNotes ?? "",
         },
         lineItems,
       });
@@ -833,9 +839,13 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const qualityGuaranteesJson = JSON.stringify(Array.isArray(req.body.qualityGuarantees) ? req.body.qualityGuarantees : []);
       const selectedSocialObjectsJson = JSON.stringify(Array.isArray(req.body.selectedSocialObjects) ? req.body.selectedSocialObjects : []);
       
-      // 🚀 AQUÍ ATRAPAMOS EL NUEVO CAMPO DEL FORMULARIO
       const deliveryDatesJson = JSON.stringify(Array.isArray(req.body.deliveryDates) ? req.body.deliveryDates : []);
       const deliveryConditionsJson = JSON.stringify(Array.isArray(req.body.deliveryConditions) ? req.body.deliveryConditions : []);
+
+      const hasRegionalMilitary = req.body.hasRegionalMilitary === true || req.body.hasRegionalMilitary === "true";
+      const warrantyPercentageApplies = req.body.warrantyPercentageApplies === true || req.body.warrantyPercentageApplies === "true";
+      const warrantyPercentage = Number(req.body.warrantyPercentage) || 0;
+      const deliveryNotes = (req.body.deliveryNotes || "").toString().trim();
 
       const validityDays = Number.isFinite(validityDaysRaw) && Number.isInteger(validityDaysRaw) && validityDaysRaw > 0 ? validityDaysRaw : 120;
       const paymentDays = Number.isFinite(paymentDaysRaw) && Number.isInteger(paymentDaysRaw) && paymentDaysRaw >= 0 ? paymentDaysRaw : 0;
@@ -901,7 +911,12 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         deliveryLocationsJson,
         qualityGuaranteesJson,
         selectedSocialObjectsJson,
-        deliveryDatesJson, // 🚀 SE LO PASAMOS DIRECTO A LA BASE DE DATOS AQUÍ
+        deliveryDatesJson,
+        deliveryConditionsJson,
+        hasRegionalMilitary,
+        warrantyPercentageApplies,
+        warrantyPercentage: warrantyPercentage.toFixed(2),
+        deliveryNotes,
       });
 
       const createdItems = [];
@@ -1040,6 +1055,25 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const selectedSocialObjectsJson = Array.isArray(req.body.selectedSocialObjects)
         ? JSON.stringify(req.body.selectedSocialObjects)
         : (existing.selectedSocialObjectsJson ?? "[]");
+      const deliveryDatesJson = Array.isArray(req.body.deliveryDates)
+        ? JSON.stringify(req.body.deliveryDates)
+        : (existing.deliveryDatesJson ?? "[]");
+      const deliveryConditionsJson = Array.isArray(req.body.deliveryConditions)
+        ? JSON.stringify(req.body.deliveryConditions)
+        : (existing.deliveryConditionsJson ?? "[]");
+
+      const hasRegionalMilitary = req.body.hasRegionalMilitary !== undefined
+        ? (req.body.hasRegionalMilitary === true || req.body.hasRegionalMilitary === "true")
+        : (existing.hasRegionalMilitary ?? false);
+      const warrantyPercentageApplies = req.body.warrantyPercentageApplies !== undefined
+        ? (req.body.warrantyPercentageApplies === true || req.body.warrantyPercentageApplies === "true")
+        : (existing.warrantyPercentageApplies ?? false);
+      const warrantyPercentage = req.body.warrantyPercentage !== undefined
+        ? Number(req.body.warrantyPercentage) || 0
+        : Number(existing.warrantyPercentage) || 0;
+      const deliveryNotes = req.body.deliveryNotes !== undefined
+        ? (req.body.deliveryNotes || "").toString().trim()
+        : (existing.deliveryNotes ?? "");
 
       const lineItemsRaw = Array.isArray(req.body.lineItems) ? req.body.lineItems : [];
 
@@ -1096,6 +1130,12 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         deliveryLocationsJson,
         qualityGuaranteesJson,
         selectedSocialObjectsJson,
+        deliveryDatesJson,
+        deliveryConditionsJson,
+        hasRegionalMilitary,
+        warrantyPercentageApplies,
+        warrantyPercentage: warrantyPercentage.toFixed(2),
+        deliveryNotes,
       });
 
       let resultItems: any[] = [];

@@ -255,7 +255,7 @@ export default function QuotesPage() {
 
       // Mapear campos del backend al formato exacto de AMSFormData
       const hasManufacturingTimeBool = fullQuote.hasManufacturingTime ?? !!(fullQuote.manufacturingTime?.trim());
-      const mapped: AMSFormData = {
+      const mapped: any = {
         ...defaultAMSFormData,
         // ─── Sección 1 ──────────────────────────────────────────────────────
         attnDia: fullQuote.attnDia || "",
@@ -281,6 +281,13 @@ export default function QuotesPage() {
         deliverySingle: fullQuote.deliverySingle ?? true,
         deliveryLocation: fullQuote.deliveryPlace || "",
         deliveryLocations: Array.isArray(fullQuote.deliveryLocations) ? fullQuote.deliveryLocations : [],
+        deliveryDates: Array.isArray(fullQuote.deliveryDates) ? fullQuote.deliveryDates : [],
+        deliveryConditions: Array.isArray(fullQuote.deliveryConditions) ? fullQuote.deliveryConditions : [],
+        // ─── Sección HGW: Región Militar y Garantía ─────────────────────────
+        hasRegionalMilitary: fullQuote.hasRegionalMilitary ?? false,
+        warrantyPercentageApplies: fullQuote.warrantyPercentageApplies ?? false,
+        warrantyPercentage: fullQuote.warrantyPercentage ? Number(fullQuote.warrantyPercentage) : undefined,
+        deliveryNotes: fullQuote.deliveryNotes ?? "",
         // ─── Sección 3 ──────────────────────────────────────────────────────
         qualityGuarantees: Array.isArray(fullQuote.qualityGuarantees) && fullQuote.qualityGuarantees.length > 0
           ? fullQuote.qualityGuarantees
@@ -307,7 +314,7 @@ export default function QuotesPage() {
           : [{ ...defaultLineItem }],
       };
 
-      setAmsFormData(mapped);
+      setAmsFormData(mapped as AMSFormData);
       setEditingQuoteId(q.id);
       setEditingFolio(fullQuote.internalFolio || fullQuote.folio || "");
 
@@ -442,6 +449,16 @@ export default function QuotesPage() {
         hasManufacturingTime: amsFormData.hasManufacturingTime ?? false,
         deliverySingle: amsFormData.deliverySingle ?? true,
         deliveryLocations: amsFormData.deliveryLocations || [],
+
+        // ─── Sección 2: Fechas y condiciones de entrega ────────────────────
+        deliveryDates: (amsFormData as any).deliveryDates || [],
+        deliveryConditions: (amsFormData as any).deliveryConditions || [],
+
+        // ─── Sección HGW: Región Militar y Garantía ────────────────────────
+        hasRegionalMilitary: (amsFormData as any).hasRegionalMilitary ?? false,
+        warrantyPercentageApplies: (amsFormData as any).warrantyPercentageApplies ?? false,
+        warrantyPercentage: (amsFormData as any).warrantyPercentage ?? 0,
+        deliveryNotes: (amsFormData as any).deliveryNotes ?? "",
 
         // ─── Sección 3 "Garantías y objetos sociales" ─────────────────────
         qualityGuarantees: amsFormData.qualityGuarantees || [],

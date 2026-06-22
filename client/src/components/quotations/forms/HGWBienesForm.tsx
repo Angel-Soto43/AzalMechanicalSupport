@@ -27,9 +27,16 @@ const SOCIAL_OBJECTS = [
 // 🚀 SOLUCIÓN AL ERROR DE TYPESCRIPT: 
 // Usamos Partial<> para no ser estrictos con las llaves que no existen, 
 // y agregamos nuestras variables dinámicas nuevas sin que truene el linter.
-type FormValues = Partial<AMSFormData> & { 
+type FormValues = Partial<AMSFormData> & {
   deliveryDates?: string[];
-  deliveryConditions?: { text: string; subItems: string[] }[]; 
+  deliveryConditions?: { text: string; subItems: string[] }[];
+  attnNombre?: string;
+  attnDependencia?: string;
+  attnNombreProcedimiento?: string;
+  deliveryNotes?: string;
+  hasRegionalMilitary?: boolean;
+  warrantyPercentageApplies?: boolean;
+  warrantyPercentage?: number;
 };
 
 interface HGWBienesFormProps {
@@ -58,15 +65,27 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
   const deliveryLocations = useFieldArray({ control: form.control, name: "deliveryLocations" as any });
   const lineItems = useFieldArray({ control: form.control, name: "lineItems" as any });
 
-  const deliverySingle = form.watch("deliverySingle");
   const hasManufacturingTime = form.watch("hasManufacturingTime");
+  const hasRegionalMilitary = form.watch("hasRegionalMilitary");
   const selectedSocialObjects = form.watch("selectedSocialObjects");
   const watchedLineItems = form.watch("lineItems");
 
   useEffect(() => {
     if (!initialized.current) {
-      form.reset(values);
+      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+
+      // Normalizar deliveryConditions: si llega como string[] convertir a { text, subItems }[]
+      const rawConditions = (values as any).deliveryConditions ?? [];
+      const normalizedConditions = rawConditions.map((c: any) =>
+        typeof c === "string" ? { text: c, subItems: [] } : c
+      );
+
+      form.reset({ ...values, deliveryConditions: normalizedConditions });
       initialized.current = true;
+      const locs = (values as any).deliveryLocations ?? [];
+      if (locs.length === 0) {
+        deliveryLocations.append({ noPartida: "", regionMilitar: "", address: "", contact: "" } as any, { shouldFocus: false });
+      }
     }
   }, []);
 
@@ -302,27 +321,22 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
               <Input className={inputClass} type="number" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
-          <FormField control={form.control} name="paymentTerms" render={({ field }) => (
-            <FormItem><FormLabel>Condiciones de pago</FormLabel><FormControl>
-              <Input className={inputClass} placeholder="Ej. 17 días naturales" {...field} />
-            </FormControl><FormMessage /></FormItem>
-          )} />
           <FormField control={form.control} name="goodsOrigin" render={({ field }) => (
             <FormItem><FormLabel>Origen de bienes</FormLabel><FormControl>
               <Input className={inputClass} placeholder="Ej. Nacional" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
           
-          {/* BLOQUE DINÁMICO: FECHAS / CONDICIONES DE ENTREGA */}
+          {/* BLOQUE DINÁMICO: FECHA DE ENTREGA */}
           <div className="md:col-span-2 space-y-3 mt-2">
-            <FormLabel>Fechas / Condiciones de entrega</FormLabel>
-            <p className="text-xs text-slate-500">Agrega múltiples párrafos si necesitas enumerarlos (A., B., etc.)</p>
+            <FormLabel>Fecha de entrega</FormLabel>
+            <p className="text-xs text-slate-500">Agrega múltiples fechas si es necesario.</p>
             {(form.watch("deliveryDates") ?? [""]).map((_, i) => (
               <div key={i} className="flex gap-2 items-start">
                 <FormItem className="flex-1">
                   <Textarea
                     className={inputClass + " min-h-[60px]"}
-                    placeholder={`Condición de entrega ${i + 1}`}
+                    placeholder={`Fecha de entrega ${i + 1}`}
                     value={form.watch("deliveryDates")?.[i] ?? ""}
                     onChange={e => {
                       const current = [...(form.getValues("deliveryDates") ?? [])];
@@ -347,18 +361,134 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
                 current.push("");
                 form.setValue("deliveryDates", current, { shouldDirty: true });
               }}>
-              + Agregar fecha/condición
+              + Agregar fecha de entrega
             </button>
           </div>
 
-          {/* 🚀 NUEVO BLOQUE DINÁMICO ANIDADO: CONDICIONES DE ENTREGA (VII) */}
+          <div className="md:col-span-2 space-y-2 mt-4">
+            <FormLabel>¿Incluir tiempo de fabricación?</FormLabel>
+            <div className="flex items-center gap-6">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="radio" name="hasManufacturingTime"
+                  checked={hasManufacturingTime === true}
+                  onChange={() => form.setValue("hasManufacturingTime", true, { shouldDirty: true })} />
+                Sí
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="radio" name="hasManufacturingTime"
+                  checked={hasManufacturingTime === false}
+                  onChange={() => {
+                    form.setValue("hasManufacturingTime", false, { shouldDirty: true });
+                    form.setValue("manufacturingTime", "");
+                  }} />
+                No
+              </label>
+            </div>
+            {hasManufacturingTime === true && (
+              <FormField control={form.control} name="manufacturingTime" render={({ field }) => (
+                <FormItem><FormLabel>Tiempo de fabricación</FormLabel><FormControl>
+                  <Input className={inputClass} placeholder="Ej. 2 meses" {...field} />
+                </FormControl><FormMessage /></FormItem>
+              )} />
+            )}
+          </div>
+
+          <div className="md:col-span-2 space-y-3">
+            <FormLabel>Lugar de entrega</FormLabel>
+            {/* PREGUNTA REGIÓN MILITAR */}
+            <div className="space-y-2">
+              <FormLabel className="text-sm font-medium">¿La entrega será para alguna Región Militar?</FormLabel>
+              <div className="flex items-center gap-6">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="radio" name="hasRegionalMilitary"
+                    checked={hasRegionalMilitary === true}
+                    onChange={() => form.setValue("hasRegionalMilitary", true, { shouldDirty: true })} />
+                  Sí
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="radio" name="hasRegionalMilitary"
+                    checked={hasRegionalMilitary !== true}
+                    onChange={() => form.setValue("hasRegionalMilitary", false, { shouldDirty: true })} />
+                  No
+                </label>
+              </div>
+            </div>
+            <FormField control={form.control} name={"deliveryNotes" as any} render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-xs text-slate-500">Observaciones / Información previa</FormLabel>
+                <FormControl>
+                  <Textarea
+                    className={inputClass + " min-h-[60px]"}
+                    placeholder="Ej. Consideraciones especiales, instrucciones de entrega, observaciones logísticas..."
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <FormLabel>Tabla de lugares</FormLabel>
+                <button type="button"
+                  className="rounded border border-slate-200 bg-slate-100 px-3 py-1 text-sm font-medium hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  onClick={() => deliveryLocations.append({ noPartida: "", regionMilitar: "", address: "", contact: "" } as any)}>
+                  + Agregar fila
+                </button>
+              </div>
+              <table className="w-full text-sm border border-slate-200 dark:border-slate-700 rounded overflow-hidden">
+                <thead className="bg-green-600 text-white">
+                  <tr>
+                    <th className="px-3 py-2 text-left">No. Partida</th>
+                    {hasRegionalMilitary && <th className="px-3 py-2 text-left">R.M.</th>}
+                    <th className="px-3 py-2 text-left">Dirección</th>
+                    <th className="px-3 py-2 text-left">Contacto</th>
+                    <th className="px-3 py-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {deliveryLocations.fields.map((f, i) => (
+                    <tr key={f.id} className="border-t border-slate-200 dark:border-slate-700">
+                      <td className="px-2 py-1">
+                        <FormField control={form.control} name={`deliveryLocations.${i}.noPartida` as any} render={({ field }) => (
+                          <Input className={inputClass} placeholder="Ej. 6" {...field} />
+                        )} />
+                      </td>
+                      {hasRegionalMilitary && (
+                        <td className="px-2 py-1">
+                          <FormField control={form.control} name={`deliveryLocations.${i}.regionMilitar` as any} render={({ field }) => (
+                            <Input className={inputClass} placeholder="Ej. I" {...field} />
+                          )} />
+                        </td>
+                      )}
+                      <td className="px-2 py-1">
+                        <FormField control={form.control} name={`deliveryLocations.${i}.address` as const} render={({ field }) => (
+                          <Input className={inputClass} placeholder="Dirección" {...field} />
+                        )} />
+                      </td>
+                      <td className="px-2 py-1">
+                        <FormField control={form.control} name={`deliveryLocations.${i}.contact` as const} render={({ field }) => (
+                          <Input className={inputClass} placeholder="Contacto" {...field} />
+                        )} />
+                      </td>
+                      <td className="px-2 py-1 text-center">
+                        <button type="button" onClick={() => deliveryLocations.remove(i)}
+                          className="text-red-500 hover:text-red-700 text-xs font-bold px-2">✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* BLOQUE DINÁMICO ANIDADO: CONDICIONES DE ENTREGA (A, B, C...) */}
           <div className="md:col-span-2 space-y-4 mt-6 p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/20">
             <FormLabel className="text-base text-indigo-700 dark:text-indigo-400 font-bold">Condiciones de Entrega (A, B, C...)</FormLabel>
             <p className="text-xs text-slate-500 mb-2">Crea párrafos principales y añade sub-párrafos (a, b, c...) si lo necesitas.</p>
-            
+
             {(form.watch("deliveryConditions") ?? []).map((cond: any, condIndex: number) => (
               <div key={condIndex} className="flex flex-col gap-2 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg relative">
-                
+
                 {/* Párrafo Principal (A.) */}
                 <div className="flex gap-2 items-start">
                   <div className="font-bold text-slate-400 mt-2">{String.fromCharCode(65 + condIndex)}.</div>
@@ -405,7 +535,7 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
                         }}>✕</button>
                     </div>
                   ))}
-                  
+
                   {/* Botón para agregar Sub-condición */}
                   <button type="button"
                     className="text-xs font-semibold text-indigo-500 hover:text-indigo-700 mt-1"
@@ -432,112 +562,6 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
             }}>
               + Agregar condición principal (A, B, C...)
             </button>
-          </div>
-
-          <div className="md:col-span-2 space-y-2 mt-4">
-            <FormLabel>¿Incluir tiempo de fabricación?</FormLabel>
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" name="hasManufacturingTime"
-                  checked={hasManufacturingTime === true}
-                  onChange={() => form.setValue("hasManufacturingTime", true, { shouldDirty: true })} />
-                Sí
-              </label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" name="hasManufacturingTime"
-                  checked={hasManufacturingTime === false}
-                  onChange={() => {
-                    form.setValue("hasManufacturingTime", false, { shouldDirty: true });
-                    form.setValue("manufacturingTime", "");
-                  }} />
-                No
-              </label>
-            </div>
-            {hasManufacturingTime === true && (
-              <FormField control={form.control} name="manufacturingTime" render={({ field }) => (
-                <FormItem><FormLabel>Tiempo de fabricación</FormLabel><FormControl>
-                  <Input className={inputClass} placeholder="Ej. 2 meses" {...field} />
-                </FormControl><FormMessage /></FormItem>
-              )} />
-            )}
-          </div>
-
-          <div className="md:col-span-2 space-y-3">
-            <FormLabel>¿Lugar de entrega único?</FormLabel>
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" name="deliverySingle"
-                  checked={deliverySingle === true}
-                  onChange={() => form.setValue("deliverySingle", true, { shouldDirty: true })} />
-                Sí
-              </label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" name="deliverySingle"
-                  checked={deliverySingle === false}
-                  onChange={() => form.setValue("deliverySingle", false, { shouldDirty: true })} />
-                No
-              </label>
-            </div>
-            {deliverySingle ? (
-              <div className="grid grid-cols-2 gap-4">
-                <FormField control={form.control} name="deliveryLocation" render={({ field }) => (
-                  <FormItem><FormLabel>Lugar de entrega</FormLabel><FormControl>
-                    <Input className={inputClass} placeholder={'Ej. Hospital Militar de Zona de Ixcotel, Oax.'} {...field} />
-                  </FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="attnContacto" render={({ field }) => (
-                  <FormItem><FormLabel>Contacto</FormLabel><FormControl>
-                    <Input className={inputClass} placeholder="Ej. Coronel Ing. Ind. Fredy Ramírez Ruíz..." {...field} />
-                  </FormControl><FormMessage /></FormItem>
-                )} />
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <FormLabel>Lugares de entrega</FormLabel>
-                  <button type="button"
-                    className="rounded border border-slate-200 bg-slate-100 px-3 py-1 text-sm font-medium hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                    onClick={() => deliveryLocations.append({ noPartida: "", address: "", contact: "" } as any)}>
-                    + Agregar fila
-                  </button>
-                </div>
-                <table className="w-full text-sm border border-slate-200 dark:border-slate-700 rounded overflow-hidden">
-                  <thead className="bg-green-600 text-white">
-                    <tr>
-                      <th className="px-3 py-2 text-left">No. Partida</th>
-                      <th className="px-3 py-2 text-left">Dirección</th>
-                      <th className="px-3 py-2 text-left">Contacto</th>
-                      <th className="px-3 py-2" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {deliveryLocations.fields.map((f, i) => (
-                      <tr key={f.id} className="border-t border-slate-200 dark:border-slate-700">
-                        <td className="px-2 py-1">
-                          <FormField control={form.control} name={`deliveryLocations.${i}.noPartida` as any} render={({ field }) => (
-                            <Input className={inputClass} placeholder="Ej. 6" {...field} />
-                          )} />
-                        </td>
-                        <td className="px-2 py-1">
-                          <FormField control={form.control} name={`deliveryLocations.${i}.address` as const} render={({ field }) => (
-                            <Input className={inputClass} placeholder="Dirección" {...field} />
-                          )} />
-                        </td>
-                        <td className="px-2 py-1">
-                          <FormField control={form.control} name={`deliveryLocations.${i}.contact` as const} render={({ field }) => (
-                            <Input className={inputClass} placeholder="Contacto" {...field} />
-                          )} />
-                        </td>
-                        <td className="px-2 py-1 text-center">
-                          <button type="button" onClick={() => deliveryLocations.remove(i)}
-                            className="text-red-500 hover:text-red-700 text-xs font-bold px-2">✕</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </div>
         </div>
       </FormSection>
@@ -579,6 +603,53 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
               }}>
               + Agregar garantía
             </button>
+          </div>
+
+          <div className="space-y-3">
+            <FormLabel>Porcentaje de Garantía</FormLabel>
+            <div className="flex items-center gap-6">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="radio" name="warrantyPercentageApplies"
+                  checked={form.watch("warrantyPercentageApplies") !== true}
+                  onChange={() => form.setValue("warrantyPercentageApplies", false, { shouldDirty: true })} />
+                No Aplica
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="radio" name="warrantyPercentageApplies"
+                  checked={form.watch("warrantyPercentageApplies") === true}
+                  onChange={() => form.setValue("warrantyPercentageApplies", true, { shouldDirty: true })} />
+                Aplica
+              </label>
+            </div>
+            {form.watch("warrantyPercentageApplies") === true && (
+              <FormField control={form.control} name={"warrantyPercentage" as any}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs text-slate-500">Porcentaje (%)</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          className={inputClass + " w-32"}
+                          type="number"
+                          min="1"
+                          max="100"
+                          placeholder="Ej. 10"
+                          {...field}
+                          onChange={e => {
+                            const v = e.target.value;
+                            if (v === "" || (/^\d+(\.\d+)?$/.test(v) && Number(v) > 0 && Number(v) <= 100)) {
+                              field.onChange(v === "" ? undefined : Number(v));
+                            }
+                          }}
+                        />
+                        <span className="text-sm text-slate-500">%</span>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
           </div>
 
           <div className="space-y-2">
