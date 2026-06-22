@@ -71,6 +71,8 @@ export interface AMSFormData {
   // ─── Sección 3 "Garantía de calidad" ────────────────────
   qualityGuarantees: string[];
   requiredDocuments: string[];
+  normsTable: Array<{ description: string; norm: string }>;
+  serviceNormsTable: Array<{ description: string; quantity: string; unitMeasure: string; norm: string }>;
   selectedSocialObjects: string[];
 
   // ─── Tabla de partidas ───────────────────────────────────
@@ -123,6 +125,8 @@ export const defaultAMSFormData: AMSFormData = {
 
   qualityGuarantees: [""],
   requiredDocuments: [""],
+  normsTable: [{ description: "", norm: "" }],
+  serviceNormsTable: [{ description: "", quantity: "", unitMeasure: "", norm: "" }],
   selectedSocialObjects: [],
 
   lineItems: [{ ...defaultLineItem }],

@@ -359,6 +359,20 @@ export default function QuotesPage() {
 
   const quoteMutation = useMutation({
     mutationFn: async () => {
+<<<<<<< HEAD
+=======
+      // M-04: Validación previa con mensajes descriptivos
+      if (!amsFormData.destinationCompany?.trim()) {
+        throw new Error("El campo 'Dependencia' es obligatorio.");
+      }
+      if (!amsFormData.projectTitle?.trim()) {
+        throw new Error("El campo 'Nombre del procedimiento' es obligatorio.");
+      }
+      if (!amsFormData.contactPerson?.trim()) {
+        throw new Error("El campo 'Nombre' (persona de contacto) es obligatorio.");
+      }
+
+>>>>>>> 6263497 (Eve dema2)
       const items = amsFormData.lineItems ?? [];
       if (items.length === 0) {
         throw new Error("Debe agregar al menos una partida antes de generar la propuesta.");
@@ -390,18 +404,31 @@ export default function QuotesPage() {
       // M-03: Payload construido con el formato exacto que espera el backend
       const payload = {
         internalFolio: folio,
+<<<<<<< HEAD
         destinationCompany: amsFormData.destinationCompany?.trim() || "",
         requisitionNumber: amsFormData.projectTitle?.trim() || "S/N",
         companyOrigin: selectedCompany,
         proposalType: quoteType,
         projectTitle: amsFormData.projectTitle?.trim() || "",
+=======
+        destinationCompany: amsFormData.destinationCompany.trim(),
+        // El campo Nombre del procedimiento contiene el número de requisición
+        requisitionNumber: amsFormData.projectTitle.trim() || amsFormData.attnGrado || "S/N",
+        companyOrigin: selectedCompany,
+        proposalType: quoteType,
+        projectTitle: amsFormData.projectTitle.trim() || "Sin Título",
+>>>>>>> 6263497 (Eve dema2)
         quoteDate: new Date().toISOString().split('T')[0],
         deliveryPlace: amsFormData.deliveryLocation?.trim() || amsFormData.deliveryLocations?.[0]?.address?.trim() || "Por definir",
         deliveryTime: amsFormData.deliveryTime || "Por definir",
         guaranteeMonths: 12,
         validityDays: Number(amsFormData.validityDays) || 120,
         paymentDays: 17,
+<<<<<<< HEAD
         contactPerson: amsFormData.contactPerson?.trim() || "",
+=======
+        contactPerson: amsFormData.contactPerson.trim(),
+>>>>>>> 6263497 (Eve dema2)
         commercialTerms: "Precios en Moneda Nacional. IVA Incluido.",
 
         providerId: provId,

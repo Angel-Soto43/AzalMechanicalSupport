@@ -51,7 +51,7 @@ type FormValues = Pick<AMSFormData,
   | "validityDays" | "paymentTerms" | "goodsOrigin" | "deliveryTime"
   | "hasManufacturingTime" | "manufacturingTime"
   | "deliverySingle" | "deliveryLocation" | "deliveryLocations"
-  | "qualityGuarantees" | "requiredDocuments" | "selectedSocialObjects"
+  | "qualityGuarantees" | "requiredDocuments" | "normsTable" | "selectedSocialObjects"
   | "lineItems"
 >;
 
@@ -533,6 +533,74 @@ export function DEMABienesForm({ companyName, values, onChange }: DEMABienesForm
                   }}>✕</button>
               </div>
             ))}
+          </div>
+
+          {/* TABLA PTDA / DESCRIPCIÓN / NORMA */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <FormLabel>Descripción y norma aplicable</FormLabel>
+              <button type="button"
+                className="rounded border border-cyan-400 px-3 py-1 text-sm text-cyan-600 font-semibold hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition"
+                onClick={() => {
+                  const current = [...(form.getValues("normsTable") ?? [])];
+                  current.push({ description: "", norm: "" });
+                  form.setValue("normsTable", current, { shouldDirty: true });
+                }}>
+                + Agregar fila
+              </button>
+            </div>
+            <div className="border rounded-xl overflow-hidden shadow-sm dark:border-slate-800">
+              <table className="w-full text-sm">
+                <thead className="bg-green-600 text-white">
+                  <tr>
+                    <th className="px-3 py-2 text-center w-14">PTDA.</th>
+                    <th className="px-3 py-2 text-left">DESCRIPCIÓN</th>
+                    <th className="px-3 py-2 text-left">NORMA</th>
+                    <th className="px-3 py-2 w-10" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {(form.watch("normsTable") ?? []).map((_, i) => (
+                    <tr key={i} className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
+                      <td className="px-3 py-2 text-center font-bold text-slate-400">{i + 1}</td>
+                      <td className="px-2 py-2">
+                        <Textarea
+                          className={inputClass + " min-h-[70px] text-xs"}
+                          placeholder="Ej. Extintores portátiles de P.Q.S. de 6 kg de capacidad."
+                          value={form.watch("normsTable")?.[i]?.description ?? ""}
+                          onChange={e => {
+                            const current = [...(form.getValues("normsTable") ?? [])];
+                            current[i] = { ...current[i], description: e.target.value };
+                            form.setValue("normsTable", current, { shouldDirty: true });
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <Textarea
+                          className={inputClass + " min-h-[70px] text-xs"}
+                          placeholder="Ej. NOM-104-STPS-2001. Seguridad-Extintores..."
+                          value={form.watch("normsTable")?.[i]?.norm ?? ""}
+                          onChange={e => {
+                            const current = [...(form.getValues("normsTable") ?? [])];
+                            current[i] = { ...current[i], norm: e.target.value };
+                            form.setValue("normsTable", current, { shouldDirty: true });
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-2 text-center">
+                        <button type="button"
+                          className="text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
+                          onClick={() => {
+                            const current = [...(form.getValues("normsTable") ?? [])];
+                            current.splice(i, 1);
+                            form.setValue("normsTable", current, { shouldDirty: true });
+                          }}>✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="space-y-2">

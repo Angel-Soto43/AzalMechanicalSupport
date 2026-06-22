@@ -50,7 +50,7 @@ type FormValues = Pick<AMSFormData,
   | "projectTitle" | "attnContacto" | "attnCargo"
   | "validityDays" | "paymentTerms" | "goodsOrigin" | "deliveryTime"
   | "deliverySingle" | "deliveryLocation" | "deliveryLocations" | "deliveryConditions"
-  | "qualityGuarantees" | "requiredDocuments" | "selectedSocialObjects"
+  | "qualityGuarantees" | "requiredDocuments" | "serviceNormsTable" | "selectedSocialObjects"
   | "lineItems"
 >;
 
@@ -548,6 +548,104 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
                   }}>✕</button>
               </div>
             ))}
+          </div>
+
+          {/* TABLA PTDA / DESCRIPCIÓN / CANT. / U.M. / NORMA */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <FormLabel>Tabla de normas</FormLabel>
+              <button
+                type="button"
+                className="rounded border border-cyan-400 px-3 py-1 text-sm text-cyan-600 font-semibold hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition"
+                onClick={() => {
+                  const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                  current.push({ description: "", quantity: "", unitMeasure: "", norm: "" });
+                  form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                }}
+              >
+                + Agregar fila
+              </button>
+            </div>
+            <div className="border rounded-xl overflow-hidden shadow-sm dark:border-slate-800">
+              <table className="w-full text-xs">
+                <thead className="bg-[#0F172A] text-white">
+                  <tr>
+                    <th className="px-3 py-2 text-center w-14">PTDA.</th>
+                    <th className="px-3 py-2 text-left">DESCRIPCIÓN</th>
+                    <th className="px-3 py-2 text-center w-20">CANT.</th>
+                    <th className="px-3 py-2 text-center w-20">U.M.</th>
+                    <th className="px-3 py-2 text-left">NORMA</th>
+                    <th className="px-3 py-2 w-8" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {(form.watch("serviceNormsTable") ?? []).map((_, i) => (
+                    <tr key={i} className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
+                      <td className="px-2 py-2 text-center font-bold text-slate-400">{i + 1}</td>
+                      <td className="px-2 py-2">
+                        <Textarea
+                          className={inputClass + " min-h-[60px] text-xs"}
+                          placeholder="Descripción del servicio"
+                          value={form.watch("serviceNormsTable")?.[i]?.description ?? ""}
+                          onChange={e => {
+                            const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                            current[i] = { ...current[i], description: e.target.value };
+                            form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <Input
+                          className={inputClass + " text-xs w-16 text-center"}
+                          placeholder="0"
+                          value={form.watch("serviceNormsTable")?.[i]?.quantity ?? ""}
+                          onChange={e => {
+                            const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                            current[i] = { ...current[i], quantity: e.target.value };
+                            form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <Input
+                          className={inputClass + " text-xs w-16 text-center uppercase"}
+                          placeholder="PZA"
+                          value={form.watch("serviceNormsTable")?.[i]?.unitMeasure ?? ""}
+                          onChange={e => {
+                            const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                            current[i] = { ...current[i], unitMeasure: e.target.value };
+                            form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <Textarea
+                          className={inputClass + " min-h-[60px] text-xs"}
+                          placeholder="Ej. NOM-J-467-1989..."
+                          value={form.watch("serviceNormsTable")?.[i]?.norm ?? ""}
+                          onChange={e => {
+                            const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                            current[i] = { ...current[i], norm: e.target.value };
+                            form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-2 text-center">
+                        <button
+                          type="button"
+                          className="text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
+                          onClick={() => {
+                            const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                            current.splice(i, 1);
+                            form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                          }}
+                        >✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="space-y-2">
