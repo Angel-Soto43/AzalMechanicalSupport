@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+﻿import { useEffect, useRef } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -155,12 +155,12 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
               <Input className={inputClass} placeholder="Ej. C. Tte. Cor. Inf." {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
-          <FormField control={form.control} name="attnNombre" render={({ field }) => (
+          <FormField control={form.control} name="contactPerson" render={({ field }) => (
             <FormItem><FormLabel>Nombre</FormLabel><FormControl>
               <Input className={inputClass} placeholder="Ej. Vicente Herrera Valdez" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
-          <FormField control={form.control} name="attnDependencia" render={({ field }) => (
+          <FormField control={form.control} name="destinationCompany" render={({ field }) => (
             <FormItem><FormLabel>Dependencia</FormLabel><FormControl>
               <Input className={inputClass} placeholder="Ej. Secretaría de la Defensa Nacional" {...field} />
             </FormControl><FormMessage /></FormItem>
@@ -186,7 +186,7 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
             </FormControl><FormMessage /></FormItem>
           )} />
           <div className="md:col-span-2">
-            <FormField control={form.control} name="attnNombreProcedimiento" render={({ field }) => (
+            <FormField control={form.control} name="projectTitle" render={({ field }) => (
               <FormItem><FormLabel>Nombre del procedimiento</FormLabel><FormControl>
                 <Input className={inputClass} placeholder={'Ej. Requisición No. FA09-R001/2026, "Adquisición de polímeros A".'} {...field} />
               </FormControl><FormMessage /></FormItem>

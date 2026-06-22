@@ -263,12 +263,12 @@ export default function QuotesPage() {
         attnAnio: fullQuote.attnAnio || "",
         attnLugar: fullQuote.attnLugar || "",
         attnGrado: fullQuote.attnGrado || "",
-        attnNombre: fullQuote.contactPerson || "",
-        attnDependencia: fullQuote.destinationCompany || "",
+        contactPerson: fullQuote.contactPerson || "",
+        destinationCompany: fullQuote.destinationCompany || "",
         attnArea: fullQuote.attnArea || "",
         attnUbicacion: fullQuote.attnUbicacion || "",
         attnDireccion: fullQuote.attnDireccion || "",
-        attnNombreProcedimiento: fullQuote.requisitionNumber || fullQuote.projectTitle || "",
+        projectTitle: fullQuote.requisitionNumber || fullQuote.projectTitle || "",
         attnContacto: fullQuote.attnContacto || "",
         attnCargo: fullQuote.attnCargo || "",
         // ─── Sección 2 ──────────────────────────────────────────────────────
@@ -359,17 +359,6 @@ export default function QuotesPage() {
 
   const quoteMutation = useMutation({
     mutationFn: async () => {
-      // M-04: Validación previa con mensajes descriptivos
-      if (!amsFormData.attnDependencia?.trim()) {
-        throw new Error("El campo 'Dependencia' es obligatorio.");
-      }
-      if (!amsFormData.attnNombreProcedimiento?.trim()) {
-        throw new Error("El campo 'Nombre del procedimiento' es obligatorio.");
-      }
-      if (!amsFormData.attnNombre?.trim()) {
-        throw new Error("El campo 'Nombre' (persona de contacto) es obligatorio.");
-      }
-
       const items = amsFormData.lineItems ?? [];
       if (items.length === 0) {
         throw new Error("Debe agregar al menos una partida antes de generar la propuesta.");
@@ -401,19 +390,18 @@ export default function QuotesPage() {
       // M-03: Payload construido con el formato exacto que espera el backend
       const payload = {
         internalFolio: folio,
-        destinationCompany: amsFormData.attnDependencia.trim(),
-        // El campo Nombre del procedimiento contiene el número de requisición
-        requisitionNumber: amsFormData.attnNombreProcedimiento.trim() || amsFormData.attnGrado || "S/N",
+        destinationCompany: amsFormData.destinationCompany?.trim() || "",
+        requisitionNumber: amsFormData.projectTitle?.trim() || "S/N",
         companyOrigin: selectedCompany,
         proposalType: quoteType,
-        projectTitle: amsFormData.attnNombreProcedimiento.trim() || "Sin Título",
+        projectTitle: amsFormData.projectTitle?.trim() || "",
         quoteDate: new Date().toISOString().split('T')[0],
         deliveryPlace: amsFormData.deliveryLocation?.trim() || amsFormData.deliveryLocations?.[0]?.address?.trim() || "Por definir",
         deliveryTime: amsFormData.deliveryTime || "Por definir",
         guaranteeMonths: 12,
         validityDays: Number(amsFormData.validityDays) || 120,
         paymentDays: 17,
-        contactPerson: amsFormData.attnNombre.trim(),
+        contactPerson: amsFormData.contactPerson?.trim() || "",
         commercialTerms: "Precios en Moneda Nacional. IVA Incluido.",
 
         providerId: provId,

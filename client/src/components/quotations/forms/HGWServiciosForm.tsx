@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+﻿import { useEffect, useRef } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,9 +27,6 @@ const SOCIAL_OBJECTS = [
 type FormValues = Partial<AMSFormData> & {
   deliveryDates?: string[];
   deliveryConditions?: { text: string; subItems: string[] }[];
-  attnNombre?: string;
-  attnDependencia?: string;
-  attnNombreProcedimiento?: string;
   deliveryNotes?: string;
   hasRegionalMilitary?: boolean;
   warrantyPercentageApplies?: boolean;
@@ -152,12 +149,12 @@ export function HGWServiciosForm({ companyName, values, onChange }: HGWServicios
               <Input className={inputClass} placeholder="Ej. C. Tte. Cor. Inf." {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
-          <FormField control={form.control} name="attnNombre" render={({ field }) => (
+          <FormField control={form.control} name="contactPerson" render={({ field }) => (
             <FormItem><FormLabel>Nombre</FormLabel><FormControl>
               <Input className={inputClass} placeholder="Ej. Vicente Herrera Valdez" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
-          <FormField control={form.control} name="attnDependencia" render={({ field }) => (
+          <FormField control={form.control} name="destinationCompany" render={({ field }) => (
             <FormItem><FormLabel>Dependencia</FormLabel><FormControl>
               <Input className={inputClass} placeholder="Ej. Secretaría de la Defensa Nacional" {...field} />
             </FormControl><FormMessage /></FormItem>
@@ -183,9 +180,9 @@ export function HGWServiciosForm({ companyName, values, onChange }: HGWServicios
             </FormControl><FormMessage /></FormItem>
           )} />
           <div className="md:col-span-2">
-            <FormField control={form.control} name="attnNombreProcedimiento" render={({ field }) => (
+            <FormField control={form.control} name="projectTitle" render={({ field }) => (
               <FormItem><FormLabel>Nombre del procedimiento</FormLabel><FormControl>
-                <Input className={inputClass} placeholder={'Ej. "MANTENIMIENTO Y OPERACIÓN DEL SISTEMA DIGITAL DE SANIDAD.'} {...field} />
+                <Input className={inputClass} placeholder={'Ej. Requisición No. FA09-R001/2026, "Adquisición de servicios A".'} {...field} />
               </FormControl><FormMessage /></FormItem>
             )} />
           </div>

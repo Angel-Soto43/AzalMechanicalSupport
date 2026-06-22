@@ -852,7 +852,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const guaranteeMonths = Number.isFinite(guaranteeMonthsRaw) && Number.isInteger(guaranteeMonthsRaw) && guaranteeMonthsRaw >= 0 ? guaranteeMonthsRaw : 0;
       const compliancePercentage = Number.isFinite(compliancePercentageRaw) && compliancePercentageRaw >= 0 ? compliancePercentageRaw : 0;
 
-      if (!internalFolio || !destinationCompany || !requisitionNumber || !projectTitle || !quoteDate || !commercialTerms || !deliveryPlace || !contactPerson || Number.isNaN(providerId)) {
+      if (!internalFolio || Number.isNaN(providerId)) {
         return res.status(400).json({ error: "Todos los campos principales de la cotización son requeridos." });
       }
 
@@ -1077,7 +1077,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
       const lineItemsRaw = Array.isArray(req.body.lineItems) ? req.body.lineItems : [];
 
-      if (!destinationCompany || !requisitionNumber || !projectTitle || !quoteDate || !commercialTerms || !deliveryPlace || !contactPerson || Number.isNaN(providerId)) {
+      if (Number.isNaN(providerId)) {
         return res.status(400).json({ error: "Todos los campos principales de la cotización son requeridos." });
       }
 
