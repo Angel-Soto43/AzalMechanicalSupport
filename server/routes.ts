@@ -106,10 +106,11 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
 
     if (isAzal) {
       pdfOptions.displayHeaderFooter = true;
+      // 🚀 ASÍ DEBE QUEDAR TU HEADER TEMPLATE EN ROUTES.TS
       pdfOptions.headerTemplate = `
-        <style>html, body { margin: 0; padding: 0; }</style>
-        <div style="position: absolute; top: 0; left: 0; width: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; -webkit-print-color-adjust: exact;">
-          ${headerBase64 ? `<img src="${headerBase64}" style="width: 100%; height: auto; display: block;" />` : ''}
+        <style>html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; }</style>
+        <div style="position: absolute; top: 0; left: 0; width: 210mm; height: 297mm; z-index: -1;">
+          ${hgwBgBase64 ? `<img src="${hgwBgBase64}" style="width: 100%; height: 100%; object-fit: cover; mix-blend-mode: multiply;" />` : ''}
         </div>
       `;
       pdfOptions.footerTemplate = `
@@ -121,34 +122,33 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
       pdfOptions.margin = { top: '190px', right: '0px', bottom: '150px', left: '0px'};
     
     } else if (isHgw) {
-      // 🚀 CONFIGURACIÓN ESTRELLA PARA HGW
       pdfOptions.displayHeaderFooter = true;
       
-      // Inyectamos el fondo a tamaño A4 absoluto en el header para que cubra toda la hoja
+      // 🚀 1. FONDO CON MEDIDAS EXACTAS DE HOJA A4 PARA QUE NUNCA SE APLASTE
       pdfOptions.headerTemplate = `
         <style>html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; }</style>
         <div style="position: absolute; top: 0; left: 0; width: 210mm; height: 297mm; z-index: -1;">
-          ${hgwBgBase64 ? `<img src="${hgwBgBase64}" style="width: 100%; height: 100%; object-fit: cover;" />` : ''}
+          ${hgwBgBase64 ? `<img src="${hgwBgBase64}" style="width: 210mm; height: 297mm; object-fit: fill; mix-blend-mode: multiply;" />` : ''}
         </div>
       `;
       
-      // Footer con la info de HGW y las clases mágicas de Puppeteer (pageNumber y totalPages)
+      // 🚀 2. FOOTER ALINEADO ABAJO (Con 55px de relleno para flotar sobre lo verde)
       pdfOptions.footerTemplate = `
         <style>html, body { margin: 0; padding: 0; font-family: 'Arial Narrow', Arial, sans-serif; -webkit-print-color-adjust: exact; }</style>
-        <div style="width: 100%; font-size: 8.5pt; color: #a3a3a3; padding: 0 45px 15px 45px; display: flex; justify-content: space-between; align-items: flex-end;">
-           <div style="line-height: 1.3;">
+        <div style="position: absolute; bottom: 0; left: 0; width: 100%; font-size: 9pt; color: #000000; padding: 0 45px 55px 45px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: flex-end;">
+           <div style="line-height: 1.4;">
              hgw@hgwprocessolutions.com<br>
              Av. Jorge Jiménez Cantú No. Ext. 1, No. Int. 124, Valle Escondido, 52937, Atizapán de Zaragoza, Estado de México<br>
              Teléfonos: 56 1080 9920 – 55 4556 6367
            </div>
-           <div style="text-align: right; padding-bottom: 2px;">
+           <div style="text-align: right; font-weight: bold;">
              Página <span class="pageNumber"></span> de <span class="totalPages"></span>
            </div>
         </div>
       `;
-      // Dejamos 90px abajo para que no se empalme el texto con el footer
-      pdfOptions.margin = { top: '0px', right: '0px', bottom: '90px', left: '0px' };
-    
+      
+      // 🚀 3. MÁRGENES NATIVOS: Esto asegura el espacio en TODAS las hojas
+      pdfOptions.margin = { top: '140px', right: '0px', bottom: '110px', left: '0px' };  
     } else {
       pdfOptions.displayHeaderFooter = false;
       pdfOptions.margin = { top: '0px', right: '0px', bottom: '0px', left: '0px' };
@@ -705,7 +705,15 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           qualityGuarantees: safeParse(quote.qualityGuaranteesJson),
           selectedSocialObjects: safeParse(quote.selectedSocialObjectsJson),
           deliveryLocations: safeParse(quote.deliveryLocationsJson),
+          deliveryDates: safeParse(quote.deliveryDatesJson),
           deliveryConditions: safeParse(quote.deliveryConditionsJson),
+          hasRegionalMilitary: quote.hasRegionalMilitary ?? false,
+          warrantyPercentageApplies: quote.warrantyPercentageApplies ?? false,
+          warrantyPercentage: Number(quote.warrantyPercentage) || 0,
+          deliveryNotes: quote.deliveryNotes ?? "",
+          requiredDocuments: safeParse(quote.requiredDocumentsJson),
+          normsTable: safeParse(quote.normsTableJson),
+          serviceNormsTable: safeParse(quote.serviceNormsTableJson),
         },
         lineItems,
       });
@@ -797,7 +805,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const compliancePercentageRaw = Number(req.body.compliancePercentage ?? req.body.porcentajeCumplimiento ?? 0);
       const deliveryPlace = (req.body.deliveryPlace || req.body.lugarEntrega || "").toString().trim();
       
-      // 🚀 AQUÍ ESTÁ LA MAGIA 1: Atrapamos el nombre sin importar cómo lo envíe el Frontend
       const contactPerson = (req.body.contactPerson || req.body.contacto || req.body.personaContacto || req.body.attnNombre || req.body.nombre || "").toString().trim();
       
       const providerId = Number(req.body.providerId || req.body.proveedorId);
@@ -831,17 +838,32 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const paymentTerms = (req.body.paymentTerms || "").toString().trim();
       const hasManufacturingTime = req.body.hasManufacturingTime === true || req.body.hasManufacturingTime === "true";
       const deliverySingleVal = req.body.deliverySingle !== false && req.body.deliverySingle !== "false";
+      
       const deliveryLocationsJson = JSON.stringify(Array.isArray(req.body.deliveryLocations) ? req.body.deliveryLocations : []);
       const qualityGuaranteesJson = JSON.stringify(Array.isArray(req.body.qualityGuarantees) ? req.body.qualityGuarantees : []);
       const selectedSocialObjectsJson = JSON.stringify(Array.isArray(req.body.selectedSocialObjects) ? req.body.selectedSocialObjects : []);
+<<<<<<< HEAD
       const deliveryConditionsJson = JSON.stringify(Array.isArray(req.body.deliveryConditions) ? req.body.deliveryConditions : []);
+=======
+      
+      const deliveryDatesJson = JSON.stringify(Array.isArray(req.body.deliveryDates) ? req.body.deliveryDates : []);
+      const deliveryConditionsJson = JSON.stringify(Array.isArray(req.body.deliveryConditions) ? req.body.deliveryConditions : []);
+      const requiredDocumentsJson = JSON.stringify(Array.isArray(req.body.requiredDocuments) ? req.body.requiredDocuments : []);
+      const normsTableJson = JSON.stringify(Array.isArray(req.body.normsTable) ? req.body.normsTable : []);
+      const serviceNormsTableJson = JSON.stringify(Array.isArray(req.body.serviceNormsTable) ? req.body.serviceNormsTable : []);
+
+      const hasRegionalMilitary = req.body.hasRegionalMilitary === true || req.body.hasRegionalMilitary === "true";
+      const warrantyPercentageApplies = req.body.warrantyPercentageApplies === true || req.body.warrantyPercentageApplies === "true";
+      const warrantyPercentage = Number(req.body.warrantyPercentage) || 0;
+      const deliveryNotes = (req.body.deliveryNotes || "").toString().trim();
+>>>>>>> 1179e2fb2c396f9a92dd83c8d74197cea8fe5d30
 
       const validityDays = Number.isFinite(validityDaysRaw) && Number.isInteger(validityDaysRaw) && validityDaysRaw > 0 ? validityDaysRaw : 120;
       const paymentDays = Number.isFinite(paymentDaysRaw) && Number.isInteger(paymentDaysRaw) && paymentDaysRaw >= 0 ? paymentDaysRaw : 0;
       const guaranteeMonths = Number.isFinite(guaranteeMonthsRaw) && Number.isInteger(guaranteeMonthsRaw) && guaranteeMonthsRaw >= 0 ? guaranteeMonthsRaw : 0;
       const compliancePercentage = Number.isFinite(compliancePercentageRaw) && compliancePercentageRaw >= 0 ? compliancePercentageRaw : 0;
 
-      if (!internalFolio || !destinationCompany || !requisitionNumber || !projectTitle || !quoteDate || !commercialTerms || !deliveryPlace || !contactPerson || Number.isNaN(providerId)) {
+      if (!internalFolio || Number.isNaN(providerId)) {
         return res.status(400).json({ error: "Todos los campos principales de la cotización son requeridos." });
       }
 
@@ -900,7 +922,19 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         deliveryLocationsJson,
         qualityGuaranteesJson,
         selectedSocialObjectsJson,
+<<<<<<< HEAD
         deliveryConditionsJson,
+=======
+        deliveryDatesJson,
+        deliveryConditionsJson,
+        requiredDocumentsJson,
+        normsTableJson,
+        serviceNormsTableJson,
+        hasRegionalMilitary,
+        warrantyPercentageApplies,
+        warrantyPercentage: warrantyPercentage.toFixed(2),
+        deliveryNotes,
+>>>>>>> 1179e2fb2c396f9a92dd83c8d74197cea8fe5d30
       });
 
       const createdItems = [];
@@ -1039,6 +1073,34 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const selectedSocialObjectsJson = Array.isArray(req.body.selectedSocialObjects)
         ? JSON.stringify(req.body.selectedSocialObjects)
         : (existing.selectedSocialObjectsJson ?? "[]");
+      const deliveryDatesJson = Array.isArray(req.body.deliveryDates)
+        ? JSON.stringify(req.body.deliveryDates)
+        : (existing.deliveryDatesJson ?? "[]");
+      const deliveryConditionsJson = Array.isArray(req.body.deliveryConditions)
+        ? JSON.stringify(req.body.deliveryConditions)
+        : (existing.deliveryConditionsJson ?? "[]");
+      const requiredDocumentsJson = Array.isArray(req.body.requiredDocuments)
+        ? JSON.stringify(req.body.requiredDocuments)
+        : (existing.requiredDocumentsJson ?? "[]");
+      const normsTableJson = Array.isArray(req.body.normsTable)
+        ? JSON.stringify(req.body.normsTable)
+        : (existing.normsTableJson ?? "[]");
+      const serviceNormsTableJson = Array.isArray(req.body.serviceNormsTable)
+        ? JSON.stringify(req.body.serviceNormsTable)
+        : (existing.serviceNormsTableJson ?? "[]");
+
+      const hasRegionalMilitary = req.body.hasRegionalMilitary !== undefined
+        ? (req.body.hasRegionalMilitary === true || req.body.hasRegionalMilitary === "true")
+        : (existing.hasRegionalMilitary ?? false);
+      const warrantyPercentageApplies = req.body.warrantyPercentageApplies !== undefined
+        ? (req.body.warrantyPercentageApplies === true || req.body.warrantyPercentageApplies === "true")
+        : (existing.warrantyPercentageApplies ?? false);
+      const warrantyPercentage = req.body.warrantyPercentage !== undefined
+        ? Number(req.body.warrantyPercentage) || 0
+        : Number(existing.warrantyPercentage) || 0;
+      const deliveryNotes = req.body.deliveryNotes !== undefined
+        ? (req.body.deliveryNotes || "").toString().trim()
+        : (existing.deliveryNotes ?? "");
 
         const deliveryConditionsJson = Array.isArray(req.body.deliveryConditions)
          ? JSON.stringify(req.body.deliveryConditions)
@@ -1046,7 +1108,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
       const lineItemsRaw = Array.isArray(req.body.lineItems) ? req.body.lineItems : [];
 
-      if (!destinationCompany || !requisitionNumber || !projectTitle || !quoteDate || !commercialTerms || !deliveryPlace || !contactPerson || Number.isNaN(providerId)) {
+      if (Number.isNaN(providerId)) {
         return res.status(400).json({ error: "Todos los campos principales de la cotización son requeridos." });
       }
 
@@ -1099,7 +1161,19 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         deliveryLocationsJson,
         qualityGuaranteesJson,
         selectedSocialObjectsJson,
+<<<<<<< HEAD
         deliveryConditionsJson,
+=======
+        deliveryDatesJson,
+        deliveryConditionsJson,
+        requiredDocumentsJson,
+        normsTableJson,
+        serviceNormsTableJson,
+        hasRegionalMilitary,
+        warrantyPercentageApplies,
+        warrantyPercentage: warrantyPercentage.toFixed(2),
+        deliveryNotes,
+>>>>>>> 1179e2fb2c396f9a92dd83c8d74197cea8fe5d30
       });
 
       let resultItems: any[] = [];

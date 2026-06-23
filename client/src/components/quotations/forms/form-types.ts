@@ -3,6 +3,7 @@ export type QuoteFormType = "bienes" | "servicios";
 export interface LineItem {
   id: number;
   noPartida: string;
+  regionMilitar?: string;
   description: string;
   techRequirements: string;
   versionReference: string;
@@ -64,11 +65,14 @@ export interface AMSFormData {
   hasManufacturingTime: boolean;
   deliverySingle: boolean;
   deliveryLocation: string;
-  deliveryLocations: Array<{ noPartida: string; address: string; contact: string }>;
+  deliveryLocations: Array<{ noPartida: string; regionMilitar?: string; address: string; contact: string }>;
   deliveryConditions: string[];
 
   // ─── Sección 3 "Garantía de calidad" ────────────────────
   qualityGuarantees: string[];
+  requiredDocuments: string[];
+  normsTable: Array<{ description: string; norm: string }>;
+  serviceNormsTable: Array<{ description: string; quantity: string; unitMeasure: string; norm: string }>;
   selectedSocialObjects: string[];
 
   // ─── Tabla de partidas ───────────────────────────────────
@@ -120,6 +124,9 @@ export const defaultAMSFormData: AMSFormData = {
   deliveryConditions: [""],
 
   qualityGuarantees: [""],
+  requiredDocuments: [""],
+  normsTable: [{ description: "", norm: "" }],
+  serviceNormsTable: [{ description: "", quantity: "", unitMeasure: "", norm: "" }],
   selectedSocialObjects: [],
 
   lineItems: [{ ...defaultLineItem }],

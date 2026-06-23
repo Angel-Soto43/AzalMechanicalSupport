@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,11 +46,11 @@ const SOCIAL_OBJECTS = [
 ];
 
 type FormValues = Pick<AMSFormData,
-  | "attnLugar" | "attnDia" | "attnMes" | "attnAnio" | "attnGrado" | "attnNombre" | "attnDependencia" | "attnArea" | "attnUbicacion" | "attnDireccion"
-  | "attnNombreProcedimiento" | "attnContacto" | "attnCargo"
+  | "attnLugar" | "attnDia" | "attnMes" | "attnAnio" | "attnGrado" | "contactPerson" | "destinationCompany" | "attnArea" | "attnUbicacion" | "attnDireccion"
+  | "projectTitle" | "attnContacto" | "attnCargo"
   | "validityDays" | "paymentTerms" | "goodsOrigin" | "deliveryTime"
   | "deliverySingle" | "deliveryLocation" | "deliveryLocations" | "deliveryConditions"
-  | "qualityGuarantees" | "selectedSocialObjects"
+  | "qualityGuarantees" | "requiredDocuments" | "serviceNormsTable" | "selectedSocialObjects"
   | "lineItems"
 >;
 
@@ -128,12 +128,12 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
   return (
     <Form {...form}>
 
-      {/* SECCIÃ“N 1 */}
-      <FormSection title='SecciÃ³n 1' subtitle="Solo aparecerÃ¡n en el PDF los campos que se llenen.">
+      {/* SECCIÓN 1 */}
+      <FormSection title='Sección 1' subtitle="Solo aparecerán en el PDF los campos que se llenen.">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2 grid grid-cols-3 gap-4">
             <FormField control={form.control} name="attnDia" render={({ field }) => (
-              <FormItem><FormLabel>DÃ­a</FormLabel><FormControl>
+              <FormItem><FormLabel>Día</FormLabel><FormControl>
                 <Input className={inputClass} placeholder="Ej. 10" {...field} />
               </FormControl><FormMessage /></FormItem>
             )} />
@@ -143,7 +143,7 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
               </FormControl><FormMessage /></FormItem>
             )} />
             <FormField control={form.control} name="attnAnio" render={({ field }) => (
-              <FormItem><FormLabel>AÃ±o</FormLabel><FormControl>
+              <FormItem><FormLabel>Año</FormLabel><FormControl>
                 <Input className={inputClass} placeholder="Ej. 2026" {...field} />
               </FormControl><FormMessage /></FormItem>
             )} />
@@ -158,29 +158,29 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
               <Input className={inputClass} placeholder="Ej. C. Tte. Cor. Inf." {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
-          <FormField control={form.control} name="attnNombre" render={({ field }) => (
+          <FormField control={form.control} name="contactPerson" render={({ field }) => (
             <FormItem><FormLabel>Nombre</FormLabel><FormControl>
               <Input className={inputClass} placeholder="Ej. Vicente Herrera Valdez" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
-          <FormField control={form.control} name="attnDependencia" render={({ field }) => (
+          <FormField control={form.control} name="destinationCompany" render={({ field }) => (
             <FormItem><FormLabel>Dependencia</FormLabel><FormControl>
-              <Input className={inputClass} placeholder="Ej. SecretarÃ­a de la Defensa Nacional" {...field} />
+              <Input className={inputClass} placeholder="Ej. Secretaría de la Defensa Nacional" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="attnArea" render={({ field }) => (
-            <FormItem><FormLabel>Ãrea</FormLabel><FormControl>
-              <Input className={inputClass} placeholder="Ej. Comedor, puerta 4 Ã©tc..." {...field} />
+            <FormItem><FormLabel>Área</FormLabel><FormControl>
+              <Input className={inputClass} placeholder="Ej. Comedor, puerta 4 étc..." {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="attnUbicacion" render={({ field }) => (
-            <FormItem><FormLabel>UbicaciÃ³n</FormLabel><FormControl>
+            <FormItem><FormLabel>Ubicación</FormLabel><FormControl>
               <Input className={inputClass} placeholder="Ej. CARRETERA FEDERAL 140-D KILOMETRO 1.5, C.P. 68200..." {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="attnDireccion" render={({ field }) => (
-            <FormItem><FormLabel>DirecciÃ³n</FormLabel><FormControl>
-              <Input className={inputClass} placeholder="Ej. Av. DirecciÃ³n General de Sanidad" {...field} />
+            <FormItem><FormLabel>Dirección</FormLabel><FormControl>
+              <Input className={inputClass} placeholder="Ej. Av. Dirección General de Sanidad" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="attnCargo" render={({ field }) => (
@@ -189,9 +189,9 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
             </FormControl><FormMessage /></FormItem>
           )} />
           <div className="md:col-span-2">
-            <FormField control={form.control} name="attnNombreProcedimiento" render={({ field }) => (
+            <FormField control={form.control} name="projectTitle" render={({ field }) => (
               <FormItem><FormLabel>Nombre del procedimiento</FormLabel><FormControl>
-                <Input className={inputClass} placeholder={'Ej. "MANTENIMIENTO Y OPERACIÃ“N DEL SISTEMA DIGITAL DE SANIDAD.'} {...field} />
+                <Input className={inputClass} placeholder={'Ej. "MANTENIMIENTO Y OPERACIÓN DEL SISTEMA DIGITAL DE SANIDAD.'} {...field} />
               </FormControl><FormMessage /></FormItem>
             )} />
           </div>
@@ -203,8 +203,8 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
                 <thead className="bg-[#0F172A] text-white">
                   <tr>
                     <th className="px-3 py-2 text-center w-10">#</th>
-                    <th className="px-3 py-2 text-left min-w-[200px]">DescripciÃ³n / Esp. TÃ©cnica</th>
-                    <th className="px-3 py-2 text-left min-w-[160px]">Req. / VersiÃ³n / Fecha</th>
+                    <th className="px-3 py-2 text-left min-w-[200px]">Descripción / Esp. Técnica</th>
+                    <th className="px-3 py-2 text-left min-w-[160px]">Req. / Versión / Fecha</th>
                     <th className="px-3 py-2 text-center border-l border-slate-700 bg-slate-800 text-emerald-300 min-w-[280px]">Datos Internos</th>
                     <th className="px-3 py-2 text-center w-16">Cant.</th>
                     <th className="px-3 py-2 text-left w-16">U.M.</th>
@@ -215,7 +215,14 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
                 <tbody>
                   {lineItems.fields.map((f, i) => (
                     <tr key={f.id} className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
-                      <td className="px-2 py-2 text-center font-bold text-slate-400">{i + 1}</td>
+                      <td className="px-2 py-2">
+                        <Input
+                          className={inputClass + " text-xs w-14 text-center"}
+                          placeholder={String(i + 1)}
+                          value={watchedLineItems?.[i]?.noPartida ?? ""}
+                          onChange={e => updateLineItem(i, "noPartida", e.target.value)}
+                        />
+                      </td>
                       <td className="px-2 py-2">
                         <Input className={inputClass + " text-xs"} placeholder="Ej. Servicio de mantenimiento..."
                           value={watchedLineItems?.[i]?.description ?? ""}
@@ -223,11 +230,11 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
                       </td>
                       <td className="px-2 py-2">
                         <div className="space-y-1">
-                          <Input className={inputClass + " text-[10px] h-6"} placeholder="Req. tÃ©cnicos"
+                          <Input className={inputClass + " text-[10px] h-6"} placeholder="Req. técnicos"
                             value={watchedLineItems?.[i]?.techRequirements ?? ""}
                             onChange={e => updateLineItem(i, "techRequirements", e.target.value)} />
                           <div className="flex gap-1">
-                            <Input className={inputClass + " text-[10px] h-6 w-1/2"} placeholder="VersiÃ³n"
+                            <Input className={inputClass + " text-[10px] h-6 w-1/2"} placeholder="Versión"
                               value={watchedLineItems?.[i]?.versionReference ?? ""}
                               onChange={e => updateLineItem(i, "versionReference", e.target.value)} />
                             <Input className={inputClass + " text-[10px] h-6 w-1/2"} placeholder="Fecha"
@@ -316,17 +323,17 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
         </div>
       </FormSection>
 
-      {/* SECCIÃ“N 2 */}
-      <FormSection title="SecciÃ³n 2" subtitle="Los campos vacÃ­os no aparecerÃ¡n en el PDF.">
+      {/* SECCIÓN 2 */}
+      <FormSection title="Sección 2" subtitle="Los campos vacíos no aparecerán en el PDF.">
         <div className="grid gap-4 md:grid-cols-2">
           <FormField control={form.control} name="validityDays" render={({ field }) => (
-            <FormItem><FormLabel>Vigencia de cotizaciÃ³n (dÃ­as)</FormLabel><FormControl>
+            <FormItem><FormLabel>Vigencia de cotización (días)</FormLabel><FormControl>
               <Input className={inputClass} type="number" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="paymentTerms" render={({ field }) => (
             <FormItem><FormLabel>Condiciones de pago</FormLabel><FormControl>
-              <Input className={inputClass} placeholder="Ej. 17 dÃ­as naturales" {...field} />
+              <Input className={inputClass} placeholder="Ej. 17 días naturales" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="goodsOrigin" render={({ field }) => (
@@ -341,13 +348,13 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
           )} />
 
           <div className="md:col-span-2 space-y-3">
-            <FormLabel>Â¿Lugar de entrega Ãºnico?</FormLabel>
+            <FormLabel>¿Lugar de entrega único?</FormLabel>
             <div className="flex items-center gap-6">
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input type="radio" name="deliverySingle"
                   checked={deliverySingle === true}
                   onChange={() => form.setValue("deliverySingle", true, { shouldDirty: true })} />
-                SÃ­
+                Sí
               </label>
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input type="radio" name="deliverySingle"
@@ -365,7 +372,7 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
                 )} />
                 <FormField control={form.control} name="attnContacto" render={({ field }) => (
                   <FormItem><FormLabel>Contacto</FormLabel><FormControl>
-                    <Input className={inputClass} placeholder="Ej. Coronel Ing. Ind. Fredy RamÃ­rez RuÃ­z..." {...field} />
+                    <Input className={inputClass} placeholder="Ej. Coronel Ing. Ind. Fredy Ramírez Ruíz..." {...field} />
                   </FormControl><FormMessage /></FormItem>
                 )} />
               </div>
@@ -383,7 +390,7 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
                   <thead className="bg-green-600 text-white">
                     <tr>
                       <th className="px-3 py-2 text-left">No. Partida</th>
-                      <th className="px-3 py-2 text-left">DirecciÃ³n</th>
+                      <th className="px-3 py-2 text-left">Dirección</th>
                       <th className="px-3 py-2 text-left">Contacto</th>
                       <th className="px-3 py-2" />
                     </tr>
@@ -398,7 +405,7 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
                         </td>
                         <td className="px-2 py-1">
                           <FormField control={form.control} name={`deliveryLocations.${i}.address` as const} render={({ field }) => (
-                            <Input className={inputClass} placeholder="DirecciÃ³n" {...field} />
+                            <Input className={inputClass} placeholder="Dirección" {...field} />
                           )} />
                         </td>
                         <td className="px-2 py-1">
@@ -408,7 +415,7 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
                         </td>
                         <td className="px-2 py-1 text-center">
                           <button type="button" onClick={() => deliveryLocations.remove(i)}
-                            className="text-red-500 hover:text-red-700 text-xs font-bold px-2">âœ•</button>
+                            className="text-red-500 hover:text-red-700 text-xs font-bold px-2">✕</button>
                         </td>
                       </tr>
                     ))}
@@ -431,16 +438,16 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
                   form.setValue("deliveryConditions", current, { shouldDirty: true });
                 }}
               >
-                <span className="flex items-center gap-1"><Plus className="h-3 w-3" /> Agregar condiciÃ³n</span>
+                <span className="flex items-center gap-1"><Plus className="h-3 w-3" /> Agregar condición</span>
               </button>
             </div>
             {(form.watch("deliveryConditions") ?? [""]).map((_, i) => (
               <div key={i} className="flex gap-2 items-start">
                 <FormItem className="flex-1">
-                  <FormLabel className="text-xs text-slate-500">CondiciÃ³n {i + 1}</FormLabel>
+                  <FormLabel className="text-xs text-slate-500">Condición {i + 1}</FormLabel>
                   <Textarea
                     className={inputClass + " min-h-[70px]"}
-                    placeholder="Ej. La entrega deberÃ¡ realizarse en dÃ­as hÃ¡biles..."
+                    placeholder="Ej. La entrega deberá realizarse en días hábiles..."
                     value={form.watch("deliveryConditions")?.[i] ?? ""}
                     onChange={e => {
                       const current = [...(form.getValues("deliveryConditions") ?? [])];
@@ -457,7 +464,7 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
                     current.splice(i, 1);
                     form.setValue("deliveryConditions", current, { shouldDirty: true });
                   }}
-                >âœ•</button>
+                >✕</button>
               </div>
             ))}
           </div>
@@ -465,17 +472,17 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
         </div>
       </FormSection>
 
-      {/* SECCIÃ“N 3 */}
-      <FormSection title='SecciÃ³n 3' subtitle="Agrega las garantÃ­as y selecciona los objetos sociales aplicables.">
+      {/* SECCIÓN 3 */}
+      <FormSection title='Sección 3' subtitle="Agrega las garantías y selecciona los objetos sociales aplicables.">
         <div className="space-y-6">
           <div className="space-y-3">
             {(form.watch("qualityGuarantees") ?? [""]).map((_, i) => (
               <div key={i} className="flex gap-2 items-start">
                 <FormItem className="flex-1">
-                  <FormLabel className="text-xs text-slate-500">GarantÃ­a {i + 1}</FormLabel>
+                  <FormLabel className="text-xs text-slate-500">Garantía {i + 1}</FormLabel>
                   <Textarea
                     className={inputClass + " min-h-[80px]"}
-                    placeholder={`DescripciÃ³n de la garantÃ­a ${i + 1}`}
+                    placeholder={`Descripción de la garantía ${i + 1}`}
                     value={form.watch("qualityGuarantees")?.[i] ?? ""}
                     onChange={e => {
                       const current = [...(form.getValues("qualityGuarantees") ?? [])];
@@ -490,7 +497,7 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
                     const current = [...(form.getValues("qualityGuarantees") ?? [])];
                     current.splice(i, 1);
                     form.setValue("qualityGuarantees", current, { shouldDirty: true });
-                  }}>âœ•</button>
+                  }}>✕</button>
               </div>
             ))}
             <button type="button"
@@ -500,8 +507,145 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
                 current.push("");
                 form.setValue("qualityGuarantees", current, { shouldDirty: true });
               }}>
-              + Agregar garantÃ­a
+              + Agregar garantía
             </button>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <FormLabel>Documentación requerida</FormLabel>
+              <button type="button"
+                className="rounded border border-cyan-400 px-3 py-1 text-sm text-cyan-600 font-semibold hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition"
+                onClick={() => {
+                  const current = [...(form.getValues("requiredDocuments") ?? [])];
+                  current.push("");
+                  form.setValue("requiredDocuments", current, { shouldDirty: true });
+                }}>
+                + Agregar documento
+              </button>
+            </div>
+            {(form.watch("requiredDocuments") ?? [""]).map((_, i) => (
+              <div key={i} className="flex gap-2 items-start">
+                <FormItem className="flex-1">
+                  <FormLabel className="text-xs text-slate-500">Documento {i + 1}</FormLabel>
+                  <Textarea
+                    className={inputClass + " min-h-[70px]"}
+                    placeholder={`Ej. Copia de identificación oficial...`}
+                    value={form.watch("requiredDocuments")?.[i] ?? ""}
+                    onChange={e => {
+                      const current = [...(form.getValues("requiredDocuments") ?? [])];
+                      current[i] = e.target.value;
+                      form.setValue("requiredDocuments", current, { shouldDirty: true });
+                    }}
+                  />
+                </FormItem>
+                <button type="button"
+                  className="mt-6 text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
+                  onClick={() => {
+                    const current = [...(form.getValues("requiredDocuments") ?? [])];
+                    current.splice(i, 1);
+                    form.setValue("requiredDocuments", current, { shouldDirty: true });
+                  }}>✕</button>
+              </div>
+            ))}
+          </div>
+
+          {/* TABLA PTDA / DESCRIPCIÓN / CANT. / U.M. / NORMA */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <FormLabel>Tabla de normas</FormLabel>
+              <button
+                type="button"
+                className="rounded border border-cyan-400 px-3 py-1 text-sm text-cyan-600 font-semibold hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition"
+                onClick={() => {
+                  const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                  current.push({ description: "", quantity: "", unitMeasure: "", norm: "" });
+                  form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                }}
+              >
+                + Agregar fila
+              </button>
+            </div>
+            <div className="border rounded-xl overflow-hidden shadow-sm dark:border-slate-800">
+              <table className="w-full text-xs">
+                <thead className="bg-[#0F172A] text-white">
+                  <tr>
+                    <th className="px-3 py-2 text-center w-14">PTDA.</th>
+                    <th className="px-3 py-2 text-left">DESCRIPCIÓN</th>
+                    <th className="px-3 py-2 text-center w-20">CANT.</th>
+                    <th className="px-3 py-2 text-center w-20">U.M.</th>
+                    <th className="px-3 py-2 text-left">NORMA</th>
+                    <th className="px-3 py-2 w-8" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {(form.watch("serviceNormsTable") ?? []).map((_, i) => (
+                    <tr key={i} className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
+                      <td className="px-2 py-2 text-center font-bold text-slate-400">{i + 1}</td>
+                      <td className="px-2 py-2">
+                        <Textarea
+                          className={inputClass + " min-h-[60px] text-xs"}
+                          placeholder="Descripción del servicio"
+                          value={form.watch("serviceNormsTable")?.[i]?.description ?? ""}
+                          onChange={e => {
+                            const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                            current[i] = { ...current[i], description: e.target.value };
+                            form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <Input
+                          className={inputClass + " text-xs w-16 text-center"}
+                          placeholder="0"
+                          value={form.watch("serviceNormsTable")?.[i]?.quantity ?? ""}
+                          onChange={e => {
+                            const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                            current[i] = { ...current[i], quantity: e.target.value };
+                            form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <Input
+                          className={inputClass + " text-xs w-16 text-center uppercase"}
+                          placeholder="PZA"
+                          value={form.watch("serviceNormsTable")?.[i]?.unitMeasure ?? ""}
+                          onChange={e => {
+                            const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                            current[i] = { ...current[i], unitMeasure: e.target.value };
+                            form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <Textarea
+                          className={inputClass + " min-h-[60px] text-xs"}
+                          placeholder="Ej. NOM-J-467-1989..."
+                          value={form.watch("serviceNormsTable")?.[i]?.norm ?? ""}
+                          onChange={e => {
+                            const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                            current[i] = { ...current[i], norm: e.target.value };
+                            form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-2 text-center">
+                        <button
+                          type="button"
+                          className="text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
+                          onClick={() => {
+                            const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                            current.splice(i, 1);
+                            form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                          }}
+                        >✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -524,4 +668,3 @@ export function DEMAServiciosForm({ companyName, values, onChange }: DEMAServici
     </Form>
   );
 }
-

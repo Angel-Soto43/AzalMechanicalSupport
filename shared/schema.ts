@@ -142,11 +142,26 @@ export const quotes = pgTable("quotes", {
   hasManufacturingTime: boolean("has_manufacturing_time").notNull().default(false),
   deliverySingle: boolean("delivery_single").notNull().default(true),
   deliveryLocationsJson: text("delivery_locations_json").notNull().default("[]"),
+  
+  // 🚀 NUEVO CAMPO: Arreglo de fechas/condiciones de entrega dinámico
+  deliveryDatesJson: text("delivery_dates_json").notNull().default("[]"),
+  // 🚀 CAMPO NUEVO: Condiciones de entrega anidadas
   deliveryConditionsJson: text("delivery_conditions_json").notNull().default("[]"),
 
   // ─── Sección 3 "Garantías y objetos sociales" ────────────────────────────
   qualityGuaranteesJson: text("quality_guarantees_json").notNull().default("[]"),
   selectedSocialObjectsJson: text("selected_social_objects_json").notNull().default("[]"),
+
+  // ─── Campos HGW: Región Militar y Porcentaje de Garantía ─────────────────
+  hasRegionalMilitary: boolean("has_regional_military").notNull().default(false),
+  warrantyPercentageApplies: boolean("warranty_percentage_applies").notNull().default(false),
+  warrantyPercentage: numeric("warranty_percentage", { precision: 5, scale: 2 }).default("0"),
+  deliveryNotes: text("delivery_notes").notNull().default(""),
+
+  // ─── Campos DEMA: Documentación requerida y tablas de normas ─────────────
+  requiredDocumentsJson: text("required_documents_json").notNull().default("[]"),
+  normsTableJson: text("norms_table_json").notNull().default("[]"),
+  serviceNormsTableJson: text("service_norms_table_json").notNull().default("[]"),
 });
 
 export const quoteItems = pgTable("quote_items", {

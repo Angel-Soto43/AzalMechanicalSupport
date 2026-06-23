@@ -255,7 +255,7 @@ export default function QuotesPage() {
 
       // Mapear campos del backend al formato exacto de AMSFormData
       const hasManufacturingTimeBool = fullQuote.hasManufacturingTime ?? !!(fullQuote.manufacturingTime?.trim());
-      const mapped: AMSFormData = {
+      const mapped: any = {
         ...defaultAMSFormData,
         // ─── Sección 1 ──────────────────────────────────────────────────────
         attnDia: fullQuote.attnDia || "",
@@ -263,12 +263,12 @@ export default function QuotesPage() {
         attnAnio: fullQuote.attnAnio || "",
         attnLugar: fullQuote.attnLugar || "",
         attnGrado: fullQuote.attnGrado || "",
-        attnNombre: fullQuote.contactPerson || "",
-        attnDependencia: fullQuote.destinationCompany || "",
+        contactPerson: fullQuote.contactPerson || "",
+        destinationCompany: fullQuote.destinationCompany || "",
         attnArea: fullQuote.attnArea || "",
         attnUbicacion: fullQuote.attnUbicacion || "",
         attnDireccion: fullQuote.attnDireccion || "",
-        attnNombreProcedimiento: fullQuote.requisitionNumber || fullQuote.projectTitle || "",
+        projectTitle: fullQuote.requisitionNumber || fullQuote.projectTitle || "",
         attnContacto: fullQuote.attnContacto || "",
         attnCargo: fullQuote.attnCargo || "",
         // ─── Sección 2 ──────────────────────────────────────────────────────
@@ -281,11 +281,22 @@ export default function QuotesPage() {
         deliverySingle: fullQuote.deliverySingle ?? true,
         deliveryLocation: fullQuote.deliveryPlace || "",
         deliveryLocations: Array.isArray(fullQuote.deliveryLocations) ? fullQuote.deliveryLocations : [],
+        deliveryDates: Array.isArray(fullQuote.deliveryDates) ? fullQuote.deliveryDates : [],
+        deliveryConditions: Array.isArray(fullQuote.deliveryConditions) ? fullQuote.deliveryConditions : [],
+        // ─── Sección HGW: Región Militar y Garantía ─────────────────────────
+        hasRegionalMilitary: fullQuote.hasRegionalMilitary ?? false,
+        warrantyPercentageApplies: fullQuote.warrantyPercentageApplies ?? false,
+        warrantyPercentage: fullQuote.warrantyPercentage ? Number(fullQuote.warrantyPercentage) : undefined,
+        deliveryNotes: fullQuote.deliveryNotes ?? "",
         // ─── Sección 3 ──────────────────────────────────────────────────────
         qualityGuarantees: Array.isArray(fullQuote.qualityGuarantees) && fullQuote.qualityGuarantees.length > 0
           ? fullQuote.qualityGuarantees
           : [""],
         selectedSocialObjects: Array.isArray(fullQuote.selectedSocialObjects) ? fullQuote.selectedSocialObjects : [],
+        // ─── Campos DEMA ─────────────────────────────────────────────────────
+        requiredDocuments: Array.isArray(fullQuote.requiredDocuments) ? fullQuote.requiredDocuments : [],
+        normsTable: Array.isArray(fullQuote.normsTable) ? fullQuote.normsTable : [],
+        serviceNormsTable: Array.isArray(fullQuote.serviceNormsTable) ? fullQuote.serviceNormsTable : [],
         // ─── Partidas ────────────────────────────────────────────────────────
         lineItems: Array.isArray(fullLineItems) && fullLineItems.length > 0
           ? fullLineItems.map((li: any, idx: number) => ({
@@ -307,7 +318,7 @@ export default function QuotesPage() {
           : [{ ...defaultLineItem }],
       };
 
-      setAmsFormData(mapped);
+      setAmsFormData(mapped as AMSFormData);
       setEditingQuoteId(q.id);
       setEditingFolio(fullQuote.internalFolio || fullQuote.folio || "");
 
@@ -352,17 +363,6 @@ export default function QuotesPage() {
 
   const quoteMutation = useMutation({
     mutationFn: async () => {
-      // M-04: Validación previa con mensajes descriptivos
-      if (!amsFormData.attnDependencia?.trim()) {
-        throw new Error("El campo 'Dependencia' es obligatorio.");
-      }
-      if (!amsFormData.attnNombreProcedimiento?.trim()) {
-        throw new Error("El campo 'Nombre del procedimiento' es obligatorio.");
-      }
-      if (!amsFormData.attnNombre?.trim()) {
-        throw new Error("El campo 'Nombre' (persona de contacto) es obligatorio.");
-      }
-
       const items = amsFormData.lineItems ?? [];
       if (items.length === 0) {
         throw new Error("Debe agregar al menos una partida antes de generar la propuesta.");
@@ -394,19 +394,18 @@ export default function QuotesPage() {
       // M-03: Payload construido con el formato exacto que espera el backend
       const payload = {
         internalFolio: folio,
-        destinationCompany: amsFormData.attnDependencia.trim(),
-        // El campo Nombre del procedimiento contiene el número de requisición
-        requisitionNumber: amsFormData.attnNombreProcedimiento.trim() || amsFormData.attnGrado || "S/N",
+        destinationCompany: amsFormData.destinationCompany?.trim() || "",
+        requisitionNumber: amsFormData.projectTitle?.trim() || "S/N",
         companyOrigin: selectedCompany,
         proposalType: quoteType,
-        projectTitle: amsFormData.attnNombreProcedimiento.trim() || "Sin Título",
+        projectTitle: amsFormData.projectTitle?.trim() || "",
         quoteDate: new Date().toISOString().split('T')[0],
         deliveryPlace: amsFormData.deliveryLocation?.trim() || amsFormData.deliveryLocations?.[0]?.address?.trim() || "Por definir",
         deliveryTime: amsFormData.deliveryTime || "Por definir",
         guaranteeMonths: 12,
         validityDays: Number(amsFormData.validityDays) || 120,
         paymentDays: 17,
-        contactPerson: amsFormData.attnNombre.trim(),
+        contactPerson: amsFormData.contactPerson?.trim() || "",
         commercialTerms: "Precios en Moneda Nacional. IVA Incluido.",
 
         providerId: provId,
@@ -443,9 +442,24 @@ export default function QuotesPage() {
         deliverySingle: amsFormData.deliverySingle ?? true,
         deliveryLocations: amsFormData.deliveryLocations || [],
 
+        // ─── Sección 2: Fechas y condiciones de entrega ────────────────────
+        deliveryDates: (amsFormData as any).deliveryDates || [],
+        deliveryConditions: (amsFormData as any).deliveryConditions || [],
+
+        // ─── Sección HGW: Región Militar y Garantía ────────────────────────
+        hasRegionalMilitary: (amsFormData as any).hasRegionalMilitary ?? false,
+        warrantyPercentageApplies: (amsFormData as any).warrantyPercentageApplies ?? false,
+        warrantyPercentage: (amsFormData as any).warrantyPercentage ?? 0,
+        deliveryNotes: (amsFormData as any).deliveryNotes ?? "",
+
         // ─── Sección 3 "Garantías y objetos sociales" ─────────────────────
         qualityGuarantees: amsFormData.qualityGuarantees || [],
         selectedSocialObjects: amsFormData.selectedSocialObjects || [],
+
+        // ─── Campos DEMA ───────────────────────────────────────────────────
+        requiredDocuments: amsFormData.requiredDocuments || [],
+        normsTable: amsFormData.normsTable || [],
+        serviceNormsTable: amsFormData.serviceNormsTable || [],
 
         lineItems: items.map(item => ({
           noPartida: item.noPartida || "",

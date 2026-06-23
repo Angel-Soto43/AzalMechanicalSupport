@@ -29,7 +29,7 @@ type FormValues = Pick<AMSFormData,
   | "projectTitle" | "attnContacto" | "attnCargo"
   | "validityDays" | "paymentTerms" | "goodsOrigin" | "deliveryTime"
   | "deliverySingle" | "deliveryLocation" | "deliveryLocations" | "deliveryConditions"
-  | "qualityGuarantees" | "selectedSocialObjects"
+  | "qualityGuarantees" | "serviceNormsTable" | "selectedSocialObjects"
   | "lineItems"
 >;
 
@@ -137,12 +137,12 @@ export function AMSServiciosForm({ companyName, values, onChange }: AMSServicios
               <Input className={inputClass} placeholder="Ej. C. Tte. Cor. Inf." {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
-          <FormField control={form.control} name="attnNombre" render={({ field }) => (
+          <FormField control={form.control} name="contactPerson" render={({ field }) => (
             <FormItem><FormLabel>Nombre</FormLabel><FormControl>
               <Input className={inputClass} placeholder="Ej. Vicente Herrera Valdez" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
-          <FormField control={form.control} name="attnDependencia" render={({ field }) => (
+          <FormField control={form.control} name="destinationCompany" render={({ field }) => (
             <FormItem><FormLabel>Dependencia</FormLabel><FormControl>
               <Input className={inputClass} placeholder="Ej. Secretaría de la Defensa Nacional" {...field} />
             </FormControl><FormMessage /></FormItem>
@@ -168,7 +168,7 @@ export function AMSServiciosForm({ companyName, values, onChange }: AMSServicios
             </FormControl><FormMessage /></FormItem>
           )} />
           <div className="md:col-span-2">
-            <FormField control={form.control} name="attnNombreProcedimiento" render={({ field }) => (
+            <FormField control={form.control} name="projectTitle" render={({ field }) => (
               <FormItem><FormLabel>Nombre del procedimiento</FormLabel><FormControl>
                 <Input className={inputClass} placeholder={'Ej. "MANTENIMIENTO Y OPERACIÓN DEL SISTEMA DIGITAL DE SANIDAD.'} {...field} />
               </FormControl><FormMessage /></FormItem>
@@ -431,6 +431,100 @@ export function AMSServiciosForm({ companyName, values, onChange }: AMSServicios
               }}>
               + Agregar garantía
             </button>
+          </div>
+
+          {/* TABLA PTDA / DESCRIPCIÓN / CANT / U.M. / NORMA */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <FormLabel>Descripción, cantidad y norma aplicable</FormLabel>
+              <button type="button"
+                className="rounded border border-cyan-400 px-3 py-1 text-sm text-cyan-600 font-semibold hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition"
+                onClick={() => {
+                  const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                  current.push({ description: "", quantity: "", unitMeasure: "", norm: "" });
+                  form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                }}>
+                + Agregar fila
+              </button>
+            </div>
+            <div className="border rounded-xl overflow-hidden shadow-sm dark:border-slate-800">
+              <table className="w-full text-sm">
+                <thead className="bg-[#0F172A] text-white">
+                  <tr>
+                    <th className="px-3 py-2 text-center w-14">PTDA.</th>
+                    <th className="px-3 py-2 text-left">DESCRIPCIÓN</th>
+                    <th className="px-3 py-2 text-center w-16">CANT.</th>
+                    <th className="px-3 py-2 text-left w-20">U.M.</th>
+                    <th className="px-3 py-2 text-left">NORMA</th>
+                    <th className="px-3 py-2 w-10" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {(form.watch("serviceNormsTable") ?? []).map((_, i) => (
+                    <tr key={i} className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
+                      <td className="px-3 py-2 text-center font-bold text-slate-400">{i + 1}</td>
+                      <td className="px-2 py-2">
+                        <Textarea
+                          className={inputClass + " min-h-[80px] text-xs"}
+                          placeholder="Ej. Servicio de mantenimiento preventivo a 14 plantas de emergencia"
+                          value={form.watch("serviceNormsTable")?.[i]?.description ?? ""}
+                          onChange={e => {
+                            const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                            current[i] = { ...current[i], description: e.target.value };
+                            form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <Input
+                          className={inputClass + " text-xs text-center w-14"}
+                          placeholder="14"
+                          value={form.watch("serviceNormsTable")?.[i]?.quantity ?? ""}
+                          onChange={e => {
+                            const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                            current[i] = { ...current[i], quantity: e.target.value };
+                            form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <Input
+                          className={inputClass + " text-xs w-18"}
+                          placeholder="Servicio"
+                          value={form.watch("serviceNormsTable")?.[i]?.unitMeasure ?? ""}
+                          onChange={e => {
+                            const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                            current[i] = { ...current[i], unitMeasure: e.target.value };
+                            form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <Textarea
+                          className={inputClass + " min-h-[80px] text-xs"}
+                          placeholder="Ej. NOM-J-467 1989 Plantas generadoras de emergencia..."
+                          value={form.watch("serviceNormsTable")?.[i]?.norm ?? ""}
+                          onChange={e => {
+                            const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                            current[i] = { ...current[i], norm: e.target.value };
+                            form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-2 text-center">
+                        <button type="button"
+                          className="text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
+                          onClick={() => {
+                            const current = [...(form.getValues("serviceNormsTable") ?? [])];
+                            current.splice(i, 1);
+                            form.setValue("serviceNormsTable", current, { shouldDirty: true });
+                          }}>✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="space-y-2">
