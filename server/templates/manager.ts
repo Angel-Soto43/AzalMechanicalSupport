@@ -1,5 +1,5 @@
 import { generateAzalBienesTemplate } from './azal-bienes';
-// import { generateAzalServiciosTemplate } from './azal-servicios'; // La activaremos cuando hagamos la de servicios
+import { generateAzalServiciosTemplate } from './azal.servicios';
 
 import { generateDemaTemplate } from './dema';
 import { generateHermalTemplate } from './hermal';
@@ -36,9 +36,8 @@ export function getTemplateForProvider(provider: any, quote: any, items: any[]):
   } else {
     // Si no es ninguna de las anteriores, asumimos que es AZAL
     if (proposalType === "servicios") {
-      // 🚀 Por ahora mandamos la de bienes como comodín
-      // return generateAzalServiciosTemplate(provider, quote, items);
-      return generateAzalBienesTemplate(provider, quote, items);
+    return generateAzalServiciosTemplate(provider, quote, items);
+
     } else {
       // 🚀 Cotización de Bienes de Azal
       return generateAzalBienesTemplate(provider, quote, items);

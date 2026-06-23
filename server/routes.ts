@@ -59,6 +59,7 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
     qualityGuarantees: quote.qualityGuarantees || safeParse(quote.qualityGuaranteesJson),
     selectedSocialObjects: quote.selectedSocialObjects || safeParse(quote.selectedSocialObjectsJson),
     deliveryLocations: quote.deliveryLocations || safeParse(quote.deliveryLocationsJson),
+    deliveryConditions: quote.deliveryConditions || safeParse(quote.deliveryConditionsJson),
   };
 
   const html = getTemplateForProvider(provider, enrichedQuote, lineItems);
@@ -704,6 +705,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           qualityGuarantees: safeParse(quote.qualityGuaranteesJson),
           selectedSocialObjects: safeParse(quote.selectedSocialObjectsJson),
           deliveryLocations: safeParse(quote.deliveryLocationsJson),
+          deliveryConditions: safeParse(quote.deliveryConditionsJson),
         },
         lineItems,
       });
@@ -832,6 +834,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const deliveryLocationsJson = JSON.stringify(Array.isArray(req.body.deliveryLocations) ? req.body.deliveryLocations : []);
       const qualityGuaranteesJson = JSON.stringify(Array.isArray(req.body.qualityGuarantees) ? req.body.qualityGuarantees : []);
       const selectedSocialObjectsJson = JSON.stringify(Array.isArray(req.body.selectedSocialObjects) ? req.body.selectedSocialObjects : []);
+      const deliveryConditionsJson = JSON.stringify(Array.isArray(req.body.deliveryConditions) ? req.body.deliveryConditions : []);
 
       const validityDays = Number.isFinite(validityDaysRaw) && Number.isInteger(validityDaysRaw) && validityDaysRaw > 0 ? validityDaysRaw : 120;
       const paymentDays = Number.isFinite(paymentDaysRaw) && Number.isInteger(paymentDaysRaw) && paymentDaysRaw >= 0 ? paymentDaysRaw : 0;
@@ -897,6 +900,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         deliveryLocationsJson,
         qualityGuaranteesJson,
         selectedSocialObjectsJson,
+        deliveryConditionsJson,
       });
 
       const createdItems = [];
@@ -1036,6 +1040,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         ? JSON.stringify(req.body.selectedSocialObjects)
         : (existing.selectedSocialObjectsJson ?? "[]");
 
+        const deliveryConditionsJson = Array.isArray(req.body.deliveryConditions)
+         ? JSON.stringify(req.body.deliveryConditions)
+          : (existing.deliveryConditionsJson ?? "[]");
+
       const lineItemsRaw = Array.isArray(req.body.lineItems) ? req.body.lineItems : [];
 
       if (!destinationCompany || !requisitionNumber || !projectTitle || !quoteDate || !commercialTerms || !deliveryPlace || !contactPerson || Number.isNaN(providerId)) {
@@ -1091,6 +1099,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         deliveryLocationsJson,
         qualityGuaranteesJson,
         selectedSocialObjectsJson,
+        deliveryConditionsJson,
       });
 
       let resultItems: any[] = [];

@@ -109,10 +109,19 @@ export const quotes = pgTable("quotes", {
   providerId: integer("provider_id").references(() => providers.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 
-  // 🚀 TAREAS 2 y 3: Campos relacionales añadidos de forma limpia y única
-  empresaId: integer("empresa_id").references(() => providers.id), // Llave foránea real hacia empresas
-  templateName: varchar("template_name", { length: 100 }).default("azal_official"), // Selección de plantilla
+  // 🚀 CAMPOS ANTIGUOS QUE DEBES MANTENER PARA QUE NO SE BORREN
+  deliveryDatesJson: text("delivery_dates_json"),
+  hasRegionalMilitary: boolean("has_regional_military"),
+  warrantyPercentageApplies: boolean("warranty_percentage_applies"),
+  warrantyPercentage: numeric("warranty_percentage"),
+  deliveryNotes: text("delivery_notes"),
+  requiredDocumentsJson: text("required_documents_json"),
+  normsTableJson: text("norms_table_json"),
+  serviceNormsTableJson: text("service_norms_table_json"),
 
+  // 🚀 CAMPOS NUEVOS Y RELACIONALES
+  empresaId: integer("empresa_id").references(() => providers.id),
+  templateName: varchar("template_name", { length: 100 }).default("azal_official"),
   companyOrigin: text("company_origin").notNull().default("AZAL"),
   proposalType: text("proposal_type").notNull().default("bienes"),
 
@@ -133,6 +142,7 @@ export const quotes = pgTable("quotes", {
   hasManufacturingTime: boolean("has_manufacturing_time").notNull().default(false),
   deliverySingle: boolean("delivery_single").notNull().default(true),
   deliveryLocationsJson: text("delivery_locations_json").notNull().default("[]"),
+  deliveryConditionsJson: text("delivery_conditions_json").notNull().default("[]"),
 
   // ─── Sección 3 "Garantías y objetos sociales" ────────────────────────────
   qualityGuaranteesJson: text("quality_guarantees_json").notNull().default("[]"),
