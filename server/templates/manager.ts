@@ -1,7 +1,8 @@
 import { generateAzalBienesTemplate } from './azal-bienes';
 import { generateAzalServiciosTemplate } from './azal.servicios';
 
-import { generateDemaTemplate } from './dema';
+import { generateDemaTemplate } from './dema-bienes';
+import { generateDemaServiciosTemplate } from './dema-servicios';
 import { generateHermalTemplate } from './hermal';
 
 // 🚀 Cambié la importación para que llame exactamente a la función que armamos para HGW
@@ -17,6 +18,9 @@ export function getTemplateForProvider(provider: any, quote: any, items: any[]):
   const proposalType = (quote.proposalType || "").toLowerCase();
 
   if (companyName.includes("DEMA")) {
+    if (proposalType === "servicios") {
+      return generateDemaServiciosTemplate(quote, items);
+    }
     return generateDemaTemplate(provider, quote, items);
   } else if (companyName.includes("HERMAL")) {
     return generateHermalTemplate(provider, quote, items);

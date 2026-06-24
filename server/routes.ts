@@ -62,8 +62,10 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
 
   const html = getTemplateForProvider(provider, enrichedQuote, lineItems);
   const companyName = (provider.companyName || "").toUpperCase();
+  const proposalType = (quote.proposalType || "").toLowerCase();
   const isAzal = !companyName.includes("DEMA") && !companyName.includes("HERMAL") && !companyName.includes("HGW") && !companyName.includes("HYH");
-  const isHgw = companyName.includes("HGW");
+  const isHgw  = companyName.includes("HGW");
+  const isDema = companyName.includes("DEMA") && proposalType === "servicios";
 
   // Carga de Assets
   let headerBase64 = '', footerBase64 = '', hgwBgBase64 = '', headerHGWBase64 = '', footerHGWBase64 = '';
@@ -73,6 +75,20 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
         headerBase64 = `data:image/png;base64,${fs.readFileSync(path.join(process.cwd(), 'server', 'assets', 'encabezado.png')).toString('base64')}`;
     if (fs.existsSync(path.join(process.cwd(), 'server', 'assets', 'pie.png'))) 
         footerBase64 = `data:image/png;base64,${fs.readFileSync(path.join(process.cwd(), 'server', 'assets', 'pie.png')).toString('base64')}`;
+  }
+
+  // LÓGICA PARA DEMA SERVICIOS: Encabezado y Pie
+  let demaHeaderBase64 = '';
+  let demaFooterBase64 = '';
+  if (isDema) {
+    const demaHeaderPath = path.join(process.cwd(), 'server', 'assets', 'encabezado-DEMA.png');
+    if (fs.existsSync(demaHeaderPath)) {
+      demaHeaderBase64 = `data:image/png;base64,${fs.readFileSync(demaHeaderPath).toString('base64')}`;
+    }
+    const demaFooterPath = path.join(process.cwd(), 'server', 'assets', 'Pie_pagina_DEMA.png');
+    if (fs.existsSync(demaFooterPath)) {
+      demaFooterBase64 = `data:image/png;base64,${fs.readFileSync(demaFooterPath).toString('base64')}`;
+    }
   }
 
   // 🚀 LÓGICA PARA HGW: Encabezado y Pie separados
@@ -160,8 +176,24 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
       `;
       
       // 🚀 MÁRGENES FÍSICOS (Protegen tu texto para que no toque las imágenes)
-      pdfOptions.margin = { top: '190px', right: '0px', bottom: '150px', left: '0px' };  
-    
+      pdfOptions.margin = { top: '190px', right: '0px', bottom: '150px', left: '0px' };
+
+    } else if (isDema) {
+      pdfOptions.displayHeaderFooter = true;
+      pdfOptions.headerTemplate = `
+        <style>html, body { margin: 0 !important; padding: 0 !important; width: 100%; -webkit-print-color-adjust: exact; }</style>
+        <div style="position: absolute; top: 0; left: 0; width: 100vw; margin: 0; padding: 0;">
+          ${demaHeaderBase64 ? `<img src="${demaHeaderBase64}" style="width: 100vw; display: block;" />` : ''}
+        </div>
+      `;
+      pdfOptions.footerTemplate = `
+        <style>html, body { margin: 0 !important; padding: 0 !important; width: 100%; -webkit-print-color-adjust: exact; }</style>
+        <div style="position: absolute; bottom: 0; left: 0; width: 100vw; margin: 0; padding: 0;">
+          ${demaFooterBase64 ? `<img src="${demaFooterBase64}" style="width: 100vw; display: block;" />` : ''}
+        </div>
+      `;
+      pdfOptions.margin = { top: '190px', right: '0px', bottom: '150px', left: '0px' };
+
     } else {
       pdfOptions.displayHeaderFooter = false;
       pdfOptions.margin = { top: '0px', bottom: '0px', right: '0px', left: '0px' };
