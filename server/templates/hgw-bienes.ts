@@ -97,7 +97,7 @@ export function generateHgwBienesTemplate(provider: any, quote: any, items: any[
                ${quote.attnCargo ? `${quote.attnCargo}` : ''}
             </div>
             <div style="width: 45%; text-align: right; display: flex; flex-direction: column; justify-content: flex-end;">
-               <span>${quote.attnLugar} a ${quote.attnDia} de ${quote.attnMes} de ${quote.attnAnio}.</span>
+               <span>${quote.attnLugar || ''} a ${quote.attnDia || ''} de ${quote.attnMes || ''} de ${quote.attnAnio || ''}.</span>
             </div>
          </div>
 

@@ -75,47 +75,93 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
         footerBase64 = `data:image/png;base64,${fs.readFileSync(path.join(process.cwd(), 'server', 'assets', 'pie.png')).toString('base64')}`;
   }
 
+  // 🚀 LÓGICA PARA HGW: Encabezado y Pie separados
+  let hgwHeaderBase64 = '';
+  let hgwFooterBase64 = '';
   if (isHgw) {
-    if (fs.existsSync(path.join(process.cwd(), 'server', 'assets', 'encabezadoHGW.png'))) 
-        headerHGWBase64 = `data:image/png;base64,${fs.readFileSync(path.join(process.cwd(), 'server', 'assets', 'encabezadoHGW.png')).toString('base64')}`;
-    if (fs.existsSync(path.join(process.cwd(), 'server', 'assets', 'pieHGW.png'))) 
-        footerHGWBase64 = `data:image/png;base64,${fs.readFileSync(path.join(process.cwd(), 'server', 'assets', 'pieHGW.png')).toString('base64')}`;
-    if (fs.existsSync(path.join(process.cwd(), 'server', 'assets', 'hgw.png'))) 
-        hgwBgBase64 = `data:image/png;base64,${fs.readFileSync(path.join(process.cwd(), 'server', 'assets', 'hgw.png')).toString('base64')}`;
+    const hgwHeaderPath = path.join(process.cwd(), 'server', 'assets', 'encabezado-hgw.png');
+    if (fs.existsSync(hgwHeaderPath)) {
+      hgwHeaderBase64 = `data:image/png;base64,${fs.readFileSync(hgwHeaderPath).toString('base64')}`;
+    }
+
+    const hgwFooterPath = path.join(process.cwd(), 'server', 'assets', 'pie-hgw.png');
+    if (fs.existsSync(hgwFooterPath)) {
+      hgwFooterBase64 = `data:image/png;base64,${fs.readFileSync(hgwFooterPath).toString('base64')}`;
+    }
   }
 
-  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
-try {
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: [
+      '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas', '--no-first-run', '--no-zygote', '--disable-gpu'
+    ]
+  });
+
+  try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle2', timeout: 30000 });
     
-    // 1. DECLARAMOS EL OBJETO AQUÍ DENTRO DEL TRY
-    const pdfOptions: any = { format: 'A4', printBackground: true };
+    const pdfOptions: any = {
+      format: 'A4',
+      printBackground: true,
+      preferCSSPageSize: false
+    };
 
     if (isAzal) {
       pdfOptions.displayHeaderFooter = true;
-      pdfOptions.headerTemplate = `<div style="width:100%"><img src="${headerBase64}" style="width:100%" /></div>`;
-      pdfOptions.footerTemplate = `<div style="width:100%"><img src="${footerBase64}" style="width:100%" /></div>`;
-      pdfOptions.margin = { top: '190px', bottom: '150px' };
-    }else if (isHgw) {
+      pdfOptions.headerTemplate = `
+        <style>html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; }</style>
+        <div style="position: absolute; top: 0; left: 0; width: 100%; z-index: -1;">
+          ${headerBase64 ? `<img src="${headerBase64}" style="width: 100%; display: block;" />` : ''}
+        </div>
+      `;
+      pdfOptions.footerTemplate = `
+        <style>html, body { margin: 0; padding: 0; }</style>
+        <div style="position: absolute; bottom: 0; left: 0; width: 100%; margin: 0; padding: 0; display: flex; justify-content: center; align-items: flex-end; -webkit-print-color-adjust: exact;">
+          ${footerBase64 ? `<img src="${footerBase64}" style="width: 100%; height: auto; display: block;" />` : ''}
+        </div>
+      `;
+      pdfOptions.margin = { top: '190px', right: '0px', bottom: '150px', left: '0px'};
+    
+    } else if (isHgw) {
       pdfOptions.displayHeaderFooter = true;
       
-      // FORZAMOS EL TAMAÑO DE LA IMAGEN PARA QUE CUBRA TODO EL ESPACIO
+      // 🚀 ENCABEZADO HGW (Borde a Borde sin espacios blancos)
       pdfOptions.headerTemplate = `
-    <div style="width: 100%; margin: 0; padding: 0; border: 0;">
-      <img src="${headerHGWBase64}" style="width: 100%; display: block; border: 0;" />
-    </div>`;
+        <style>
+          html, body { margin: 0 !important; padding: 0 !important; width: 100%; height: 100%; -webkit-print-color-adjust: exact; }
+        </style>
+        <div style="position: absolute; top: 0; left: 0; width: 100vw; margin: 0; padding: 0; display: flex; align-items: flex-start; justify-content: flex-start;">
+          ${hgwHeaderBase64 ? `<img src="${hgwHeaderBase64}" style="width: 100vw; display: block; margin: 0; padding: 0;" />` : ''}
+        </div>
+      `;
       
+      // 🚀 PIE DE PÁGINA HGW (Borde a Borde sin espacios blancos)
+      pdfOptions.footerTemplate = `
+        <style>
+          html, body { margin: 0 !important; padding: 0 !important; width: 100%; height: 100%; font-family: 'Arial Narrow', Arial, sans-serif; -webkit-print-color-adjust: exact; font-size: 9pt; }
+        </style>
+        <div style="position: absolute; bottom: 0; left: 0; width: 100vw; margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: flex-end;">
+          
+          ${hgwFooterBase64 ? `<img src="${hgwFooterBase64}" style="width: 100vw; display: block; margin: 0; padding: 0; position: absolute; bottom: 0; left: 0; z-index: -1;" />` : ''}
+          
+          <div style="position: relative; width: 100%; padding: 0 45px 35px 45px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: flex-end;">
+             <div style="line-height: 1.4; color: #000000;">
+               hgw@hgwprocessolutions.com<br>
+               Av. Jorge Jiménez Cantú No. Ext. 1, No. Int. 124, Valle Escondido, 52937, Atizapán de Zaragoza, Estado de México<br>
+               Teléfonos: 56 1080 9920 – 55 4556 6367
+             </div>
+             <div style="text-align: right; font-weight: bold; color: #000000;">
+               Página <span class="pageNumber"></span> de <span class="totalPages"></span>
+             </div>
+          </div>
+        </div>
+      `;
       
-     // Pie de página: Añadimos un pequeño espacio (padding) si es necesario
-  pdfOptions.footerTemplate = `
-    <div style="width: 100%; margin: 0; padding: 0; border: 0; text-align: center;">
-      <img src="${footerHGWBase64}" style="width: 100%; display: block; border: 0;" />
-    </div>`;
-      
-      // EL MARGEN DEBE SER IGUAL A LA ALTURA DE LAS IMÁGENES
-      pdfOptions.margin = { top: '80px', bottom: '120px', right: '0px', left: '0px' };
-
+      // 🚀 MÁRGENES FÍSICOS (Protegen tu texto para que no toque las imágenes)
+      pdfOptions.margin = { top: '190px', right: '0px', bottom: '150px', left: '0px' };  
+    
     } else {
       pdfOptions.displayHeaderFooter = false;
       pdfOptions.margin = { top: '0px', bottom: '0px', right: '0px', left: '0px' };
@@ -800,6 +846,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const attnAnio = (req.body.attnAnio || "").toString().trim();
       const attnLugar = (req.body.attnLugar || "").toString().trim();
       const attnGrado = (req.body.attnGrado || "").toString().trim();
+      const attnNombre = (req.body.attnNombre || "").toString().trim();
+      const attnDependencia = (req.body.attnDependencia || "").toString().trim();
       const attnArea = (req.body.attnArea || "").toString().trim();
       const attnUbicacion = (req.body.attnUbicacion || "").toString().trim();
       const attnDireccion = (req.body.attnDireccion || "").toString().trim();
