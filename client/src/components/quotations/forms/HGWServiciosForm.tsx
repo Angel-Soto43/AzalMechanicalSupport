@@ -32,6 +32,7 @@ type FormValues = Partial<AMSFormData> & {
   hasRegionalMilitary?: boolean;
   warrantyPercentageApplies?: boolean;
   warrantyPercentage?: number;
+  selectedDeliveryClauses?: string[];
 };
 
 interface HGWServiciosFormProps {
@@ -325,6 +326,9 @@ export function HGWServiciosForm({ companyName, values, onChange }: HGWServicios
       </FormSection>
 
       {/* SECCIÓN 2 */}
+
+
+      
       <FormSection title="Sección 2" subtitle="Los campos vacíos no aparecerán en el PDF.">
         <div className="grid gap-4 md:grid-cols-2">
           <FormField control={form.control} name="validityDays" render={({ field }) => (
@@ -337,6 +341,7 @@ export function HGWServiciosForm({ companyName, values, onChange }: HGWServicios
               <Input className={inputClass} placeholder="Ej. Nacional" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
+
           {/* BLOQUE DINÁMICO: FECHA DE ENTREGA */}
           <div className="md:col-span-2 space-y-3 mt-2">
             <FormLabel>Fecha de entrega</FormLabel>
@@ -364,6 +369,8 @@ export function HGWServiciosForm({ companyName, values, onChange }: HGWServicios
                   }}>✕</button>
               </div>
             ))}
+
+
             <button type="button"
               className="rounded border border-cyan-400 px-3 py-1 text-sm text-cyan-600 font-semibold hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition"
               onClick={() => {
@@ -402,112 +409,106 @@ export function HGWServiciosForm({ companyName, values, onChange }: HGWServicios
               )} />
             )}
           </div>
-
-          <div className="md:col-span-2 space-y-3">
-            <FormLabel>Lugar de entrega</FormLabel>
-            {/* PREGUNTA REGIÓN MILITAR */}
-            <div className="space-y-2">
-              <FormLabel className="text-sm font-medium">¿La entrega será para alguna Región Militar?</FormLabel>
-              <div className="flex items-center gap-6">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="radio" name="hasRegionalMilitary"
-                    checked={hasRegionalMilitary === true}
-                    onChange={() => form.setValue("hasRegionalMilitary", true, { shouldDirty: true })} />
-                  Sí
-                </label>
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="radio" name="hasRegionalMilitary"
-                    checked={hasRegionalMilitary !== true}
-                    onChange={() => form.setValue("hasRegionalMilitary", false, { shouldDirty: true })} />
-                  No
-                </label>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <FormLabel className="text-xs text-slate-500">Observaciones / Información previa</FormLabel>
-              {observations.map((obs, i) => (
-                <div key={i} className="flex gap-2 items-start">
-                  <Textarea
-                    className={inputClass + " min-h-[60px] flex-1"}
-                    placeholder="Ej. Consideraciones especiales, instrucciones de entrega, observaciones logísticas..."
-                    value={obs}
-                    onChange={e => {
-                      const arr = [...observations];
-                      arr[i] = e.target.value;
-                      setObservations(arr);
-                    }}
-                  />
-                  {observations.length > 1 && (
-                    <button type="button"
-                      className="mt-2 text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
-                      onClick={() => {
-                        const arr = [...observations];
-                        arr.splice(i, 1);
-                        setObservations(arr);
-                      }}>✕</button>
-                  )}
-                </div>
-              ))}
-              <button type="button"
-                className="rounded border border-cyan-400 px-3 py-1 text-sm text-cyan-600 font-semibold hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition"
-                onClick={() => setObservations([...observations, ""])}>
-                + Agregar observación
-              </button>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <FormLabel>Tabla de lugares</FormLabel>
-                <button type="button"
-                  className="rounded border border-slate-200 bg-slate-100 px-3 py-1 text-sm font-medium hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                  onClick={() => deliveryLocations.append({ noPartida: "", regionMilitar: "", address: "", contact: "" } as any)}>
-                  + Agregar fila
-                </button>
-              </div>
-              <table className="w-full text-sm border border-slate-200 dark:border-slate-700 rounded overflow-hidden">
-                <thead className="bg-green-600 text-white">
-                  <tr>
-                    <th className="px-3 py-2 text-left">No. Partida</th>
-                    {hasRegionalMilitary && <th className="px-3 py-2 text-left">R.M.</th>}
-                    <th className="px-3 py-2 text-left">Dirección</th>
-                    <th className="px-3 py-2 text-left">Contacto</th>
-                    <th className="px-3 py-2" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {deliveryLocations.fields.map((f, i) => (
-                    <tr key={f.id} className="border-t border-slate-200 dark:border-slate-700">
-                      <td className="px-2 py-1">
-                        <FormField control={form.control} name={`deliveryLocations.${i}.noPartida` as any} render={({ field }) => (
-                          <Input className={inputClass} placeholder="Ej. 6" {...field} />
-                        )} />
-                      </td>
-                      {hasRegionalMilitary && (
-                        <td className="px-2 py-1">
-                          <FormField control={form.control} name={`deliveryLocations.${i}.regionMilitar` as any} render={({ field }) => (
-                            <Input className={inputClass} placeholder="Ej. I" {...field} />
-                          )} />
-                        </td>
-                      )}
-                      <td className="px-2 py-1">
-                        <FormField control={form.control} name={`deliveryLocations.${i}.address` as const} render={({ field }) => (
-                          <Input className={inputClass} placeholder="Dirección" {...field} />
-                        )} />
-                      </td>
-                      <td className="px-2 py-1">
-                        <FormField control={form.control} name={`deliveryLocations.${i}.contact` as const} render={({ field }) => (
-                          <Input className={inputClass} placeholder="Contacto" {...field} />
-                        )} />
-                      </td>
-                      <td className="px-2 py-1 text-center">
-                        <button type="button" onClick={() => deliveryLocations.remove(i)}
-                          className="text-red-500 hover:text-red-700 text-xs font-bold px-2">✕</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          
+        {/* PREGUNTA REGIÓN MILITAR */}
+          <div className="space-y-2 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+            <FormLabel className="text-sm font-medium">¿La entrega será para alguna Región Militar?</FormLabel>
+            <div className="flex items-center gap-6">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="radio" name="hasRegionalMilitary"
+                  checked={hasRegionalMilitary === true}
+                  onChange={() => form.setValue("hasRegionalMilitary", true, { shouldDirty: true })} />
+                Sí
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="radio" name="hasRegionalMilitary"
+                  checked={hasRegionalMilitary !== true}
+                  onChange={() => form.setValue("hasRegionalMilitary", false, { shouldDirty: true })} />
+                No
+              </label>
             </div>
           </div>
+
+  
+  {/* ─── CONTENEDOR PRINCIPAL: LUGAR DE ENTREGA ─── */}
+          <div className="space-y-6 mt-6 border-t pt-6">
+           <div className="space-y-6 mt-6 border-t pt-6">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-white">V. Lugar de entrega</h3>
+
+          {/* SELECCIÓN DE CONDICIONES (A, B, C) */}
+          <div className="space-y-2">
+            <FormLabel className="text-sm font-bold">Selecciona las condiciones aplicables:</FormLabel>
+            <div className="grid gap-2 border p-4 rounded-lg bg-white dark:bg-slate-800">
+              {[
+                { id: "A", text: "Mantenimiento del sistema de procesamiento de datos: CFE División Sureste..." },
+                { id: "B", text: "Mantenimiento a un firewall Watch Guard..." },
+                { id: "C", text: "Mantenimiento de 41 sitios de medición del sistema de porteo..." }
+              ].map((clausula) => {
+              const selected = (form.watch("selectedDeliveryClauses" as any) ?? []).includes(clausula.id);
+                return (
+              <label key={clausula.id} className="flex items-start gap-2 text-sm cursor-pointer p-2 hover:bg-slate-100 rounded">
+                <input 
+                  type="checkbox" 
+                  className="mt-1"
+                  checked={selected}
+                  onChange={(e) => {
+                    const current = (form.getValues("selectedDeliveryClauses") ?? []) as string[];
+                    const updated = e.target.checked 
+                      ? [...current, clausula.id] 
+                      : current.filter(id => id !== clausula.id);
+                    form.setValue("selectedDeliveryClauses", updated, { shouldDirty: true });
+                  }}
+                />
+                  <span><strong className="mr-1">{clausula.id}.</strong> {clausula.text}</span>
+                </label>
+              );
+            })}
+            </div>
+          </div>
+        </div>
+
+            {/* TABLA DE LUGARES (Sub-punto del Lugar de Entrega, dependiente de C) */}
+            {(form.watch("selectedDeliveryClauses") ?? []).includes("C") && (
+              <div className="space-y-2 pl-6 border-l-2 border-green-500">
+                <div className="flex items-center justify-between">
+                  <FormLabel className="font-semibold text-green-700">Detalle de los 41 sitios (Inciso C)</FormLabel>
+                  <button 
+                    type="button"
+                    className="rounded border border-green-200 bg-green-50 px-3 py-1 text-sm font-medium hover:bg-green-100"
+                    onClick={() => deliveryLocations.append({ noPartida: "", regionMilitar: "", address: "", contact: "" })}
+                  >
+                    + Agregar fila
+                  </button>
+                </div>
+                
+                
+                  <table className="w-full text-sm border border-slate-200 dark:border-slate-700 rounded overflow-hidden">
+          <thead className="bg-slate-100">
+            <tr>
+              <th className="p-2 border">No. Partida</th>
+              <th className="p-2 border">R.M.</th>
+              <th className="p-2 border">Dirección</th>
+              <th className="p-2 border">Contacto</th>
+              <th className="p-2 border">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            {deliveryLocations.fields.map((f, i) => (
+              <tr key={f.id}>
+                <td className="p-2 border"><Input {...form.register(`deliveryLocations.${i}.noPartida` as any)} /></td>
+                <td className="p-2 border"><Input {...form.register(`deliveryLocations.${i}.regionMilitar` as any)} /></td>
+                <td className="p-2 border"><Input {...form.register(`deliveryLocations.${i}.address` as any)} /></td>
+                <td className="p-2 border"><Input {...form.register(`deliveryLocations.${i}.contact` as any)} /></td>
+                <td className="p-2 border text-center">
+                  <button type="button" onClick={() => deliveryLocations.remove(i)} className="text-red-500 font-bold">✕</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        </div>
+        )}
+         
 
           {/* PREGUNTA: ¿TENDRÁ CONDICIONES DE ENTREGA? */}
           <div className="md:col-span-2 space-y-2 mt-4">
@@ -616,7 +617,9 @@ export function HGWServiciosForm({ companyName, values, onChange }: HGWServicios
           </div>
           )}
         </div>
-      </FormSection>
+         </div>
+        </FormSection>
+    
 
       {/* SECCIÓN 3 */}
       <FormSection title='Sección 3' subtitle="Agrega las garantías y selecciona los objetos sociales aplicables.">
