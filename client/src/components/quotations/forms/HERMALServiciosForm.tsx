@@ -43,6 +43,8 @@ const SOCIAL_OBJECTS = [
   "En general realizar y/o llevar a cabo en el País o en el extranjero, por cuenta propia o de terceros, toda clase de actos, contratos o convenios principales o accesorios, civiles o mercantiles o de cualquier otra naturaleza, que sean necesarios o convenientes para la realización de los objetos antes mencionados.",
 ];
 
+type DocumentationCondition = { text: string; subItems: string[] };
+
 type FormValues = Pick<AMSFormData,
   | "attnLugar" | "attnDia" | "attnMes" | "attnAnio" | "attnGrado" | "contactPerson" | "destinationCompany" | "attnArea" | "attnUbicacion" | "attnDireccion"
   | "projectTitle" | "attnContacto" | "attnCargo"
@@ -67,6 +69,19 @@ const normalizeUnitMeasure = (value: string) => {
   return unitMeasureAbbreviations[value.trim().toLowerCase()] || value;
 };
 
+const normalizeDocumentationConditions = (input: any): DocumentationCondition[] => {
+  const items = Array.isArray(input) ? input : [];
+  return items.map((item) => {
+    if (typeof item === "string") {
+      return { text: item, subItems: [] };
+    }
+    return {
+      text: (item?.text || "").toString(),
+      subItems: Array.isArray(item?.subItems) ? item.subItems.map((sub: any) => (sub || "").toString()) : [],
+    };
+  });
+};
+
 export function HERMALServiciosForm({ companyName, values, onChange }: HERMALServiciosFormProps) {
   const initialized = useRef(false);
 
@@ -85,7 +100,10 @@ export function HERMALServiciosForm({ companyName, values, onChange }: HERMALSer
 
   useEffect(() => {
     if (!initialized.current) {
-      form.reset(values);
+      form.reset({
+        ...values,
+        deliveryConditions: normalizeDocumentationConditions(values.deliveryConditions),
+      });
       initialized.current = true;
     }
   }, []);
@@ -330,7 +348,7 @@ export function HERMALServiciosForm({ companyName, values, onChange }: HERMALSer
             </FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="paymentTerms" render={({ field }) => (
-            <FormItem><FormLabel>Condiciones de pago</FormLabel><FormControl>
+            <FormItem><FormLabel>Forma de pago</FormLabel><FormControl>
               <Input className={inputClass} placeholder="Ej. 17 días naturales" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
@@ -340,8 +358,8 @@ export function HERMALServiciosForm({ companyName, values, onChange }: HERMALSer
             </FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="deliveryTime" render={({ field }) => (
-            <FormItem><FormLabel>Tiempo de entrega</FormLabel><FormControl>
-              <Input className={inputClass} placeholder="Ej. 3 meses posteriores al fallo" {...field} />
+            <FormItem><FormLabel>FECHA DE ENTREGA</FormLabel><FormControl>
+              <Input className={inputClass} placeholder="Ej. 31/07/2026" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
 
@@ -423,46 +441,93 @@ export function HERMALServiciosForm({ companyName, values, onChange }: HERMALSer
             )}
           </div>
 
-          {/* Condiciones de entrega */}
+          {/* Documentación */}
           <div className="md:col-span-2 space-y-3">
             <div className="flex items-center justify-between">
-              <FormLabel>Condiciones de entrega</FormLabel>
+              <FormLabel>Documentación</FormLabel>
               <button
                 type="button"
                 className="rounded border border-cyan-400 px-3 py-1 text-sm text-cyan-600 font-semibold hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition"
                 onClick={() => {
                   const current = [...(form.getValues("deliveryConditions") ?? [])];
-                  current.push("");
+                  current.push({ text: "", subItems: [] });
                   form.setValue("deliveryConditions", current, { shouldDirty: true });
                 }}
               >
-                <span className="flex items-center gap-1"><Plus className="h-3 w-3" /> Agregar condición</span>
+                <span className="flex items-center gap-1"><Plus className="h-3 w-3" /> Agregar documento</span>
               </button>
             </div>
-            {(form.watch("deliveryConditions") ?? [""]).map((_, i) => (
-              <div key={i} className="flex gap-2 items-start">
-                <FormItem className="flex-1">
-                  <FormLabel className="text-xs text-slate-500">Condición {i + 1}</FormLabel>
-                  <Textarea
-                    className={inputClass + " min-h-[70px]"}
-                    placeholder="Ej. La entrega deberá realizarse en días hábiles..."
-                    value={form.watch("deliveryConditions")?.[i] ?? ""}
-                    onChange={e => {
+            {(form.watch("deliveryConditions") ?? [{ text: "", subItems: [] }]).map((condition: any, i: number) => (
+              <div key={i} className="space-y-3 rounded border border-slate-200 dark:border-slate-700 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <FormLabel className="text-xs text-slate-500">Documento {String.fromCharCode(65 + i)}</FormLabel>
+                    <Textarea
+                      className={inputClass + " min-h-[80px]"}
+                      placeholder="Ej. Carta de presentación, manifiesto técnico, comprobante de entrega..."
+                      value={condition?.text ?? ""}
+                      onChange={e => {
+                        const current = [...(form.getValues("deliveryConditions") ?? [])];
+                        current[i] = { ...(current[i] || { text: "", subItems: [] }), text: e.target.value, subItems: Array.isArray(current[i]?.subItems) ? current[i].subItems : [] };
+                        form.setValue("deliveryConditions", current, { shouldDirty: true });
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="mt-2 text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
+                    onClick={() => {
                       const current = [...(form.getValues("deliveryConditions") ?? [])];
-                      current[i] = e.target.value;
+                      current.splice(i, 1);
                       form.setValue("deliveryConditions", current, { shouldDirty: true });
                     }}
-                  />
-                </FormItem>
-                <button
-                  type="button"
-                  className="mt-6 text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
-                  onClick={() => {
-                    const current = [...(form.getValues("deliveryConditions") ?? [])];
-                    current.splice(i, 1);
-                    form.setValue("deliveryConditions", current, { shouldDirty: true });
-                  }}
-                >âœ•</button>
+                  >×</button>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-slate-600">Subpuntos</p>
+                    <button
+                      type="button"
+                      className="rounded border border-cyan-400 px-2 py-1 text-[11px] text-cyan-600 font-semibold hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition"
+                      onClick={() => {
+                        const current = [...(form.getValues("deliveryConditions") ?? [])];
+                        const existing = current[i] || { text: "", subItems: [] };
+                        const subItems = Array.isArray(existing.subItems) ? [...existing.subItems, ""] : [""];
+                        current[i] = { ...existing, subItems };
+                        form.setValue("deliveryConditions", current, { shouldDirty: true });
+                      }}
+                    >Agregar subpunto</button>
+                  </div>
+                  {(condition?.subItems ?? []).map((sub: string, subIndex: number) => (
+                    <div key={subIndex} className="flex gap-2 items-start">
+                      <Textarea
+                        className={inputClass + " min-h-[60px] flex-1"}
+                        placeholder="Ej. Presentar copia simple de factura..."
+                        value={sub ?? ""}
+                        onChange={e => {
+                          const current = [...(form.getValues("deliveryConditions") ?? [])];
+                          const existing = current[i] || { text: "", subItems: [] };
+                          const subItems = Array.isArray(existing.subItems) ? [...existing.subItems] : [];
+                          subItems[subIndex] = e.target.value;
+                          current[i] = { ...existing, subItems };
+                          form.setValue("deliveryConditions", current, { shouldDirty: true });
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="mt-2 text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
+                        onClick={() => {
+                          const current = [...(form.getValues("deliveryConditions") ?? [])];
+                          const existing = current[i] || { text: "", subItems: [] };
+                          const subItems = Array.isArray(existing.subItems) ? [...existing.subItems] : [];
+                          subItems.splice(subIndex, 1);
+                          current[i] = { ...existing, subItems };
+                          form.setValue("deliveryConditions", current, { shouldDirty: true });
+                        }}
+                      >×</button>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>

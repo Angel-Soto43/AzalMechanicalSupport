@@ -90,6 +90,17 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
     }
   }
 
+  const isHermal = companyName.includes("HERMAL");
+  let hermalHeaderBase64 = '';
+  let hermalFooterBase64 = '';
+  if (isHermal) {
+    const hermalHeaderPath = path.join(process.cwd(), 'server', 'assets', 'encabezado-hermal.png');
+    if (fs.existsSync(hermalHeaderPath)) hermalHeaderBase64 = `data:image/png;base64,${fs.readFileSync(hermalHeaderPath).toString('base64')}`;
+
+    const hermalFooterPath = path.join(process.cwd(), 'server', 'assets', 'pie-hermal.png');
+    if (fs.existsSync(hermalFooterPath)) hermalFooterBase64 = `data:image/png;base64,${fs.readFileSync(hermalFooterPath).toString('base64')}`;
+  }
+
   const browser = await puppeteer.launch({
     headless: true,
     args: [
@@ -161,11 +172,44 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
       
       // 🚀 MÁRGENES FÍSICOS (Protegen tu texto para que no toque las imágenes)
       pdfOptions.margin = { top: '190px', right: '0px', bottom: '150px', left: '0px' };  
+
+    } else if (isHermal) {
+      pdfOptions.displayHeaderFooter = true;
+      
+      // 🚀 ENCABEZADO HERMAL (Borde a Borde sin espacios blancos)
+      pdfOptions.headerTemplate = `
+        <style>
+          html, body { margin: 0 !important; padding: 0 !important; width: 100%; height: 100%; -webkit-print-color-adjust: exact; }
+        </style>
+        <div style="position: absolute; top: 0; left: 0; width: 100vw; margin: 0; padding: 0; display: flex; align-items: flex-start; justify-content: flex-start;">
+          ${hermalHeaderBase64 ? `<img src="${hermalHeaderBase64}" style="width: 100vw; display: block; margin: 0; padding: 0;" />` : ''}
+        </div>
+      `;
+      
+      // 🚀 PIE DE PÁGINA HERMAL (Borde a Borde con paginador)
+      pdfOptions.footerTemplate = `
+        <style>
+          html, body { margin: 0 !important; padding: 0 !important; width: 100%; height: 100%; font-family: Arial, sans-serif; -webkit-print-color-adjust: exact; font-size: 9pt; }
+        </style>
+        <div style="position: absolute; bottom: 0; left: 0; width: 100vw; margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: flex-end;">
+          
+          ${hermalFooterBase64 ? `<img src="${hermalFooterBase64}" style="width: 100vw; display: block; margin: 0; padding: 0; position: absolute; bottom: 0; left: 0; z-index: -1;" />` : ''}
+          
+          <div style="position: relative; width: 100%; padding: 0 45px 35px 45px; box-sizing: border-box; display: flex; justify-content: flex-end; align-items: flex-end;">
+             <div style="text-align: right; font-weight: bold; color: #000000;">
+               Página <span class="pageNumber"></span> de <span class="totalPages"></span>
+             </div>
+          </div>
+        </div>
+      `;
+      
+      // 🚀 MÁRGENES FÍSICOS PARA HERMAL
+      pdfOptions.margin = { top: '230px', right: '0px', bottom: '150px', left: '0px' };  
     
     } else {
       pdfOptions.displayHeaderFooter = false;
       pdfOptions.margin = { top: '0px', bottom: '0px', right: '0px', left: '0px' };
-    }
+    } 
 
     // 2. GENERACIÓN FINAL
     const pdfBuffer = await page.pdf(pdfOptions);
