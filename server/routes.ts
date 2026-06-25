@@ -820,14 +820,22 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
  app.get("/api/quotes/:id/pdf", requireAuth, async (req: any, res) => {
     try {
       const quoteId = Number(req.params.id);
+      console.log("[PDF-HERMAL-Bienes] Solicitud PDF recibida", { quoteId, params: req.params });
       if (Number.isNaN(quoteId)) {
         return res.status(400).json({ error: "ID de cotización inválido" });
       }
 
       const quote = await storage.getQuoteById(quoteId);
       if (!quote) {
+        console.log("[PDF-HERMAL-Bienes] Cotización no encontrada", { quoteId });
         return res.status(404).json({ error: "Cotización no encontrada" });
       }
+      console.log("[PDF-HERMAL-Bienes] Cotización encontrada", {
+        quoteId,
+        internalFolio: quote.internalFolio,
+        providerId: quote.providerId,
+        proposalType: quote.proposalType,
+      });
       
       // 🚀 DEFINIMOS EL PARSEADOR AQUÍ PARA QUE ESTÉ DISPONIBLE
       const safeParse = (val: string | null | undefined): any[] => {
@@ -874,6 +882,13 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         deliveryLocations: safeParse((quote as any).deliveryLocationsJson),
         selectedDeliveryClauses: safeParse((quote as any).selectedDeliveryClausesJson)
       };
+
+      console.log("[PDF-HERMAL-Bienes] Preparando plantilla y PDF", {
+        quoteId,
+        provider: provider?.companyName,
+        proposalType: quote?.proposalType,
+        itemCount: lineItems?.length,
+      });
 
       const pdfBuffer = await generateQuotePdfBuffer(quoteWithText, provider, lineItems);
       const filename = buildQuotePdfFileName(quoteWithText);

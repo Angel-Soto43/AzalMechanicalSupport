@@ -43,15 +43,18 @@ const SOCIAL_OBJECTS = [
   "En general realizar y/o llevar a cabo en el País o en el extranjero, por cuenta propia o de terceros, toda clase de actos, contratos o convenios principales o accesorios, civiles o mercantiles o de cualquier otra naturaleza, que sean necesarios o convenientes para la realización de los objetos antes mencionados.",
 ];
 
+type DocumentationCondition = { text: string; subItems: string[] };
+
 type FormValues = Pick<AMSFormData,
   | "attnLugar" | "attnDia" | "attnMes" | "attnAnio" | "attnGrado" | "contactPerson" | "destinationCompany" | "attnArea" | "attnUbicacion" | "attnDireccion"
   | "projectTitle" | "attnContacto" | "attnCargo"
   | "validityDays" | "paymentTerms" | "goodsOrigin" | "deliveryTime"
-  | "hasManufacturingTime" | "manufacturingTime"
-  | "deliverySingle" | "deliveryLocation" | "deliveryLocations"
+  | "deliverySingle" | "deliveryLocation" | "deliveryLocations" | "deliveryConditions"
   | "qualityGuarantees" | "selectedSocialObjects"
-  | "lineItems"
->;
+  | "lineItems" >& {
+  partidaDescriptionItems?: { partida: string; descripcion: string }[];
+};
+
 
 interface HERMALBienesFormProps {
   companyName?: string;
@@ -68,26 +71,42 @@ const normalizeUnitMeasure = (value: string) => {
   return unitMeasureAbbreviations[value.trim().toLowerCase()] || value;
 };
 
+const normalizeDocumentationConditions = (input: any): DocumentationCondition[] => {
+  const items = Array.isArray(input) ? input : [];
+  return items.map((item) => {
+    if (typeof item === "string") {
+      return { text: item, subItems: [] };
+    }
+    return {
+      text: (item?.text || "").toString(),
+      subItems: Array.isArray(item?.subItems) ? item.subItems.map((sub: any) => (sub || "").toString()) : [],
+    };
+  });
+};
+
 export function HERMALBienesForm({ companyName, values, onChange }: HERMALBienesFormProps) {
   const initialized = useRef(false);
 
   const form = useForm<FormValues>({
     defaultValues: values,
     mode: "onChange",
-  });
+  });           
 
   const deliveryLocations = useFieldArray({ control: form.control, name: "deliveryLocations" });
   const qualityGuarantees = useFieldArray({ control: form.control, name: "qualityGuarantees" as any });
   const lineItems = useFieldArray({ control: form.control, name: "lineItems" });
 
   const deliverySingle = form.watch("deliverySingle");
-  const hasManufacturingTime = form.watch("hasManufacturingTime");
   const selectedSocialObjects = form.watch("selectedSocialObjects");
   const watchedLineItems = form.watch("lineItems");
+  const partidaItems = useFieldArray({ control: form.control, name: "partidaDescriptionItems" as any });
 
   useEffect(() => {
     if (!initialized.current) {
-      form.reset(values);
+      form.reset({
+        ...values,
+        deliveryConditions: normalizeDocumentationConditions(values.deliveryConditions),
+      });
       initialized.current = true;
     }
   }, []);
@@ -111,7 +130,7 @@ export function HERMALBienesForm({ companyName, values, onChange }: HERMALBienes
       const cost = field === "purchaseCost" ? Number(value || 0) : Number(item.purchaseCost || 0);
       const factor = field === "profitFactor" ? Number(value || 1) : Number(item.profitFactor || 1);
       item.previo = cost * factor;
-      item.unitPrice = Number((cost * factor).toFixed(2));
+      item.unitPrice = item.previo;
     }
 
     if (field === "purchaseCost" || field === "quantity") {
@@ -191,7 +210,7 @@ export function HERMALBienesForm({ companyName, values, onChange }: HERMALBienes
           <div className="md:col-span-2">
             <FormField control={form.control} name="projectTitle" render={({ field }) => (
               <FormItem><FormLabel>Nombre del procedimiento</FormLabel><FormControl>
-                <Input className={inputClass} placeholder={'Ej. Requisición No. FA09-R001/2026, "Adquisición de polímeros A".'} {...field} />
+                <Input className={inputClass} placeholder={'Ej. "MANTENIMIENTO Y OPERACIÓN DEL SISTEMA DIGITAL DE SANIDAD.'} {...field} />
               </FormControl><FormMessage /></FormItem>
             )} />
           </div>
@@ -224,7 +243,7 @@ export function HERMALBienesForm({ companyName, values, onChange }: HERMALBienes
                         />
                       </td>
                       <td className="px-2 py-2">
-                        <Input className={inputClass + " text-xs"} placeholder="Ej. Cinta de aluminio..."
+                        <Input className={inputClass + " text-xs"} placeholder="Ej. Servicio de mantenimiento..."
                           value={watchedLineItems?.[i]?.description ?? ""}
                           onChange={e => updateLineItem(i, "description", e.target.value)} />
                       </td>
@@ -332,79 +351,94 @@ export function HERMALBienesForm({ companyName, values, onChange }: HERMALBienes
             </FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="paymentTerms" render={({ field }) => (
-            <FormItem><FormLabel>Condiciones de pago</FormLabel><FormControl>
+            <FormItem><FormLabel>Forma de pago</FormLabel><FormControl>
               <Input className={inputClass} placeholder="Ej. 17 días naturales" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="goodsOrigin" render={({ field }) => (
-            <FormItem><FormLabel>Origen de bienes</FormLabel><FormControl>
+            <FormItem><FormLabel>Origen del servicio</FormLabel><FormControl>
               <Input className={inputClass} placeholder="Ej. Nacional" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="deliveryTime" render={({ field }) => (
-            <FormItem><FormLabel>Tiempo de entrega</FormLabel><FormControl>
-              <Input className={inputClass} placeholder="Ej. 3 meses posteriores al fallo" {...field} />
+            <FormItem><FormLabel>FECHA DE ENTREGA</FormLabel><FormControl>
+              <Input className={inputClass} placeholder="Ej. 31/07/2026" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
 
-          <div className="md:col-span-2 space-y-2">
-            <FormLabel>¿Incluir tiempo de fabricación?</FormLabel>
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" name="hasManufacturingTime"
-                  checked={hasManufacturingTime === true}
-                  onChange={() => form.setValue("hasManufacturingTime", true, { shouldDirty: true })} />
-                Sí
-              </label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" name="hasManufacturingTime"
-                  checked={hasManufacturingTime === false}
-                  onChange={() => {
-                    form.setValue("hasManufacturingTime", false, { shouldDirty: true });
-                    form.setValue("manufacturingTime", "");
-                  }} />
-                No
-              </label>
-            </div>
-            {hasManufacturingTime === true && (
-              <FormField control={form.control} name="manufacturingTime" render={({ field }) => (
-                <FormItem><FormLabel>Tiempo de fabricación</FormLabel><FormControl>
-                  <Input className={inputClass} placeholder="Ej. 2 meses" {...field} />
-                </FormControl><FormMessage /></FormItem>
-              )} />
-            )}
-          </div>
-
           <div className="md:col-span-2 space-y-3">
-            <FormLabel>¿Lugar de entrega único?</FormLabel>
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" name="deliverySingle"
-                  checked={deliverySingle === true}
-                  onChange={() => form.setValue("deliverySingle", true, { shouldDirty: true })} />
-                Sí
-              </label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" name="deliverySingle"
-                  checked={deliverySingle === false}
-                  onChange={() => form.setValue("deliverySingle", false, { shouldDirty: true })} />
-                No
-              </label>
-            </div>
-            {deliverySingle ? (
-              <div className="grid grid-cols-2 gap-4">
-                <FormField control={form.control} name="deliveryLocation" render={({ field }) => (
-                  <FormItem><FormLabel>Lugar de entrega</FormLabel><FormControl>
-                    <Input className={inputClass} placeholder={'Ej. Hospital Militar de Zona de Ixcotel, Oax.'} {...field} />
-                  </FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="attnContacto" render={({ field }) => (
-                  <FormItem><FormLabel>Contacto</FormLabel><FormControl>
-                    <Input className={inputClass} placeholder="Ej. Coronel Ing. Ind. Fredy Ramírez Ruíz..." {...field} />
-                  </FormControl><FormMessage /></FormItem>
-                )} />
-              </div>
-            ) : (
+  <FormLabel>¿Lugar de entrega único?</FormLabel>
+  <div className="flex items-center gap-6">
+    <label className="flex items-center gap-2 text-sm cursor-pointer">
+      <input type="radio" name="deliverySingle"
+        checked={deliverySingle === true}
+        onChange={() => form.setValue("deliverySingle", true, { shouldDirty: true })} />
+      Sí
+    </label>
+    <label className="flex items-center gap-2 text-sm cursor-pointer">
+      <input type="radio" name="deliverySingle"
+        checked={deliverySingle === false}
+        onChange={() => form.setValue("deliverySingle", false, { shouldDirty: true })} />
+      No
+    </label>
+  </div>
+
+  {deliverySingle ? (
+    <div className="space-y-4">
+      {/* Campos existentes */}
+      <div className="grid grid-cols-2 gap-4">
+        <FormField control={form.control} name="deliveryLocation" render={({ field }) => (
+          <FormItem><FormLabel>Lugar de entrega</FormLabel><FormControl>
+            <Input className={inputClass} placeholder={'Ej. Hospital Militar de Zona de Ixcotel, Oax.'} {...field} />
+          </FormControl><FormMessage /></FormItem>
+        )} />
+        <FormField control={form.control} name="attnContacto" render={({ field }) => (
+          <FormItem><FormLabel>Contacto</FormLabel><FormControl>
+            <Input className={inputClass} placeholder="Ej. Coronel Ing. Ind. Fredy Ramírez Ruíz..." {...field} />
+          </FormControl><FormMessage /></FormItem>
+        )} />
+      </div>
+
+      {/* NUEVA TABLA INTEGRADA AQUÍ */}
+      <div className="border rounded-lg p-3 bg-slate-50 dark:bg-slate-900/50">
+        <div className="flex items-center justify-between mb-2">
+          <FormLabel className="text-xs">Partidas vinculadas al lugar</FormLabel>
+          <button type="button" className="text-xs text-blue-600 underline" onClick={() => partidaItems.append({ partida: "", descripcion: "" })}>
+            + Agregar fila
+          </button>
+        </div>
+        <table className="w-full text-xs">
+          <thead>
+            <tr>
+              <th className="px-2 py-1 text-left">Partida</th>
+              <th className="px-2 py-1 text-left">Descripción</th>
+              <th className="w-8"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {partidaItems.fields.map((field, index) => (
+              <tr key={field.id}>
+                <td className="px-1 py-1">
+                  <FormField control={form.control} name={`partidaDescriptionItems.${index}.partida` as any} render={({ field }) => (
+                    <Input className={inputClass + " h-7"} {...field} />
+                  )} />
+                </td>
+                <td className="px-1 py-1">
+                  <FormField control={form.control} name={`partidaDescriptionItems.${index}.descripcion` as any} render={({ field }) => (
+                    <Input className={inputClass + " h-7"} {...field} />
+                  )} />
+                </td>
+                <td className="px-1 py-1 text-center">
+                  <button type="button" onClick={() => partidaItems.remove(index)} className="text-red-500">×</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  ) : (
+           
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <FormLabel>Lugares de entrega</FormLabel>
@@ -452,6 +486,98 @@ export function HERMALBienesForm({ companyName, values, onChange }: HERMALBienes
               </div>
             )}
           </div>
+
+          {/* Documentación */}
+          <div className="md:col-span-2 space-y-3">
+            <div className="flex items-center justify-between">
+              <FormLabel>Documentación</FormLabel>
+              <button
+                type="button"
+                className="rounded border border-cyan-400 px-3 py-1 text-sm text-cyan-600 font-semibold hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition"
+                onClick={() => {
+                  const current = [...(form.getValues("deliveryConditions") ?? [])];
+                  current.push({ text: "", subItems: [] });
+                  form.setValue("deliveryConditions", current, { shouldDirty: true });
+                }}
+              >
+                <span className="flex items-center gap-1"><Plus className="h-3 w-3" /> Agregar documento</span>
+              </button>
+            </div>
+            {(form.watch("deliveryConditions") ?? [{ text: "", subItems: [] }]).map((condition: any, i: number) => (
+              <div key={i} className="space-y-3 rounded border border-slate-200 dark:border-slate-700 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <FormLabel className="text-xs text-slate-500">Documento {String.fromCharCode(65 + i)}</FormLabel>
+                    <Textarea
+                      className={inputClass + " min-h-[80px]"}
+                      placeholder="Ej. Carta de presentación, manifiesto técnico, comprobante de entrega..."
+                      value={condition?.text ?? ""}
+                      onChange={e => {
+                        const current = [...(form.getValues("deliveryConditions") ?? [])];
+                        current[i] = { ...(current[i] || { text: "", subItems: [] }), text: e.target.value, subItems: Array.isArray(current[i]?.subItems) ? current[i].subItems : [] };
+                        form.setValue("deliveryConditions", current, { shouldDirty: true });
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="mt-2 text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
+                    onClick={() => {
+                      const current = [...(form.getValues("deliveryConditions") ?? [])];
+                      current.splice(i, 1);
+                      form.setValue("deliveryConditions", current, { shouldDirty: true });
+                    }}
+                  >×</button>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-slate-600">Subpuntos</p>
+                    <button
+                      type="button"
+                      className="rounded border border-cyan-400 px-2 py-1 text-[11px] text-cyan-600 font-semibold hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition"
+                      onClick={() => {
+                        const current = [...(form.getValues("deliveryConditions") ?? [])];
+                        const existing = current[i] || { text: "", subItems: [] };
+                        const subItems = Array.isArray(existing.subItems) ? [...existing.subItems, ""] : [""];
+                        current[i] = { ...existing, subItems };
+                        form.setValue("deliveryConditions", current, { shouldDirty: true });
+                      }}
+                    >Agregar subpunto</button>
+                  </div>
+                  {(condition?.subItems ?? []).map((sub: string, subIndex: number) => (
+                    <div key={subIndex} className="flex gap-2 items-start">
+                      <Textarea
+                        className={inputClass + " min-h-[60px] flex-1"}
+                        placeholder="Ej. Presentar copia simple de factura..."
+                        value={sub ?? ""}
+                        onChange={e => {
+                          const current = [...(form.getValues("deliveryConditions") ?? [])];
+                          const existing = current[i] || { text: "", subItems: [] };
+                          const subItems = Array.isArray(existing.subItems) ? [...existing.subItems] : [];
+                          subItems[subIndex] = e.target.value;
+                          current[i] = { ...existing, subItems };
+                          form.setValue("deliveryConditions", current, { shouldDirty: true });
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="mt-2 text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 rounded px-2 py-1"
+                        onClick={() => {
+                          const current = [...(form.getValues("deliveryConditions") ?? [])];
+                          const existing = current[i] || { text: "", subItems: [] };
+                          const subItems = Array.isArray(existing.subItems) ? [...existing.subItems] : [];
+                          subItems.splice(subIndex, 1);
+                          current[i] = { ...existing, subItems };
+                          form.setValue("deliveryConditions", current, { shouldDirty: true });
+                        }}
+                      >×</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
         </div>
       </FormSection>
 
