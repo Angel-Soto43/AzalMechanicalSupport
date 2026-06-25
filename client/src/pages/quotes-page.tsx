@@ -283,6 +283,7 @@ export default function QuotesPage() {
         deliveryLocations: Array.isArray(fullQuote.deliveryLocations) ? fullQuote.deliveryLocations : [],
         deliveryDates: Array.isArray(fullQuote.deliveryDates) ? fullQuote.deliveryDates : [],
         deliveryConditions: Array.isArray(fullQuote.deliveryConditions) ? fullQuote.deliveryConditions : [],
+        selectedDeliveryClauses: Array.isArray(fullQuote.selectedDeliveryClauses) ? fullQuote.selectedDeliveryClauses : [],
         // ─── Sección HGW: Región Militar y Garantía ─────────────────────────
         hasRegionalMilitary: fullQuote.hasRegionalMilitary ?? false,
         warrantyPercentageApplies: fullQuote.warrantyPercentageApplies ?? false,
@@ -445,6 +446,7 @@ export default function QuotesPage() {
         // ─── Sección 2: Fechas y condiciones de entrega ────────────────────
         deliveryDates: (amsFormData as any).deliveryDates || [],
         deliveryConditions: (amsFormData as any).deliveryConditions || [],
+        selectedDeliveryClauses: (amsFormData as any).selectedDeliveryClauses || [],
 
         // ─── Sección HGW: Región Militar y Garantía ────────────────────────
         hasRegionalMilitary: (amsFormData as any).hasRegionalMilitary ?? false,

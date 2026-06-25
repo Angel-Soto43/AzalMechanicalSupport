@@ -89,6 +89,7 @@ const serviciosValues = (data: AMSFormData) => ({
   warrantyPercentageApplies: (data as any).warrantyPercentageApplies,
   warrantyPercentage: (data as any).warrantyPercentage,
   deliveryNotes: (data as any).deliveryNotes,
+  selectedDeliveryClauses: (data as any).selectedDeliveryClauses,
 });
 
 export function DynamicFormRenderer({ type, company, companyName, data, onChange }: DynamicFormRendererProps) {

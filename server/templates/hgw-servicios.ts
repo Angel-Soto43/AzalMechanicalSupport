@@ -106,69 +106,84 @@ export function generateHGWServiciosTemplate(quote: any, items: any[]) {
         <li>Moneda en que se cotiza: Moneda Nacional.</li>
         <li>Origen de los servicios: ${quote.goodsOrigin || ''}</li>
         <li>Vigencia de la cotización: ${quote.validityDays || ''} días.</li>
-        <li>Fecha de entrega:
-           <ol class="list-alpha">
-             ${(quote.deliveryDates || []).map((d: string) => `<li>${d}</li>`).join('')}
-           </ol>
         </li>
-        <li>Fecha de entrega (Fundamento Legal): Con fundamento en el Artículo 66 fracción XII de la L.A.A.S.S.P...
-           <ol class="list-alpha">
-             ${(quote.deliveryLocation || []).map((loc: string) => `<li>${loc}</li>`).join('')}
-           </ol>
-        </li>
+       <li>Fecha de entrega (Fundamento Legal): Con fundamento en el Artículo 66 fracción XII de la L.A.A.S.S.P...
+  <ol class="list-alpha">
+    ${(() => {
+      try {
+        // 1. Usa la variable correcta: quote.deliveryDates
+        // 2. Si es string, pásalo a objeto; si ya es objeto, úsalo directo
+        const dates = typeof quote.deliveryDates === 'string' 
+          ? JSON.parse(quote.deliveryDates) 
+          : (quote.deliveryDates || []);
+          
+        return dates.map((loc: string) => `<li>${loc}</li>`).join('');
+      } catch (e) {
+        return '<li>Error al cargar fechas</li>';
+      }
+    })()}
+  </ol>
+</li>
 
-        <ol class="list-roman" start="5">
-          <li>Lugar de entrega: HGW Process and Solutions S.A. de C.V. hará entrega de los servicios contratados en las instalaciones que a continuación se indican:
-            
-            <ol class="list-alpha">
-              ${(quote.selectedDeliveryClauses || []).sort().map((id: string) => `
-                <li style="margin-bottom: 10px;">
-                  ${getClausulaText(id)}
-                  
-                  ${id === 'C' ? `
-                    <table style="margin-top: 10px; width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 9pt;">
-                      <thead>
-                        <tr style="background-color: #f2f2f2;">
-                          <th style="border: 1px solid #000; padding: 4px;">No.</th>
-                          <th style="border: 1px solid #000; padding: 4px;">R.M.</th>
-                          <th style="border: 1px solid #000; padding: 4px;">Ubicación del porteo</th>
-                          <th style="border: 1px solid #000; padding: 4px;">Dirección Física</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        ${(quote.deliveryLocations || []).map((loc: any) => `
-                          <tr>
-                            <td style="border: 1px solid #000; padding: 4px;">${loc.noPartida || ''}</td>
-                            <td style="border: 1px solid #000; padding: 4px;">${loc.regionMilitar || ''}</td>
-                            <td style="border: 1px solid #000; padding: 4px;">${loc.address || ''}</td>
-                            <td style="border: 1px solid #000; padding: 4px;">${loc.contact || ''}</td>
-                          </tr>
-                        `).join('')}
-                      </tbody>
-                    </table>
-                  ` : ''}
-                </li>
+
+
+        <!-- Debes estar dentro de la lista principal (ol class="list-roman") -->
+<li value="5">
+  Lugar de entrega: HGW Process and Solutions S.A. de C.V. hará entrega de los servicios contratados en las instalaciones que a continuación se indican:
+  
+  <ol class="list-alpha" style="margin-top: 5px; margin-left: 20px;">
+    ${(quote.selectedDeliveryClauses || []).sort().map((id: string) => `
+      <li style="margin-bottom: 10px; font-weight: normal;">
+        ${getClausulaText(id)}
+        
+        ${id === 'C' ? `
+          <table style="margin-top: 10px; width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 9pt;">
+            <thead>
+              <tr style="background-color: #f2f2f2;">
+                <th style="border: 1px solid #000; padding: 4px;">No.</th>
+                <th style="border: 1px solid #000; padding: 4px;">R.M.</th>
+                <th style="border: 1px solid #000; padding: 4px;">Ubicación del porteo</th>
+                <th style="border: 1px solid #000; padding: 4px;">Dirección Física</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(quote.deliveryLocations || []).map((loc: any) => `
+                <tr>
+                  <td style="border: 1px solid #000; padding: 4px;">${loc.noPartida || ''}</td>
+                  <td style="border: 1px solid #000; padding: 4px;">${loc.regionMilitar || ''}</td>
+                  <td style="border: 1px solid #000; padding: 4px;">${loc.address || ''}</td>
+                  <td style="border: 1px solid #000; padding: 4px;">${loc.contact || ''}</td>
+                </tr>
               `).join('')}
-            </ol>
-            
-          </li>
-        </ol>
+            </tbody>
+          </table>
+        ` : ''}
+      </li>
+    `).join('')}
+  </ol>
+</li>
 
-        <li>HGW Process and Solutions S.A. de C.V., cumplirá con las especificaciones técnicas...</li>
-        <li>Normas y Certificaciones: HGW Process and Solutions S.A. de C.V., cumplirá las normas...</li>
+        <li>HGW Process and Solutions S.A. de C.V., cumplirá con las especificaciones técnicas, documentación y atributos de los bienes requeridos, indicadas en las FichasTécnicas.</li>
+        <li>Normas y Certificaciones: HGW Process and Solutions S.A. de C.V., cumplirá las normas  conforme a la ficha de especificaciones técnicas.</li>
         <li>Garantía de calidad:
            <ol class="list-alpha">
              ${(quote.qualityGuarantees || []).map((g: string) => `<li>${g}</li>`).join('')}
            </ol>
         </li>
-        <li>Mi representada cumple con los atributos...</li>
-        <li>Mi representada cuenta con la capacidad técnica...</li>
+        <li>Mi representada cumple con los atributos, normas, garantías, documentación indicadas en los Anexos, así como en la Tarjeta de Requerimientos Técnicos y Fichas Técnicas.</li>
+        <li>Mi representada cuenta con la capacidad técnica de entregar en tiempo y forma los bienes requeridos.</li>
         <li>Registros sanitarios o permisos especiales: No aplica</li>
         <li>Razón social: HGW PROCESS AND SOLUTIONS, S.A. DE C.V.
            <ol class="list-lower">
              <li>Objeto Social: ${(quote.selectedSocialObjects || []).join(', ')}</li>
              <li>Domicilio legal: Av. Jorge Jiménez Cantú No. 1 int. 124, Valle Escondido, Atizapán de Zaragoza, Estado de México, Código Postal 52937</li>
-             <li>Correo electrónico: hgw@hgwprocessolutions.com</li>
+            <li>
+                Correo electrónico: 
+                <a href="mailto:hgw@hgwprocessolutions.com" 
+                  style="color: #0056b3; text-decoration: underline; font-weight: bold;">
+                  hgw@hgwprocessolutions.com
+                </a>
+            </li>
              <li>Registro Federal de Contribuyentes: HPS200624FG1.</li>
              <li>Origen de la empresa: Mexicana.</li>
              <li>Años de experiencia: 3</li>

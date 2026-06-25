@@ -58,6 +58,11 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
     selectedSocialObjects: quote.selectedSocialObjects || safeParse(quote.selectedSocialObjectsJson),
     deliveryLocations: quote.deliveryLocations || safeParse(quote.deliveryLocationsJson),
     deliveryConditions: quote.deliveryConditions || safeParse(quote.deliveryConditionsJson),
+
+    selectedDeliveryClauses: quote.selectedDeliveryClauses || safeParse(quote.selectedDeliveryClausesJson),
+    deliveryDates: quote.deliveryDates || safeParse(quote.deliveryDatesJson),
+    deliveryLocation: quote.deliveryLocation || safeParse(quote.deliveryLocationJson), 
+
   };
 
   const html = getTemplateForProvider(provider, enrichedQuote, lineItems);
@@ -801,6 +806,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           deliveryLocations: safeParse(quote.deliveryLocationsJson),
           deliveryDates: safeParse(quote.deliveryDatesJson),
           deliveryConditions: safeParse(quote.deliveryConditionsJson),
+          selectedDeliveryClauses: safeParse(quote.selectedDeliveryClausesJson),
           hasRegionalMilitary: quote.hasRegionalMilitary ?? false,
           warrantyPercentageApplies: quote.warrantyPercentageApplies ?? false,
           warrantyPercentage: Number(quote.warrantyPercentage) || 0,
@@ -816,54 +822,63 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  app.get("/api/quotes/:id/pdf", requireAuth, async (req: any, res) => {
-    try {
-      const quoteId = Number(req.params.id);
-      if (Number.isNaN(quoteId)) {
-        return res.status(400).json({ error: "ID de cotización inválido" });
-      }
+ app.get("/api/quotes/:id/pdf", requireAuth, async (req: any, res) => {
+    try {
+      const quoteId = Number(req.params.id);
+      if (Number.isNaN(quoteId)) {
+        return res.status(400).json({ error: "ID de cotización inválido" });
+      }
 
-      const quote = await storage.getQuoteById(quoteId);
-      if (!quote) {
-        return res.status(404).json({ error: "Cotización no encontrada" });
-      }
-      
-      let parsedGuarantees = [];
-      let parsedObjetos = [];
-      
-      try {
-        if (quote.qualityGuaranteesJson) {
-          parsedGuarantees = JSON.parse(quote.qualityGuaranteesJson);
-        }
-        if (quote.socialObjectsJson) {
-          parsedObjetos = JSON.parse(quote.socialObjectsJson);
-        }
-      } catch (parseError) {
-        console.error("Error parseando arreglos JSON desde la BD:", parseError);
-      }
+      const quote = await storage.getQuoteById(quoteId);
+      if (!quote) {
+        return res.status(404).json({ error: "Cotización no encontrada" });
+      }
+      
+      // 🚀 DEFINIMOS EL PARSEADOR AQUÍ PARA QUE ESTÉ DISPONIBLE
+      const safeParse = (val: string | null | undefined): any[] => {
+        try { return JSON.parse(val || "[]"); } catch { return []; }
+      };
 
-      if (!quote.providerId) {
-        return res.status(404).json({ error: "Proveedor no encontrado" });
-      }
-      const provider = await storage.getProviderById(Number(quote.providerId));
-      if (!provider) {
-        return res.status(404).json({ error: "Proveedor no encontrado" });
-      }
+      let parsedGuarantees = [];
+      let parsedObjetos = [];
+      
+      try {
+        if (quote.qualityGuaranteesJson) {
+          parsedGuarantees = JSON.parse(quote.qualityGuaranteesJson);
+        }
+        if (quote.socialObjectsJson) {
+          parsedObjetos = JSON.parse(quote.socialObjectsJson);
+        }
+      } catch (parseError) {
+        console.error("Error parseando arreglos JSON desde la BD:", parseError);
+      }
 
-      const rawItems = await storage.getQuoteItems(quoteId);
-      const lineItems = convertQuoteItemsFromDb(rawItems);
+      if (!quote.providerId) {
+        return res.status(404).json({ error: "Proveedor no encontrado" });
+      }
+      const provider = await storage.getProviderById(Number(quote.providerId));
+      if (!provider) {
+        return res.status(404).json({ error: "Proveedor no encontrado" });
+      }
 
-      const totalCents = rawItems.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
-      const totalText = amountToSpanishText(fromCents(totalCents));
+      const rawItems = await storage.getQuoteItems(quoteId);
+      const lineItems = convertQuoteItemsFromDb(rawItems);
 
-      const quoteWithText = {
-        ...quote,
-        folio: quote.internalFolio,
-        destinationCompany: quote.destinationCompany,
-        totalText: totalText,
-        parsedGuarantees: parsedGuarantees, 
-        parsedObjetos: parsedObjetos 
-      };
+      const totalCents = rawItems.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+      const totalText = amountToSpanishText(fromCents(totalCents));
+
+      const quoteWithText = {
+        ...quote,
+        folio: quote.internalFolio,
+        destinationCompany: quote.destinationCompany,
+        totalText: totalText,
+        parsedGuarantees: parsedGuarantees, 
+        parsedObjetos: parsedObjetos, // 🚀 COMA AÑADIDA AQUÍ
+        
+        // 🚀 USAMOS LA VARIABLE quote as any PARA EVITAR EL ERROR DE PROPIEDAD
+        deliveryLocations: safeParse((quote as any).deliveryLocationsJson),
+        selectedDeliveryClauses: safeParse((quote as any).selectedDeliveryClausesJson)
+      };
 
       const pdfBuffer = await generateQuotePdfBuffer(quoteWithText, provider, lineItems);
       const filename = buildQuotePdfFileName(quoteWithText);
@@ -941,6 +956,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       
       const deliveryDatesJson = JSON.stringify(Array.isArray(req.body.deliveryDates) ? req.body.deliveryDates : []);
       const deliveryConditionsJson = JSON.stringify(Array.isArray(req.body.deliveryConditions) ? req.body.deliveryConditions : []);
+      const selectedDeliveryClausesJson = JSON.stringify(Array.isArray(req.body.selectedDeliveryClauses) ? req.body.selectedDeliveryClauses : []);
       const requiredDocumentsJson = JSON.stringify(Array.isArray(req.body.requiredDocuments) ? req.body.requiredDocuments : []);
       const normsTableJson = JSON.stringify(Array.isArray(req.body.normsTable) ? req.body.normsTable : []);
       const serviceNormsTableJson = JSON.stringify(Array.isArray(req.body.serviceNormsTable) ? req.body.serviceNormsTable : []);
@@ -970,103 +986,110 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }
 
       const quote = await storage.createQuote({
-        internalFolio,
-        destinationCompany,
-        requisitionNumber,
-        projectTitle,
-        quoteDate,
-        commercialTerms,
-        validityDays,
-        paymentDays,
-        deliveryTime,
-        manufacturingTime,
-        guaranteeMonths,
-        compliancePercentage: compliancePercentage.toFixed(2),
-        deliveryPlace,
-        contactPerson,
-        providerId,
-        goodsOrigin,
-        providerNationality,
-        complianceWarranty,
-        experienceYears,
-        specialtyYears,
-        similarContracts,
-        bankName,
-        bankAccount,
-        bankBeneficiary,
-        empresaId,
-        templateName,
-        companyOrigin,
-        proposalType,
-        attnDia,
-        attnMes,
-        attnAnio,
-        attnLugar,
-        attnGrado,
-        attnArea,
-        attnUbicacion,
-        attnDireccion,
-        attnCargo,
-        attnContacto,
-        paymentTerms,
-        hasManufacturingTime,
-        deliverySingle: deliverySingleVal,
-        deliveryLocationsJson,
-        qualityGuaranteesJson,
-        selectedSocialObjectsJson,
-        deliveryDatesJson,
-        deliveryConditionsJson,
-        requiredDocumentsJson,
-        normsTableJson,
-        serviceNormsTableJson,
-        hasRegionalMilitary,
-        warrantyPercentageApplies,
-        warrantyPercentage: warrantyPercentage.toFixed(2),
-        deliveryNotes,
-      });
+        internalFolio,
+        destinationCompany,
+        requisitionNumber,
+        projectTitle,
+        quoteDate,
+        commercialTerms,
+        validityDays,
+        paymentDays,
+        deliveryTime,
+        manufacturingTime,
+        guaranteeMonths,
+        compliancePercentage: compliancePercentage.toFixed(2),
+        deliveryPlace,
+        contactPerson,
+        providerId,
+        goodsOrigin,
+        providerNationality,
+        complianceWarranty,
+        experienceYears,
+        specialtyYears,
+        similarContracts,
+        bankName,
+        bankAccount,
+        bankBeneficiary,
+        empresaId,
+        templateName,
+        companyOrigin,
+        proposalType,
+        attnDia,
+        attnMes,
+        attnAnio,
+        attnLugar,
+        attnGrado,
+        attnArea,
+        attnUbicacion,
+        attnDireccion,
+        attnCargo,
+        attnContacto,
+        paymentTerms,
+        hasManufacturingTime,
+        deliverySingle: deliverySingleVal,
+        deliveryLocationsJson,
+        qualityGuaranteesJson,
+        selectedSocialObjectsJson,
+        deliveryDatesJson,
+        deliveryConditionsJson,
+        selectedDeliveryClausesJson,
+        requiredDocumentsJson,
+        normsTableJson,
+        serviceNormsTableJson,
+        hasRegionalMilitary,
+        warrantyPercentageApplies,
+        warrantyPercentage: warrantyPercentage.toFixed(2),
+        deliveryNotes,
+      });
 
-      const createdItems = [];
-      for (let i = 0; i < validation.normalizedItems.length; i++) {
-        const item = validation.normalizedItems[i];
-        const rawItem = lineItems[i]; 
-        
-        const createdItem = await storage.createQuoteItem({
-          quoteId: quote.id,
-          description: item.description,
-          quantity: item.quantity,
-          unit: item.unit,
-          unitMeasure: item.unitMeasure,
-          techRequirements: item.techRequirements,
-          versionReference: item.versionReference,
-          reqDate: (rawItem.reqDate || "").toString().trim(),
-          unitPrice: item.unitPriceCents,
-          amount: item.amountCents,
-          supplier: item.supplier,
-          purchaseCost: item.purchaseCost ? String(item.purchaseCost) : "0",
-          profitMargin: item.profitMargin ? String(item.profitMargin) : "0",
-          profitFactor: item.profitFactor ? String(item.profitFactor) : "1",
-          noPartida: (rawItem.noPartida || "").toString().trim(),
-        });
-        createdItems.push(convertQuoteItemFromDb(createdItem));
-      }
+      const createdItems = [];
+      for (let i = 0; i < validation.normalizedItems.length; i++) {
+        const item = validation.normalizedItems[i];
+        const rawItem = lineItems[i];
+        const createdItem = await storage.createQuoteItem({
+          quoteId: quote.id,
+          description: item.description,
+          quantity: item.quantity,
+          unit: item.unit,
+          unitMeasure: item.unitMeasure,
+          techRequirements: item.techRequirements,
+          versionReference: item.versionReference,
+          reqDate: (rawItem.reqDate || "").toString().trim(),
+          unitPrice: item.unitPriceCents,
+          amount: item.amountCents,
+          supplier: item.supplier,
+          purchaseCost: item.purchaseCost ? String(item.purchaseCost) : "0",
+          profitMargin: item.profitMargin ? String(item.profitMargin) : "0",
+          profitFactor: item.profitFactor ? String(item.profitFactor) : "1",
+          noPartida: (rawItem.noPartida || "").toString().trim(),
+        });
+        createdItems.push(convertQuoteItemFromDb(createdItem));
+      }
 
-      const total = fromCents(validation.totalCents);
-      res.status(201).json({
-        quote: {
-          ...quote,
-          folio: quote.internalFolio,
-          empresaDestino: quote.destinationCompany,
-          total,
-          totalText: amountToSpanishText(total),
-        },
-        lineItems: createdItems,
-      });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
-    }
-  });
+      const total = fromCents(validation.totalCents);
 
-  app.delete("/api/quotes/:id", requireAuth, async (req: any, res) => {
+      await storage.createAuditLog({
+        correo: req.user.correo || req.user.email || null,
+        action: "Crear cotización",
+        details: `Se creó la cotización ${quote.internalFolio}`,
+      });
+
+      return res.status(201).json({
+        quote: {
+          ...quote,
+          folio: quote.internalFolio,
+          empresaDestino: quote.destinationCompany,
+          total,
+          totalText: amountToSpanishText(total),
+        },
+        lineItems: createdItems,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete("/api/quotes/:id", requireAuth, async (req: any, res) => {
     try {
       const quoteId = Number(req.params.id);
       if (Number.isNaN(quoteId)) {
@@ -1167,6 +1190,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const deliveryConditionsJson = Array.isArray(req.body.deliveryConditions)
         ? JSON.stringify(req.body.deliveryConditions)
         : (existing.deliveryConditionsJson ?? "[]");
+      const selectedDeliveryClausesJson = Array.isArray(req.body.selectedDeliveryClauses)
+        ? JSON.stringify(req.body.selectedDeliveryClauses)
+        : (existing.selectedDeliveryClausesJson ?? "[]");
       const requiredDocumentsJson = Array.isArray(req.body.requiredDocuments)
         ? JSON.stringify(req.body.requiredDocuments)
         : (existing.requiredDocumentsJson ?? "[]");
@@ -1249,6 +1275,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         selectedSocialObjectsJson,
         deliveryDatesJson,
         deliveryConditionsJson,
+        selectedDeliveryClausesJson,
         requiredDocumentsJson,
         normsTableJson,
         serviceNormsTableJson,
@@ -2041,11 +2068,19 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const quote = await storage.getQuoteById(quoteId);
       if (!quote || !quote.providerId) {
         return res.status(404).json({ error: "Cotización o proveedor no encontrado" });
+
       }
+console.log("DEBUG - CONTENIDO JSON EN BD:");
+console.log("selectedDeliveryClausesJson:", quote.selectedDeliveryClausesJson);
+console.log("deliveryLocationsJson:", quote.deliveryLocationsJson);
 
       const provider = await storage.getProviderById(Number(quote.providerId));
       const rawItems = await storage.getQuoteItems(quoteId);
       const lineItems = convertQuoteItemsFromDb(rawItems);
+
+const safeParse = (val: string | null | undefined): any[] => {
+        try { return JSON.parse(val || "[]"); } catch { return []; }
+      };
 
       // 🚀 CALCULAMOS EL TOTAL Y EL TEXTO EN LETRAS PARA QUE LA PLANTILLA NO TRUENE
       const totalCents = rawItems.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
@@ -2053,7 +2088,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
       const quoteWithText = {
         ...quote,
-        totalText: totalText
+        totalText: totalText,
+  selectedDeliveryClauses: safeParse(quote.selectedDeliveryClausesJson),
+  deliveryLocations: safeParse(quote.deliveryLocationsJson),
+  deliveryDates: safeParse(quote.deliveryDatesJson),
+  qualityGuarantees: safeParse(quote.qualityGuaranteesJson)
       };
 
       // Generar el buffer del PDF y un buen nombre de archivo con la data enriquecida

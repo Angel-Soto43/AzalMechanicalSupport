@@ -66,6 +66,7 @@ export function HGWServiciosForm({ companyName, values, onChange }: HGWServicios
   const hasDeliveryConditions = form.watch("hasDeliveryConditions" as any);
   const selectedSocialObjects = form.watch("selectedSocialObjects");
   const watchedLineItems = form.watch("lineItems");
+  const selectedClauses = (form.watch("selectedDeliveryClauses" as any) ?? []) as string[];
 
   useEffect(() => {
     if (!initialized.current) {
@@ -81,6 +82,7 @@ export function HGWServiciosForm({ companyName, values, onChange }: HGWServicios
         ...values,
         deliveryConditions: normalizedConditions,
         hasDeliveryConditions: normalizedConditions.length > 0,
+        selectedDeliveryClauses: Array.isArray((values as any).selectedDeliveryClauses) ? (values as any).selectedDeliveryClauses : [],
       });
       initialized.current = true;
       const locs = (values as any).deliveryLocations ?? [];
@@ -326,8 +328,6 @@ export function HGWServiciosForm({ companyName, values, onChange }: HGWServicios
       </FormSection>
 
       {/* SECCIÓN 2 */}
-
-
       
       <FormSection title="Sección 2" subtitle="Los campos vacíos no aparecerán en el PDF.">
         <div className="grid gap-4 md:grid-cols-2">
@@ -343,8 +343,8 @@ export function HGWServiciosForm({ companyName, values, onChange }: HGWServicios
           )} />
 
           {/* BLOQUE DINÁMICO: FECHA DE ENTREGA */}
-          <div className="md:col-span-2 space-y-3 mt-2">
-            <FormLabel>Fecha de entrega</FormLabel>
+          <div className="space-y-3">
+         <FormLabel>Fecha de entrega</FormLabel>
             <p className="text-xs text-slate-500">Agrega múltiples fechas si es necesario.</p>
             {(form.watch("deliveryDates") ?? [""]).map((_, i) => (
               <div key={i} className="flex gap-2 items-start">
@@ -380,9 +380,9 @@ export function HGWServiciosForm({ companyName, values, onChange }: HGWServicios
               }}>
               + Agregar fecha de entrega
             </button>
-          </div>
+          
 
-          <div className="md:col-span-2 space-y-2 mt-4">
+          <div className="space-y-2">
             <FormLabel>¿Incluir tiempo de fabricación?</FormLabel>
             <div className="flex items-center gap-6">
               <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -411,29 +411,35 @@ export function HGWServiciosForm({ companyName, values, onChange }: HGWServicios
           </div>
           
         {/* PREGUNTA REGIÓN MILITAR */}
-          <div className="space-y-2 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
-            <FormLabel className="text-sm font-medium">¿La entrega será para alguna Región Militar?</FormLabel>
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" name="hasRegionalMilitary"
-                  checked={hasRegionalMilitary === true}
-                  onChange={() => form.setValue("hasRegionalMilitary", true, { shouldDirty: true })} />
-                Sí
-              </label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" name="hasRegionalMilitary"
-                  checked={hasRegionalMilitary !== true}
-                  onChange={() => form.setValue("hasRegionalMilitary", false, { shouldDirty: true })} />
-                No
-              </label>
-            </div>
-          </div>
+         <div className="border-t pt-4">
+         <div className="flex flex-col gap-1 border border-slate-200 p-2 rounded-md w-fit">
+           <span className="text-sm font-medium">¿La entrega será para alguna Región Militar?</span>
+    <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+      <input 
+        type="radio" 
+        className="w-4 h-4"
+        checked={hasRegionalMilitary === true}
+        onChange={() => form.setValue("hasRegionalMilitary", true, { shouldDirty: true })} 
+      />
+      Sí
+    </label>
+    <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+      <input 
+        type="radio" 
+        className="w-4 h-4"
+        checked={hasRegionalMilitary !== true}
+        onChange={() => form.setValue("hasRegionalMilitary", false, { shouldDirty: true })} 
+      />
+      No
+    </label>
+  </div>
+</div>
 
   
   {/* ─── CONTENEDOR PRINCIPAL: LUGAR DE ENTREGA ─── */}
           <div className="space-y-6 mt-6 border-t pt-6">
-           <div className="space-y-6 mt-6 border-t pt-6">
-          <h3 className="text-lg font-bold text-slate-800 dark:text-white">V. Lugar de entrega</h3>
+      
+          <h3 className="text-lg font-bold text-slate-800 dark:text-white">Lugar de entrega</h3>
 
           {/* SELECCIÓN DE CONDICIONES (A, B, C) */}
           <div className="space-y-2">
@@ -468,8 +474,8 @@ export function HGWServiciosForm({ companyName, values, onChange }: HGWServicios
         </div>
 
             {/* TABLA DE LUGARES (Sub-punto del Lugar de Entrega, dependiente de C) */}
-            {(form.watch("selectedDeliveryClauses") ?? []).includes("C") && (
-              <div className="space-y-2 pl-6 border-l-2 border-green-500">
+            {selectedClauses.includes("C") && (
+              <div className="w-full space-y-4 mt-4 border-l-4 border-green-500 pl-4">
                 <div className="flex items-center justify-between">
                   <FormLabel className="font-semibold text-green-700">Detalle de los 41 sitios (Inciso C)</FormLabel>
                   <button 

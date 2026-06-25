@@ -95,7 +95,7 @@ export const quotes = pgTable("quotes", {
   deliveryPlace: text("delivery_place").notNull().default(""),
   contactPerson: text("contact_person").notNull().default(""),
   
-  // CONDICIONES LEGALES CORPORATIVAS DEL PDF
+  // CONDICIONES LEGALES CORPORATIVAS
   complianceWarranty: integer("compliance_warranty").notNull().default(0),
   goodsOrigin: text("goods_origin").notNull().default(""),
   providerNationality: text("provider_nationality").notNull().default(""),
@@ -107,25 +107,15 @@ export const quotes = pgTable("quotes", {
   bankBeneficiary: text("bank_beneficiary").notNull().default(""),
 
   providerId: integer("provider_id").references(() => providers.id),
+  empresaId: integer("empresa_id").references(() => providers.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 
-  // 🚀 CAMPOS ANTIGUOS QUE DEBES MANTENER PARA QUE NO SE BORREN
-  deliveryDatesJson: text("delivery_dates_json"),
-  hasRegionalMilitary: boolean("has_regional_military"),
-  warrantyPercentageApplies: boolean("warranty_percentage_applies"),
-  warrantyPercentage: numeric("warranty_percentage"),
-  deliveryNotes: text("delivery_notes"),
-  requiredDocumentsJson: text("required_documents_json"),
-  normsTableJson: text("norms_table_json"),
-  serviceNormsTableJson: text("service_norms_table_json"),
-
-  // 🚀 CAMPOS NUEVOS Y RELACIONALES
-  empresaId: integer("empresa_id").references(() => providers.id),
+  // CONFIGURACIÓN Y TIPO
   templateName: varchar("template_name", { length: 100 }).default("azal_official"),
   companyOrigin: text("company_origin").notNull().default("AZAL"),
   proposalType: text("proposal_type").notNull().default("bienes"),
 
-  // ─── Sección 1 "Atención" ────────────────────────────────────────────────
+  // ATENCIÓN
   attnDia: text("attn_dia").notNull().default(""),
   attnMes: text("attn_mes").notNull().default(""),
   attnAnio: text("attn_anio").notNull().default(""),
@@ -137,31 +127,27 @@ export const quotes = pgTable("quotes", {
   attnCargo: text("attn_cargo").notNull().default(""),
   attnContacto: text("attn_contacto").notNull().default(""),
 
-  // ─── Sección 2 "Condiciones comerciales" ─────────────────────────────────
+  // CONDICIONES COMERCIALES Y ENTREGAS
   paymentTerms: text("payment_terms").notNull().default(""),
   hasManufacturingTime: boolean("has_manufacturing_time").notNull().default(false),
   deliverySingle: boolean("delivery_single").notNull().default(true),
-  deliveryLocationsJson: text("delivery_locations_json").notNull().default("[]"),
+  deliveryNotes: text("delivery_notes").default(""),
   
-  // 🚀 NUEVO CAMPO: Arreglo de fechas/condiciones de entrega dinámico
-  deliveryDatesJson: text("delivery_dates_json").notNull().default("[]"),
-  // 🚀 CAMPO NUEVO: Condiciones de entrega anidadas
-  deliveryConditionsJson: text("delivery_conditions_json").notNull().default("[]"),
+  // JSONs (Sin .notNull() temporalmente para evitar error 23502)
+  deliveryLocationsJson: text("delivery_locations_json").default("[]"),
+  deliveryDatesJson: text("delivery_dates_json").default("[]"),
+  deliveryConditionsJson: text("delivery_conditions_json").default("[]"),
+  selectedDeliveryClausesJson: text("selected_delivery_clauses_json").default("[]"),
+  qualityGuaranteesJson: text("quality_guarantees_json").default("[]"),
+  selectedSocialObjectsJson: text("selected_social_objects_json").default("[]"),
+  requiredDocumentsJson: text("required_documents_json").default("[]"),
+  normsTableJson: text("norms_table_json").default("[]"),
+  serviceNormsTableJson: text("service_norms_table_json").default("[]"),
 
-  // ─── Sección 3 "Garantías y objetos sociales" ────────────────────────────
-  qualityGuaranteesJson: text("quality_guarantees_json").notNull().default("[]"),
-  selectedSocialObjectsJson: text("selected_social_objects_json").notNull().default("[]"),
-
-  // ─── Campos HGW: Región Militar y Porcentaje de Garantía ─────────────────
-  hasRegionalMilitary: boolean("has_regional_military").notNull().default(false),
-  warrantyPercentageApplies: boolean("warranty_percentage_applies").notNull().default(false),
+  // OTROS CAMPOS HGW/DEMA
+  hasRegionalMilitary: boolean("has_regional_military").default(false),
+  warrantyPercentageApplies: boolean("warranty_percentage_applies").default(false),
   warrantyPercentage: numeric("warranty_percentage", { precision: 5, scale: 2 }).default("0"),
-  deliveryNotes: text("delivery_notes").notNull().default(""),
-
-  // ─── Campos DEMA: Documentación requerida y tablas de normas ─────────────
-  requiredDocumentsJson: text("required_documents_json").notNull().default("[]"),
-  normsTableJson: text("norms_table_json").notNull().default("[]"),
-  serviceNormsTableJson: text("service_norms_table_json").notNull().default("[]"),
 });
 
 export const quoteItems = pgTable("quote_items", {

@@ -67,6 +67,7 @@ export interface AMSFormData {
   deliveryLocation: string;
   deliveryLocations: Array<{ noPartida: string; regionMilitar?: string; address: string; contact: string }>;
   deliveryConditions: Array<string | { text: string; subItems: string[] }>;
+  selectedDeliveryClauses: string[];
 
   // ─── Sección 3 "Garantía de calidad" ────────────────────
   qualityGuarantees: string[];
@@ -122,6 +123,7 @@ export const defaultAMSFormData: AMSFormData = {
   deliveryLocation: "",
   deliveryLocations: [],
   deliveryConditions: [{ text: "", subItems: [] }],
+  selectedDeliveryClauses: [],
 
   qualityGuarantees: [""],
   requiredDocuments: [""],
