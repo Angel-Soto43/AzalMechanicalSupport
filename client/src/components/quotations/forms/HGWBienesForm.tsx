@@ -332,6 +332,11 @@ export function HGWBienesForm({ companyName, values, onChange }: HGWBienesFormPr
               <Input className={inputClass} type="number" {...field} />
             </FormControl><FormMessage /></FormItem>
           )} />
+          <FormField control={form.control} name="paymentDays" render={({ field }) => (
+            <FormItem><FormLabel>Días para el pago</FormLabel><FormControl>
+              <Input className={inputClass} type="number" placeholder="Ej. 17" {...field} />
+            </FormControl><FormMessage /></FormItem>
+          )} />
           <FormField control={form.control} name="goodsOrigin" render={({ field }) => (
             <FormItem><FormLabel>Origen de bienes</FormLabel><FormControl>
               <Input className={inputClass} placeholder="Ej. Nacional" {...field} />

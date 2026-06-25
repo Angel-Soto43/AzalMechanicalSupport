@@ -34,11 +34,13 @@ export function generateHgwBienesTemplate(provider: any, quote: any, items: any[
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(amount);
   };
 
+  const partidasStr = items.map((item, index) => item.noPartida || (index + 1).toString()).join(', ');
+
   let tablaLugaresHtml = "";
   if (quote.deliverySingle !== false && quote.deliverySingle !== "false") {
     tablaLugaresHtml = `
       <tr>
-        <td style="border: 1px solid black; padding: 4px; text-align: center;">1 al ${items.length}</td>
+        <td style="border: 1px solid black; padding: 4px; text-align: center;">${partidasStr}</td>
         <td style="border: 1px solid black; padding: 4px; text-align: center;">${quote.deliveryLocation || quote.deliveryPlace || ""}</td>
       </tr>
     `;
@@ -59,13 +61,34 @@ export function generateHgwBienesTemplate(provider: any, quote: any, items: any[
       <style>
         body { 
           margin: 0; 
-          /* 🚀 QUITAMOS EL 140px DE ARRIBA, AHORA PUPPETEER HACE EL TRABAJO */
           padding: 0 45px 0 45px; 
           font-family: "Arial Narrow", Arial, sans-serif; 
           font-size: 11pt; 
           color: #000000; 
           line-height: 1.3; 
         }
+
+        /* 🚀 1. EL ENCABEZADO FIJO FLOTANTE */
+        .fixed-header {
+          position: fixed;
+          top: 0;
+          left: 45px;
+          right: 45px;
+          z-index: 10;
+        }
+
+        /* 🚀 2. LA TABLA CONTENEDORA QUE EMPUJA EL TEXTO */
+        .content-table { width: 100%; border-collapse: collapse; border: none; margin-bottom: 0; }
+        .content-table > thead { display: table-header-group; }
+        .content-table > tbody { display: table-row-group; }
+        .content-table > thead > tr > td { border: none; padding: 0; }
+        .content-table > tbody > tr > td { border: none; padding: 0; }
+        
+        /* 🚀 3. EL ESPACIADOR FANTASMA (Hueco para el bloque de Atención) */
+        .header-space {
+          height: 160px; /* Asegura el hueco exacto en cada página */
+        }
+
         .bold { font-weight: bold; }
         .title { font-size: 11pt; font-weight: bold; }
         .underline { text-decoration: underline; }
@@ -77,180 +100,200 @@ export function generateHgwBienesTemplate(provider: any, quote: any, items: any[
         .alpha-list-lower { list-style-type: lower-alpha; padding-left: 20px; margin-top: 5px; }
         .alpha-list-lower > li { margin-bottom: 4px; }
         
-        table { width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 20px; }
-        th { border: 1px solid black; padding: 6px; text-align: center; font-size: 9pt; font-weight: bold; }
-        td { border: 1px solid black; padding: 6px; font-size: 10pt; }
+        /* Tablas de datos */
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .data-table th { border: 1px solid black; padding: 6px; text-align: center; font-size: 9pt; font-weight: bold; }
+        .data-table td { border: 1px solid black; padding: 6px; font-size: 10pt; }
       </style>
     </head>
     <body>
-      <div style="position: relative; z-index: 10;">
-         
-         <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
-            <div style="width: 55%; text-align: left;">
-               <span class="title">ATENCIÓN:</span><br>
-               ${quote.attnGrado ? `${quote.attnGrado}<br>` : ''}
-               ${quote.attnNombre ? `${quote.attnNombre}<br>` : ''}
-               ${quote.attnDependencia ? `${quote.attnDependencia}<br>` : ''}
-               ${quote.attnArea ? `${quote.attnArea}<br>` : ''}
-               ${quote.attnUbicacion ? `${quote.attnUbicacion}<br>` : ''}
-               ${quote.attnDireccion ? `${quote.attnDireccion}<br>` : ''}
-               ${quote.attnCargo ? `${quote.attnCargo}` : ''}
-            </div>
-            <div style="width: 45%; text-align: right; display: flex; flex-direction: column; justify-content: flex-end;">
-               <span>${quote.attnLugar || ''} a ${quote.attnDia || ''} de ${quote.attnMes || ''} de ${quote.attnAnio || ''}.</span>
+
+         <div class="fixed-header">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+               <div style="width: 55%; text-align: left;">
+                  <span class="title">ATENCIÓN:</span><br>
+                  ${quote.attnGrado ? `${quote.attnGrado}<br>` : ''}
+                  ${quote.attnNombre || quote.contactPerson || quote.attnContacto ? `${quote.attnNombre || quote.contactPerson || quote.attnContacto}<br>` : ''}
+                  ${quote.attnDependencia || quote.destinationCompany ? `${quote.attnDependencia || quote.destinationCompany}<br>` : ''}
+                  ${quote.attnArea ? `${quote.attnArea}<br>` : ''}
+                  ${quote.attnUbicacion ? `${quote.attnUbicacion}<br>` : ''}
+                  ${quote.attnDireccion ? `${quote.attnDireccion}<br>` : ''}
+                  ${quote.attnCargo ? `${quote.attnCargo}` : ''}
+               </div>
+               <div style="width: 45%; text-align: right; display: flex; flex-direction: column; justify-content: flex-end;">
+                  <span>${quote.attnLugar || ''} a ${quote.attnDia || ''} de ${quote.attnMes || ''} de ${quote.attnAnio || ''}.</span>
+               </div>
             </div>
          </div>
 
-         <div style="text-align: center; margin-bottom: 20px;">
-            <div class="title underline">PROPUESTA ECONÓMICA</div>
-            <div class="underline" style="margin-top: 5px;">${quote.attnNombreProcedimiento || quote.projectTitle}</div>
-         </div>
-
-         <table>
+         <table class="content-table">
+            
             <thead>
-              <tr>
-                <th style="width: 8%;">PTDA.</th>
-                <th style="width: 42%;">DESCRIPCIÓN</th>
-                <th style="width: 10%;">CANT.</th>
-                <th style="width: 10%;">U.M.</th>
-                <th style="width: 15%;">COSTO<br>UNITARIO</th>
-                <th style="width: 15%;">IMPORTE</th>
-              </tr>
+               <tr>
+                  <td>
+                     <div class="header-space"></div>
+                  </td>
+               </tr>
             </thead>
+
             <tbody>
-              ${items.map((item, index) => `
-                <tr>
-                  <td style="text-align: center;">${index + 1}</td>
-                  <td style="text-align: left;">${item.description}</td>
-                  <td style="text-align: center;">${item.quantity}</td>
-                  <td style="text-align: center;">${item.unitMeasure || item.unit}</td>
-                  <td style="text-align: center;">${formatCurrency(item.unitPriceCents ? item.unitPriceCents / 100 : item.unitPrice)}</td>
-                  <td style="text-align: center;">${formatCurrency((item.quantity * (item.unitPriceCents ? item.unitPriceCents / 100 : item.unitPrice)))}</td>
-                </tr>
-              `).join('')}
-              
-              <tr>
-                <td colspan="4" style="border: none;"></td>
-                <td style="text-align: right; font-weight: bold;">SUBTOTAL:</td>
-                <td style="text-align: center; font-weight: bold;">${formatCurrency(subtotal)}</td>
-              </tr>
-              <tr>
-                <td colspan="4" style="border: none;"></td>
-                <td style="text-align: right; font-weight: bold;">IVA:</td>
-                <td style="text-align: center; font-weight: bold;">${formatCurrency(iva)}</td>
-              </tr>
-              <tr>
-                <td colspan="4" style="border: none;"></td>
-                <td style="text-align: right; font-weight: bold;">TOTAL:</td>
-                <td style="text-align: center; font-weight: bold;">${formatCurrency(total)}</td>
-              </tr>
+               <tr>
+                  <td>
+
+                     <div style="text-align: center; margin-bottom: 20px;">
+                        <div class="title underline">PROPUESTA ECONÓMICA</div>
+                        <div class="underline" style="margin-top: 5px;">${quote.attnNombreProcedimiento || quote.projectTitle}</div>
+                     </div>
+
+                     <table class="data-table">
+                        <thead>
+                          <tr>
+                            <th style="width: 8%;">PTDA.</th>
+                            <th style="width: 42%;">DESCRIPCIÓN</th>
+                            <th style="width: 10%;">CANT.</th>
+                            <th style="width: 10%;">U.M.</th>
+                            <th style="width: 15%;">COSTO<br>UNITARIO</th>
+                            <th style="width: 15%;">IMPORTE</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${items.map((item, index) => `
+                            <tr>
+                              <td style="text-align: center;">${item.noPartida || index + 1}</td>
+                              <td style="text-align: left;">${item.description}</td>
+                              <td style="text-align: center;">${item.quantity}</td>
+                              <td style="text-align: center;">${item.unitMeasure || item.unit}</td>
+                              <td style="text-align: center;">${formatCurrency(item.unitPriceCents ? item.unitPriceCents / 100 : item.unitPrice)}</td>
+                              <td style="text-align: center;">${formatCurrency((item.quantity * (item.unitPriceCents ? item.unitPriceCents / 100 : item.unitPrice)))}</td>
+                            </tr>
+                          `).join('')}
+                          
+                          <tr>
+                            <td colspan="4" style="border: none !important;"></td>
+                            <td style="text-align: right; font-weight: bold; border: 1px solid black !important;">SUBTOTAL:</td>
+                            <td style="text-align: center; font-weight: bold; border: 1px solid black !important;">${formatCurrency(subtotal)}</td>
+                          </tr>
+                          <tr>
+                            <td colspan="4" style="border: none !important;"></td>
+                            <td style="text-align: right; font-weight: bold; border: 1px solid black !important;">IVA:</td>
+                            <td style="text-align: center; font-weight: bold; border: 1px solid black !important;">${formatCurrency(iva)}</td>
+                          </tr>
+                          <tr>
+                            <td colspan="4" style="border: none !important;"></td>
+                            <td style="text-align: right; font-weight: bold; border: 1px solid black !important;">TOTAL:</td>
+                            <td style="text-align: center; font-weight: bold; border: 1px solid black !important;">${formatCurrency(total)}</td>
+                          </tr>
+                        </tbody>
+                     </table>
+
+                     <div style="text-align: center; font-weight: bold; margin-bottom: 25px; font-size: 10pt; text-transform: uppercase;">
+                        ${totalEnTexto} IVA INCLUIDO.
+                     </div>
+
+                     <div class="title underline">TÉRMINOS COMERCIALES:</div>
+                     
+                     <ol class="roman-list">
+                        <li>Moneda en que se cotiza: Moneda Nacional.</li>
+                        <li>Origen de los servicios: ${quote.goodsOrigin}.</li>
+                        <li>Vigencia de la cotización: ${quote.validityDays} días.</li>
+                        
+                        <li>Fecha de entrega.
+                           ${deliveryDates.length > 0 ? `
+                             <ol class="alpha-list-upper">
+                               ${deliveryDates.map((fecha: string) => `<li>${fecha}</li>`).join('')}
+                             </ol>
+                           ` : ''}
+                        </li>
+                        
+                        <li>Lugar de entrega: HGW Process and Solutions S.A. de C.V., hará entrega de los bienes contratados en las instalaciones que a continuación se indican:
+                           <table class="data-table" style="margin-top: 10px;">
+                             <thead>
+                               <tr>
+                                 <th style="padding: 4px; text-align: center;">PARTIDA</th>
+                                 <th style="padding: 4px; text-align: center;">INSTALACIONES</th>
+                               </tr>
+                             </thead>
+                             <tbody>
+                               ${tablaLugaresHtml}
+                             </tbody>
+                           </table>
+                        </li>
+
+                        <li>HGW Process and Solutions S.A. de C.V., cumplirá con las especificaciones técnicas, documentación y atributos de los servicios requeridos, indicadas en el Anexo Técnico.</li>
+                        
+                        <li>Condiciones de entrega:
+                           ${deliveryConditions.length > 0 ? `
+                             <ol class="alpha-list-upper">
+                               ${deliveryConditions.map((cond: any) => `
+                                 <li>
+                                   ${cond.text}
+                                   ${cond.subItems && cond.subItems.length > 0 ? `
+                                     <ol class="alpha-list-lower">
+                                       ${cond.subItems.map((sub: string) => `<li>${sub}</li>`).join('')}
+                                     </ol>
+                                   ` : ''}
+                                 </li>
+                               `).join('')}
+                             </ol>
+                           ` : ''}
+                        </li>
+
+                        <li>Garantía de calidad:
+                           ${qualityGuarantees.length > 0 ? `
+                             <ol class="alpha-list-upper">
+                               ${qualityGuarantees.map((garantia: string) => `<li>${garantia}</li>`).join('')}
+                             </ol>
+                           ` : ''}
+                        </li>
+
+                        <li>Normas y Certificaciones: HGW Process and Solutions S.A. de C.V., cumplirá las normas conforme al Anexo Técnico.</li>
+                        <li>Mi representada cumple con los atributos, normas, garantías, documentación indicadas en los Anexos, así como en el Anexo Técnico.</li>
+                        <li>Mi representada cuenta con la capacidad técnica de entregar en tiempo y forma los servicios requeridos.</li>
+                        <li>El pago se realizará por transferencia electrónica y a los ${quote.paymentDays || quote.paymentTerms} días hábiles posteriores a la entrega de la factura, previa entrega de los bienes o prestación de los servicios a satisfacción.</li>
+                        <li>El porcentaje de garantía de cumplimiento será el 10% del monto total del contrato, antes del impuesto al valor agregado.</li>
+                        <li>Penas convencionales, siendo en este caso una penalización equivalente al 1% por cada día de atraso y hasta el 10% se aplicará sobre el valor de los bienes entregados en forma tardía, sin incluir el I.V.A., quedando estipulado que al momento en que se aplique alguna pena, se encuentra pendiente de cubrirse al proveedor alguna cantidad, se descontará de ésta el monto al que ascienda la pena.</li>
+                        <li>HGW PROCESS AND SOLUTIONS, S.A. DE C.V. se encuentra inscrita en la plataforma de Compras MX.</li>
+                        
+                        <li>Razón social: HGW PROCESS AND SOLUTIONS, S.A. DE C.V.
+                           <ol class="alpha-list-lower">
+                              <li>Objeto Social: ${socialObjects.join(', ')}</li>
+                              <li>Domicilio legal: Av. Jorge Jiménez Cantú No. 1 int. 124, Valle Escondido, Atizapán de Zaragoza, Estado de México, Código Postal 52937</li>
+                              <li>Correo electrónico: hgw@hgwprocessolutions.com</li>
+                              <li>Registro Federal de Contribuyentes: HPS200624FG1.</li>
+                              <li>Origen de la empresa: Mexicana.</li>
+                              <li>Años de experiencia: 3</li>
+                              <li>Nombre del Banco de la Clabe: Inbursa.</li>
+                              <li>Clave Bancaria Estándar (clabe): 036180500583815041</li>
+                              <li>Beneficiario de la Cuenta Bancaria: HGW PROCESS AND SOLUTIONS, S.A. DE C.V.</li>
+                              <li>Forma de pago: Transferencia Electrónica.</li>
+                              <li>Nombre del representante legal: Ing. Octavio Soto Hernández.</li>
+                              <li>Teléfono: 55 45566367.</li>
+                           </ol>
+                        </li>
+                     </ol>
+
+                     <p style="text-align: justify; margin-top: 20px;">
+                        Con la presente oferta económica manifestamos interés en participar en los bienes requeridos por esa dependencia; y se presenta sin compromiso ni obligaciones para ambas partes.
+                     </p>
+
+                     <div style="text-align: center; margin-top: 50px; page-break-inside: avoid;">
+                        <div class="title" style="margin-bottom: 10px;">ATENTAMENTE</div>
+                        
+                        <div style="min-height: 80px; display: flex; justify-content: center; align-items: flex-end; margin-bottom: 5px;">
+                           ${firmaHgwBase64 ? `<img src="${firmaHgwBase64}" style="max-height: 90px; width: auto;" />` : ''}
+                        </div>
+                        
+                        <div style="border-top: 1px solid black; width: 350px; margin: 0 auto; padding-top: 5px; line-height: 1.1;">
+                           <span class="title">ING. OCTAVIO SOTO HERNÁNDEZ</span><br>
+                           REPRESENTANTE LEGAL
+                        </div>
+                     </div>
+
+                  </td>
+               </tr>
             </tbody>
          </table>
 
-         <div style="text-align: center; font-weight: bold; margin-bottom: 25px; font-size: 10pt; text-transform: uppercase;">
-            ${totalEnTexto} M.N. IVA INCLUIDO.
-         </div>
-
-         <div class="title underline">TÉRMINOS COMERCIALES:</div>
-         
-         <ol class="roman-list">
-            <li>Moneda en que se cotiza: Moneda Nacional.</li>
-            <li>Origen de los servicios: ${quote.goodsOrigin}.</li>
-            <li>Vigencia de la cotización: ${quote.validityDays} días.</li>
-            
-            <li>Fecha de entrega.
-               ${deliveryDates.length > 0 ? `
-                 <ol class="alpha-list-upper">
-                   ${deliveryDates.map((fecha: string) => `<li>${fecha}</li>`).join('')}
-                 </ol>
-               ` : ''}
-            </li>
-            
-            <li>Lugar de entrega: HGW Process and Solutions S.A. de C.V., hará entrega de los bienes contratados en las instalaciones que a continuación se indican:
-               <table style="width: 100%; border-collapse: collapse; border: 1px solid black; margin-top: 10px;">
-                 <thead>
-                   <tr>
-                     <th style="padding: 4px; text-align: center;">PARTIDA</th>
-                     <th style="padding: 4px; text-align: center;">INSTALACIONES</th>
-                   </tr>
-                 </thead>
-                 <tbody>
-                   ${tablaLugaresHtml}
-                 </tbody>
-               </table>
-            </li>
-
-            <li>HGW Process and Solutions S.A. de C.V., cumplirá con las especificaciones técnicas, documentación y atributos de los servicios requeridos, indicadas en el Anexo Técnico.</li>
-            
-            <li>Condiciones de entrega:
-               ${deliveryConditions.length > 0 ? `
-                 <ol class="alpha-list-upper">
-                   ${deliveryConditions.map((cond: any) => `
-                     <li>
-                       ${cond.text}
-                       ${cond.subItems && cond.subItems.length > 0 ? `
-                         <ol class="alpha-list-lower">
-                           ${cond.subItems.map((sub: string) => `<li>${sub}</li>`).join('')}
-                         </ol>
-                       ` : ''}
-                     </li>
-                   `).join('')}
-                 </ol>
-               ` : ''}
-            </li>
-
-            <li>Garantía de calidad:
-               ${qualityGuarantees.length > 0 ? `
-                 <ol class="alpha-list-upper">
-                   ${qualityGuarantees.map((garantia: string) => `<li>${garantia}</li>`).join('')}
-                 </ol>
-               ` : ''}
-            </li>
-
-            <li>Normas y Certificaciones: HGW Process and Solutions S.A. de C.V., cumplirá las normas conforme al Anexo Técnico.</li>
-            <li>Mi representada cumple con los atributos, normas, garantías, documentación indicadas en los Anexos, así como en el Anexo Técnico.</li>
-            <li>Mi representada cuenta con la capacidad técnica de entregar en tiempo y forma los servicios requeridos.</li>
-            <li>El pago se realizará por transferencia electrónica y a los ${quote.paymentTerms} hábiles posteriores a la entrega de la factura, previa entrega de los bienes o prestación de los servicios a satisfacción.</li>
-            <li>El porcentaje de garantía de cumplimiento será el 10% del monto total del contrato, antes del impuesto al valor agregado.</li>
-            <li>Penas convencionales, siendo en este caso una penalización equivalente al 1% por cada día de atraso y hasta el 10% se aplicará sobre el valor de los bienes entregados en forma tardía, sin incluir el I.V.A., quedando estipulado que al momento en que se aplique alguna pena, se encuentra pendiente de cubrirse al proveedor alguna cantidad, se descontará de ésta el monto al que ascienda la pena.</li>
-            <li>HGW PROCESS AND SOLUTIONS, S.A. DE C.V. se encuentra inscrita en la plataforma de Compras MX.</li>
-            
-            <li>Razón social: HGW PROCESS AND SOLUTIONS, S.A. DE C.V.
-               <ol class="alpha-list-lower">
-                  <li>Objeto Social: ${socialObjects.join(', ')}</li>
-                  <li>Domicilio legal: Av. Jorge Jiménez Cantú No. 1 int. 124, Valle Escondido, Atizapán de Zaragoza, Estado de México, Código Postal 52937</li>
-                  <li>Correo electrónico: hgw@hgwprocessolutions.com</li>
-                  <li>Registro Federal de Contribuyentes: HPS200624FG1.</li>
-                  <li>Origen de la empresa: Mexicana.</li>
-                  <li>Años de experiencia: 3</li>
-                  <li>Nombre del Banco de la Clabe: Inbursa.</li>
-                  <li>Clave Bancaria Estándar (clabe): 036180500583815041</li>
-                  <li>Beneficiario de la Cuenta Bancaria: HGW PROCESS AND SOLUTIONS, S.A. DE C.V.</li>
-                  <li>Forma de pago: Transferencia Electrónica.</li>
-                  <li>Nombre del representante legal: Ing. Octavio Soto Hernández.</li>
-                  <li>Teléfono: 55 45566367.</li>
-               </ol>
-            </li>
-         </ol>
-
-         <p style="text-align: justify; margin-top: 20px;">
-            Con la presente oferta económica manifestamos interés en participar en los bienes requeridos por esa dependencia; y se presenta sin compromiso ni obligaciones para ambas partes.
-         </p>
-
-         <div style="text-align: center; margin-top: 50px; page-break-inside: avoid;">
-            <div class="title" style="margin-bottom: 10px;">ATENTAMENTE</div>
-            
-            <div style="min-height: 80px; display: flex; justify-content: center; align-items: flex-end; margin-bottom: 5px;">
-               ${firmaHgwBase64 ? `<img src="${firmaHgwBase64}" style="max-height: 90px; width: auto;" />` : ''}
-            </div>
-            
-            <div style="border-top: 1px solid black; width: 350px; margin: 0 auto; padding-top: 5px; line-height: 1.1;">
-               <span class="title">ING. OCTAVIO SOTO HERNÁNDEZ</span><br>
-               REPRESENTANTE LEGAL
-            </div>
-         </div>
-
-      </div>
     </body>
     </html>
   `;

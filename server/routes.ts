@@ -220,20 +220,15 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
         </div>
       `;
       
-      // 🚀 PIE DE PÁGINA HERMAL (Borde a Borde con paginador)
+      // 🚀 PIE DE PÁGINA HERMAL (Solo imagen, sin paginador)
       pdfOptions.footerTemplate = `
         <style>
-          html, body { margin: 0 !important; padding: 0 !important; width: 100%; height: 100%; font-family: Arial, sans-serif; -webkit-print-color-adjust: exact; font-size: 9pt; }
+          html, body { margin: 0 !important; padding: 0 !important; width: 100%; height: 100%; -webkit-print-color-adjust: exact; }
         </style>
         <div style="position: absolute; bottom: 0; left: 0; width: 100vw; margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: flex-end;">
           
           ${hermalFooterBase64 ? `<img src="${hermalFooterBase64}" style="width: 100vw; display: block; margin: 0; padding: 0; position: absolute; bottom: 0; left: 0; z-index: -1;" />` : ''}
           
-          <div style="position: relative; width: 100%; padding: 0 45px 35px 45px; box-sizing: border-box; display: flex; justify-content: flex-end; align-items: flex-end;">
-             <div style="text-align: right; font-weight: bold; color: #000000;">
-               Página <span class="pageNumber"></span> de <span class="totalPages"></span>
-             </div>
-          </div>
         </div>
       `;
       

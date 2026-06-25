@@ -58,6 +58,7 @@ export interface AMSFormData {
 
   // ─── Sección 2 ──────────────────────────────────────────
   validityDays: number;
+  paymentDays: number;
   paymentTerms: string;
   goodsOrigin: string;
   deliveryTime: string;
@@ -113,6 +114,7 @@ export const defaultAMSFormData: AMSFormData = {
   attnContacto: "",
   attnCargo: "",
   validityDays: 120,
+  paymentDays: 0,
   paymentTerms: "",
   goodsOrigin: "Nacional",
   deliveryTime: "3 meses posteriores al fallo",

@@ -81,215 +81,245 @@ export function generateHermalServiciosTemplate(provider: any, quote: any, items
         /* REGLAS OBLIGATORIAS DE DISEÑO */
         body { 
           margin: 0; 
-          padding: 140px 45px 80px 45px; 
-          font-family: "Ebrima", Arial, sans-serif; /* Tipografía Ebrima Base */
-          font-size: 10pt; /* Texto Ebrima 10 */
+          padding: 0 45px; /* Los márgenes top/bottom los maneja routes.ts */
+          font-family: "Ebrima", Arial, sans-serif; 
+          font-size: 10pt; 
           color: #000000; 
           line-height: 1.3; 
         }
 
+        /* 🚀 1. EL ENCABEZADO FIJO FLOTANTE */
         .fixed-header {
           position: fixed;
-          top: 0;
+          top: 15px; /* Separación del margen superior */
           left: 45px;
           right: 45px;
-          padding: 10px 0;
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          background: #ffffff;
           z-index: 10;
-          box-sizing: border-box;
         }
 
-        .fixed-header .header-left { width: 55%; min-width: 45%; }
-        .fixed-header .header-right { width: 45%; min-width: 35%; text-align: right; display: flex; flex-direction: column; justify-content: flex-start; gap: 4px; }
-        .fixed-header .header-right span { display: block; }
+        /* 🚀 2. LA TABLA CONTENEDORA QUE EMPUJA EL TEXTO */
+        .content-table { width: 100%; border-collapse: collapse; border: none; }
+        .content-table > thead { display: table-header-group; }
+        .content-table > tbody { display: table-row-group; }
+        .content-table > thead > tr > td { border: none; padding: 0; }
+        .content-table > tbody > tr > td { border: none; padding: 0; }
         
-        /* Títulos Ebrima 11, Negritas */
+        /* 🚀 3. EL ESPACIADOR FANTASMA (Repite 180px de vacío en cada hoja) */
+        .header-space {
+          height: 165px; 
+        }
+        
+        /* Estilos de texto y listas */
         .title { font-family: "Ebrima", Arial, sans-serif; font-size: 11pt; font-weight: bold; }
         .bold { font-weight: bold; }
         .underline { text-decoration: underline; }
         
-        /* Listas y viñetas */
         .roman-list { list-style-type: upper-roman; padding-left: 25px; margin-top: 10px; margin-bottom: 15px; }
         .roman-list > li { margin-bottom: 10px; text-align: justify; }
-        
         .alpha-list-upper { list-style-type: upper-alpha; padding-left: 20px; margin-top: 5px; }
         .alpha-list-upper > li { margin-bottom: 6px; }
-        
         .alpha-list-lower { list-style-type: lower-alpha; padding-left: 20px; margin-top: 5px; }
         .alpha-list-lower > li { margin-bottom: 4px; }
         
-        /* Tablas Ebrima 10 */
-        table { width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 20px; font-family: "Ebrima", Arial, sans-serif; font-size: 10pt; }
-        th { border: 1px solid black; padding: 6px; text-align: center; font-family: "Ebrima", Arial, sans-serif; font-size: 10pt; font-weight: bold; background-color: #f2f2f2;}
-        td { border: 1px solid black; padding: 6px; font-size: 10pt; }
+        /* 🚀 TABLAS DE DATOS (Visibles) */
+        /* 🚀 TABLAS DE DATOS (Estilo Amarillo Pastel) */
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-family: "Ebrima", Arial, sans-serif; font-size: 10pt; }
+        .data-table th { 
+          border: 2px solid #ffffff; /* Separadores blancos */
+          padding: 6px; 
+          text-align: center; 
+          font-weight: bold; 
+          background-color: #FFF6D9; /* Fondo crema/amarillo pastel */
+        }
+        .data-table td { 
+          border: 2px solid #ffffff; /* Separadores blancos */
+          padding: 6px; 
+          font-size: 10pt; 
+          background-color: #FFF6D9; /* Fondo crema/amarillo pastel */
+        }
       </style>
     </head>
     <body>
          
          <div class="fixed-header">
-            <div class="header-left">
-               <span class="title">ATENCIÓN:</span>
-               <div style="margin-top: 6px; line-height: 1.4;">
-                 ${attnFields}
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+               <div style="width: 55%; text-align: left; line-height: 1.4;">
+                  <span class="title">ATENCIÓN:</span>
+                  <div style="margin-top: 6px;">
+                    ${attnFields}
+                  </div>
+               </div>
+               <div style="width: 45%; text-align: right; display: flex; flex-direction: column; justify-content: flex-start;">
+                  <span>${quote.attnLugar || ''}, a ${quote.attnDia || ''} de ${quote.attnMes || ''} de ${quote.attnAnio || ''}.</span>
                </div>
             </div>
+         </div>
+
+         <table class="content-table">
             
-            <div class="header-right">
-               <span>${quote.attnLugar || ''} a ${quote.attnDia || ''} de ${quote.attnMes || ''} de ${quote.attnAnio || ''}.</span>
-            </div>
-         </div>
-
-         <div style="text-align: center; margin-bottom: 20px;">
-            <div class="title underline">PROPUESTA ECONÓMICA</div>
-            <div class="title underline" style="margin-top: 5px;">${quote.attnNombreProcedimiento || quote.projectTitle || ''}</div>
-         </div>
-
-         <!-- TABLA DE PARTIDAS -->
-         <table>
             <thead>
-              <tr>
-                <th style="width: 8%;">PTDA.</th>
-                <th style="width: 42%;">DESCRIPCIÓN</th>
-                <th style="width: 10%;">CANT.</th>
-                <th style="width: 10%;">U.M.</th>
-                <th style="width: 15%;">COSTO<br>UNITARIO</th>
-                <th style="width: 15%;">IMPORTE</th>
-              </tr>
+               <tr>
+                  <td>
+                     <div class="header-space"></div>
+                  </td>
+               </tr>
             </thead>
+
             <tbody>
-              ${items.map((item, index) => `
-                <tr>
-                  <td style="text-align: center;">${item.noPartida || index + 1}</td>
-                  <td style="text-align: left;">${item.description}</td>
-                  <td style="text-align: center;">${item.quantity}</td>
-                  <td style="text-align: center;">${item.unitMeasure || item.unit}</td>
-                  <td style="text-align: center;">${formatCurrency(item.unitPriceCents ? item.unitPriceCents / 100 : item.unitPrice)}</td>
-                  <td style="text-align: center;">${formatCurrency((item.quantity * (item.unitPriceCents ? item.unitPriceCents / 100 : item.unitPrice)))}</td>
-                </tr>
-              `).join('')}
-              
-              <tr>
-                <td colspan="4" style="border: none;"></td>
-                <td style="text-align: right; font-weight: bold;">SUBTOTAL:</td>
-                <td style="text-align: center; font-weight: bold;">${formatCurrency(subtotal)}</td>
-              </tr>
-              <tr>
-                <td colspan="4" style="border: none;"></td>
-                <td style="text-align: right; font-weight: bold;">IVA:</td>
-                <td style="text-align: center; font-weight: bold;">${formatCurrency(iva)}</td>
-              </tr>
-              <tr>
-                <td colspan="4" style="border: none;"></td>
-                <td style="text-align: right; font-weight: bold;">TOTAL:</td>
-                <td style="text-align: center; font-weight: bold;">${formatCurrency(total)}</td>
-              </tr>
+               <tr>
+                  <td>
+
+                     <div style="text-align: center; margin-bottom: 20px;">
+                        <div class="title underline">PROPUESTA ECONÓMICA</div>
+                        <div class="title underline" style="margin-top: 5px;">${quote.attnNombreProcedimiento || quote.projectTitle || ''}</div>
+                     </div>
+
+                     <table class="data-table">
+                        <thead>
+                          <tr>
+                            <th style="width: 8%;">PTDA.</th>
+                            <th style="width: 42%;">DESCRIPCIÓN</th>
+                            <th style="width: 10%;">CANT.</th>
+                            <th style="width: 10%;">U.M.</th>
+                            <th style="width: 15%;">COSTO<br>UNITARIO</th>
+                            <th style="width: 15%;">IMPORTE</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${items.map((item, index) => `
+                            <tr>
+                              <td style="text-align: center;">${item.noPartida || index + 1}</td>
+                              <td style="text-align: left;">${item.description}</td>
+                              <td style="text-align: center;">${item.quantity}</td>
+                              <td style="text-align: center;">${item.unitMeasure || item.unit}</td>
+                              <td style="text-align: center;">${formatCurrency(item.unitPriceCents ? item.unitPriceCents / 100 : item.unitPrice)}</td>
+                              <td style="text-align: center;">${formatCurrency((item.quantity * (item.unitPriceCents ? item.unitPriceCents / 100 : item.unitPrice)))}</td>
+                            </tr>
+                          `).join('')}
+                          
+                          <tr>
+                            <td colspan="4" style="border: none !important; background-color: transparent;"></td>
+                            <td style="text-align: right; font-weight: bold; border: 1px solid #f4e5a4; background-color: transparent;">SUBTOTAL:</td>
+                            <td style="text-align: center; font-weight: bold; border: 1px solid #f4e5a4; background-color: transparent;">${formatCurrency(subtotal)}</td>
+                          </tr>
+                          <tr>
+                            <td colspan="4" style="border: none !important; background-color: transparent;"></td>
+                            <td style="text-align: right; font-weight: bold; border: 1px solid #f4e5a4; background-color: transparent;">IVA:</td>
+                            <td style="text-align: center; font-weight: bold; border: 1px solid #f4e5a4; background-color: transparent;">${formatCurrency(iva)}</td>
+                          </tr>
+                          <tr>
+                            <td colspan="4" style="border: none !important; background-color: transparent;"></td>
+                            <td style="text-align: right; font-weight: bold; border: 1px solid #f4e5a4; background-color: transparent;">TOTAL:</td>
+                            <td style="text-align: center; font-weight: bold; border: 1px solid #f4e5a4; background-color: transparent;">${formatCurrency(total)}</td>
+                          </tr>
+                        </tbody>
+                     </table>
+
+                     <div style="text-align: center; font-weight: bold; margin-bottom: 25px; text-transform: uppercase;">
+                        ${totalEnTexto} IVA INCLUIDO.
+                     </div>
+
+                     <div class="title underline">TÉRMINOS COMERCIALES:</div>
+                     
+                     <ol class="roman-list">
+                        <li>Moneda en que se cotiza: Moneda Nacional.</li>
+                        <li>Origen de los servicios: ${quote.goodsOrigin || ''}.</li>
+                        <li>Vigencia de la cotización: ${quote.validityDays || ''} días.</li>
+                        
+                        <li>Fecha de entrega: HERMAL Industrial, S.A. de C.V., realizará la entrega de los servicios requeridos y documentación completa a partir del siguiente día natural de la comunicación del fallo o notificación de la adjudicación y a más tardar el ${quote.deliveryTime || (deliveryDates.length > 0 ? `${deliveryDates.map((fecha: string) => ` ${fecha}`).join(', ')}` : 'por definir')}.</li>
+                        
+                        <li>Lugar de entrega: 
+                           ${quote.deliverySingle !== false && quote.deliverySingle !== "false" ? tablaLugaresHtml : `
+                           <table class="data-table" style="margin-top: 10px;">
+                             <thead>
+                               <tr>
+                                 <th style="padding: 4px; text-align: center;">PARTIDA</th>
+                                 <th style="padding: 4px; text-align: center;">INSTALACIÓN</th>
+                               </tr>
+                             </thead>
+                             <tbody>
+                               ${tablaLugaresHtml}
+                             </tbody>
+                           </table>
+                           `}
+                        </li>
+
+                        <li>HERMAL Industrial, S.A. de C.V., cumplirá con las especificaciones técnicas y atributos indicados en el Anexo "D", así como las normas, garantías, documentación y pruebas de funcionamiento indicadas en el Anexo Técnico y Anexo Administrativo.</li>
+                        
+                        <li>Garantía de calidad:
+                           ${qualityGuarantees.length > 0 ? `
+                             <ol class="alpha-list-upper">
+                               ${qualityGuarantees.map((garantia: string) => `<li>${garantia}</li>`).join('')}
+                             </ol>
+                           ` : ''}
+                        </li>
+
+                        <li>Documentación:
+                           ${docConditions.length > 0 ? `
+                             <ol class="alpha-list-upper">
+                               ${docConditions.map((cond: any) => {
+                                 const text = typeof cond === 'string' ? cond : cond?.text || '';
+                                 const subItems = Array.isArray(cond?.subItems) ? cond.subItems : [];
+                                 return `
+                                   <li>
+                                     ${text}
+                                     ${subItems.length > 0 ? `
+                                       <ol class="alpha-list-lower">
+                                         ${subItems.map((sub: string) => `<li>${sub}</li>`).join('')}
+                                       </ol>
+                                     ` : ''}
+                                   </li>
+                                 `;
+                               }).join('')}
+                             </ol>
+                           ` : ''}
+                        </li>
+
+                        <li>Mi representada cumple con las especificaciones técnicas y atributos indicados en el Anexo "D", así como las normas, garantías, documentación y pruebas de funcionamiento indicadas en el Anexo Técnico y Anexo Administrativo.</li>
+                        <li>Mi representada cuenta con la capacidad técnica para el <span class="bold">suministro de los servicios</span> requeridos.</li>
+                        
+                        <li>Razón social: HERMAL Industrial, S.A. de C.V.
+                           <ol class="alpha-list-lower">
+                              <li>Objeto Social: ${socialObjects.join(', ')}</li>
+                              <li>Domicilio legal: Boulevard Manuel Ávila Camacho #2610, Torre B, P 10, oficina 10-A, Col. Valle de los Pinos, Tlalnepantla, Estado de México, Código Postal 54040.</li>
+                              <li>Correo electrónico: <span style="color: #5A69D4; text-decoration: underline;">hermal@industrial.com.mx</span></li>
+                              <li>Registro Federal de Contribuyentes: HIN2305193K1.</li>
+                              <li>Origen de la empresa: Mexicana.</li>
+                              <li>Años de experiencia: 2</li>
+                              <li>Años de especialidad en el mercado: 2</li>
+                              <li>Número de contratos afines a los bienes o servicios a adquirir o contratar: 1</li>
+                              <li>Nombre del Banco de la Clave: Banorte.</li>
+                              <li>Clave Bancaria Estándar (clave): 072180013415670012.</li>
+                              <li>Forma de pago: ${quote.paymentTerms || ''}</li>
+                              <li>Beneficiario de la Cuenta Bancaria: HERMAL Industrial, S.A. de C.V.</li>
+                              <li>Nombre del representante legal: Leticia Hernández Mauro.</li>
+                              <li>Teléfono: 55 3461 7888</li>
+                           </ol>
+                        </li>
+                     </ol>
+
+                     <div style="text-align: justify; margin-top: 20px;">
+                        Con la presente oferta económica manifestamos interés en participar en la adquisición de los bienes por esa dependencia; y se presenta sin compromiso ni obligaciones para ambas partes.
+                     </div>
+
+                     <div style="text-align: center; margin-top: 50px; page-break-inside: avoid;">
+                        <div class="title" style="margin-bottom: 10px;">Atentamente.</div>
+                        
+                        <div style="min-height: 80px; display: flex; justify-content: center; align-items: flex-end; margin-bottom: 5px;">
+                           ${firmaHermalBase64 ? `<img src="${firmaHermalBase64}" style="max-height: 90px; width: auto;" />` : ''}
+                        </div>
+                        
+                        <div style="border-top: 1px solid black; width: 350px; margin: 0 auto; padding-top: 5px; line-height: 1.1;">
+                           <span class="title">Leticia Hernández Mauro.</span><br>
+                           Representante legal
+                        </div>
+                     </div>
+
+                  </td>
+               </tr>
             </tbody>
          </table>
 
-         <div style="text-align: center; font-weight: bold; margin-bottom: 25px; text-transform: uppercase;">
-            ${totalEnTexto} M.N. IVA INCLUIDO.
-         </div>
-
-         <!-- TÉRMINOS COMERCIALES -->
-         <div class="title underline">TÉRMINOS COMERCIALES:</div>
-         
-         <ol class="roman-list">
-            <li>Moneda en que se cotiza: Moneda Nacional.</li>
-            <li>Origen de los servicios: ${quote.goodsOrigin || ''}.</li>
-            <li>Vigencia de la cotización: ${quote.validityDays || ''} días.</li>
-            
-            <li>Fecha de entrega: HERMAL Industrial, S.A. de C.V., realizará la entrega de los bienes requeridos y documentación completa a partir del siguiente día natural de la comunicación del fallo o notificación de la adjudicación y a más tardar el ${quote.deliveryTime || (deliveryDates.length > 0 ? `${deliveryDates.map((fecha: string) => ` ${fecha}`).join(', ')}` : 'por definir')}.</li>
-            
-            <li>Lugar de entrega: HERMAL Industrial, S.A. de C.V. realizará la entrega de los bienes en las siguientes instalaciones:
-               ${quote.deliverySingle !== false && quote.deliverySingle !== "false" ? tablaLugaresHtml : `
-               <table style="width: 100%; border-collapse: collapse; border: 1px solid black; margin-top: 10px;">
-                 <thead>
-                   <tr>
-                     <th style="padding: 4px; text-align: center;">PARTIDA</th>
-                     <th style="padding: 4px; text-align: center;">INSTALACIÓN</th>
-                   </tr>
-                 </thead>
-                 <tbody>
-                   ${tablaLugaresHtml}
-                 </tbody>
-               </table>
-               `}
-            </li>
-
-            <li>HERMAL Industrial, S.A. de C.V., cumplirá con las especificaciones técnicas y atributos indicados en el Anexo "D", así como las normas, garantías, documentación y pruebas de funcionamiento indicadas en el Anexo Técnico y Anexo Administrativo.</li>
-            
-            <li>Garantía de calidad:
-               ${qualityGuarantees.length > 0 ? `
-                 <ol class="alpha-list-upper">
-                   ${qualityGuarantees.map((garantia: string) => `<li>${garantia}</li>`).join('')}
-                 </ol>
-               ` : ''}
-            </li>
-
-            <li>Documentación:
-               ${docConditions.length > 0 ? `
-                 <ol class="alpha-list-upper">
-                   ${docConditions.map((cond: any) => {
-                     const text = typeof cond === 'string' ? cond : cond?.text || '';
-                     const subItems = Array.isArray(cond?.subItems) ? cond.subItems : [];
-                     return `
-                       <li>
-                         ${text}
-                         ${subItems.length > 0 ? `
-                           <ol class="alpha-list-lower">
-                             ${subItems.map((sub: string) => `<li>${sub}</li>`).join('')}
-                           </ol>
-                         ` : ''}
-                       </li>
-                     `;
-                   }).join('')}
-                 </ol>
-               ` : ''}
-            </li>
-
-            <li>Mi representada cumple con las especificaciones técnicas y atributos indicados en el Anexo "D", así como las normas, garantías, documentación y pruebas de funcionamiento indicadas en el Anexo Técnico y Anexo Administrativo.</li>
-            <li>Mi representada cuenta con la capacidad técnica para el <span class="bold">suministro de los bienes</span> requeridos.</li>
-            
-            <li>Razón social: HERMAL Industrial, S.A. de C.V.
-               <ol class="alpha-list-lower">
-                  <li>Objeto Social: ${socialObjects.join(', ')}</li>
-                  <li>Domicilio legal: Boulevard Manuel Ávila Camacho #2610, Torre B, P 10, oficina 10-A, Col. Valle de los Pinos, Tlalnepantla, Estado de México, Código Postal 54040.</li>
-                  <li>Correo electrónico: <span style="color: #5A69D4; text-decoration: underline;">hermal@industrial.com.mx</span></li>
-                  <li>Registro Federal de Contribuyentes: HIN2305193K1.</li>
-                  <li>Origen de la empresa: Mexicana.</li>
-                  <li>Años de experiencia: 2</li>
-                  <li>Años de especialidad en el mercado: 2</li>
-                  <li>Número de contratos afines a los bienes o servicios a adquirir o contratar: 1</li>
-                  <li>Nombre del Banco de la Clave: Banorte.</li>
-                  <li>Clave Bancaria Estándar (clave): 072180013415670012.</li>
-                  <li>Forma de pago: ${quote.paymentTerms || ''}</li>
-                  <li>Beneficiario de la Cuenta Bancaria: HERMAL Industrial, S.A. de C.V.</li>
-                  <li>Nombre del representante legal: Leticia Hernández Mauro.</li>
-                  <li>Teléfono: 55 3461 7888</li>
-               </ol>
-            </li>
-         </ol>
-
-         <div style="text-align: justify; margin-top: 20px;">
-            Con la presente oferta económica manifestamos interés en participar en la adquisición de los bienes por esa dependencia; y se presenta sin compromiso ni obligaciones para ambas partes.
-         </div>
-
-         <!-- BLOQUE DE FIRMA -->
-         <div style="text-align: center; margin-top: 50px; page-break-inside: avoid;">
-            <div class="title" style="margin-bottom: 10px;">Atentamente.</div>
-            
-            <div style="min-height: 80px; display: flex; justify-content: center; align-items: flex-end; margin-bottom: 5px;">
-               ${firmaHermalBase64 ? `<img src="${firmaHermalBase64}" style="max-height: 90px; width: auto;" />` : ''}
-            </div>
-            
-            <div style="border-top: 1px solid black; width: 350px; margin: 0 auto; padding-top: 5px; line-height: 1.1;">
-               <span class="title">Leticia Hernández Mauro.</span><br>
-               Representante legal
-            </div>
-         </div>
     </body>
     </html>
   `;
