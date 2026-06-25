@@ -135,6 +135,7 @@ export const quotes = pgTable("quotes", {
   
   // JSONs (Sin .notNull() temporalmente para evitar error 23502)
   deliveryLocationsJson: text("delivery_locations_json").default("[]"),
+  partidaDescriptionItemsJson: text("partida_description_items_json").default("[]"),
   deliveryDatesJson: text("delivery_dates_json").default("[]"),
   deliveryConditionsJson: text("delivery_conditions_json").default("[]"),
   selectedDeliveryClausesJson: text("selected_delivery_clauses_json").default("[]"),

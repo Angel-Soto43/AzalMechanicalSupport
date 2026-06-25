@@ -17,10 +17,23 @@ export function generateHermalBienesTemplate(provider: any, quote: any, items: a
     try { return JSON.parse(data); } catch { return []; }
   };
 
-  const partidaDescriptionItems = safeParse(quote.partidaDescriptionItems);
+  const partidaDescriptionItems = safeParse(quote.partidaDescriptionItemsJson || quote.partidaDescriptionItems);
   // 2. Extraer y parsear arrays de forma segura
   const qualityGuarantees = safeParse(quote.qualityGuaranteesJson || quote.qualityGuarantees);
-  const docParagraphs = safeParse(quote.documentationParagraphsJson || quote.documentationParagraphs);
+  const documentationConditions = (() => {
+    const raw = quote.deliveryConditionsJson || quote.deliveryConditions || quote.documentationParagraphsJson || quote.documentationParagraphs;
+    if (Array.isArray(raw)) return raw;
+    if (raw && typeof raw === 'object') return [raw];
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  })();
   const socialObjects = safeParse(quote.selectedSocialObjectsJson || quote.selectedSocialObjects);
   const deliveryLocations = safeParse(quote.deliveryLocationsJson || quote.deliveryLocations);
   const deliveryDates = safeParse(quote.deliveryDatesJson || quote.deliveryDates);
@@ -34,7 +47,9 @@ export function generateHermalBienesTemplate(provider: any, quote: any, items: a
     quote.attnUbicacion,
     quote.attnDireccion,
     quote.attnCargo
-  ].filter(campo => campo && campo.trim() !== '').map(campo => `<div>${campo}</div>`).join('');
+  ].filter(campo => campo && campo.trim() !== '' && campo !== 'bfhdbg') 
+.map(campo => `<div>${campo}</div>`)
+.join('');
 
   // 4. Cálculos de la tabla
   const subtotal = items.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.unitPrice)), 0);
@@ -190,7 +205,7 @@ export function generateHermalBienesTemplate(provider: any, quote: any, items: a
         <li>Fecha de entrega: HERMAL Industrial, S.A. de C.V., realizará la entrega de los bienes requeridos y documentación completa a partir del siguiente día natural de la comunicación del fallo o notificación de la adjudicación y a más tardar el ${fechaEntrega}.</li>
         
                 
-<li>Lugar de entrega: ...
+<li>Lugar de entrega: HERMAL Industrial, S.A. de C.V. realizará la entrega de los bienes en las siguientes instalaciones:
   <table style="width: 100%; margin: 15px auto; border-collapse: collapse; ...">
     <thead>
       <tr>
@@ -226,7 +241,14 @@ export function generateHermalBienesTemplate(provider: any, quote: any, items: a
         
         <li>Documentación:
            <ol class="alpha-list-upper">
-             ${docParagraphs.map((doc: string) => `<li>${doc}</li>`).join('')}
+             ${documentationConditions.map((doc: any) => {
+               const text = typeof doc === 'string' ? doc : (doc?.text || '');
+               const subItems = Array.isArray(doc?.subItems) ? doc.subItems.filter((sub: any) => sub && String(sub).trim() !== '') : [];
+               const renderedSubItems = subItems.length > 0
+                 ? `<ol class="alpha-list-lower">${subItems.map((sub: string) => `<li>${sub}</li>`).join('')}</ol>`
+                 : '';
+               return `<li>${text}${renderedSubItems}</li>`;
+             }).join('')}
            </ol>
         </li>
         

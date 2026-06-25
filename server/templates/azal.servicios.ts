@@ -26,6 +26,22 @@ export function generateAzalServiciosTemplate(provider: any, quote: any, items: 
   }
   const lugarExpedicion = quote.attnLugar || "Nicolás Romero, Estado de México";
 
+  const parseArrayValue = (value: any) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
+  const deliveryConditions = parseArrayValue(quote.deliveryConditionsJson || quote.deliveryConditions);
+  const deliveryPlaceText = (quote.deliveryPlace || quote.deliveryLocation || quote.lugarEntrega || "").toString().trim();
+
   // 2. LÓGICA DE LUGARES DE ENTREGA Y CONTACTO CONDICIONAL
   let lugaresEntregaHtml = "";
   let contactoGlobalHtml = "";
@@ -39,7 +55,7 @@ export function generateAzalServiciosTemplate(provider: any, quote: any, items: 
   const nombreAtencion = quote.attnNombre || quote.contactPerson || quote.contacto || '';
 
   if (quote.deliverySingle !== false) {
-    lugaresEntregaHtml = quote.deliveryPlace || quote.deliveryLocation || "Por definir";
+    lugaresEntregaHtml = deliveryPlaceText || "Por definir";
     contactoGlobalHtml = `<li><span class="bold">Contacto:</span> ${quote.attnContacto || nombreAtencion}</li>`;
   } else if (Array.isArray(deliveryLocs) && deliveryLocs.length > 0) {
     lugaresEntregaHtml = `
@@ -162,55 +178,46 @@ export function generateAzalServiciosTemplate(provider: any, quote: any, items: 
         ${quote.attnNombreProcedimiento || quote.requisitionNumber || 'S/N'}
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th style="width: 5%;">No.</th>
-            <th style="width: 25%;">DESCRIPCIÓN</th>
-            <th style="width: 26%;">REQUERIMIENTOS TÉCNICOS</th>
-            <th style="width: 8%;">CANT.</th>
-            <th style="width: 8%;">U.M.</th>
-            <th style="width: 13%;">COSTO UNITARIO</th>
-            <th style="width: 15%;">COSTO TOTAL</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${items.map((item, index) => {
-            const reqTecnicos = [
-              item.techRequirements ? item.techRequirements : '',
-              item.versionReference ? 'VERSIÓN: ' + item.versionReference : '',
-              item.reqDate ? item.reqDate : ''
-            ].filter(Boolean).join('<br>');
+     <table style="width: 100%; border-collapse: collapse;">
+  <thead>
+    <tr style="background-color: #5C6BC0; color: white;">
+      <th style="width: 8%; padding: 8px;">No.</th>
+      <th style="width: 35%; padding: 8px;">DESCRIPCIÓN</th>
+      <th style="width: 10%; padding: 8px;">CANT.</th>
+      <th style="width: 10%; padding: 8px;">U.M.</th>
+      <th style="width: 17%; padding: 8px;">COSTO UNITARIO</th>
+      <th style="width: 20%; padding: 8px;">COSTO TOTAL</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${items.map((item, index) => `
+      <tr>
+        <td style="border: 1px solid #5C6BC0; padding: 8px; text-align: center;">${item.noPartida || index + 1}</td>
+        <td style="border: 1px solid #5C6BC0; padding: 8px; text-align: left;">${item.description}</td>
+        <td style="border: 1px solid #5C6BC0; padding: 8px; text-align: center;">${item.quantity}</td>
+        <td style="border: 1px solid #5C6BC0; padding: 8px; text-align: center;">${item.unitMeasure || item.unit}</td>
+        <td style="border: 1px solid #5C6BC0; padding: 8px; text-align: right;">${formatCurrency(item.unitPrice)}</td>
+        <td style="border: 1px solid #5C6BC0; padding: 8px; text-align: right;">${formatCurrency(item.quantity * item.unitPrice)}</td>
+      </tr>
+    `).join('')}
 
-            return `
-              <tr>
-                <td>${item.noPartida || index + 1}</td>
-                <td class="text-left">${item.description}</td>
-                <td class="text-left" style="font-size: 8pt;">${reqTecnicos}</td>
-                <td>${item.quantity}</td>
-                <td>${item.unitMeasure || item.unit}</td>
-                <td class="text-right">${formatCurrency(item.unitPrice)}</td>
-                <td class="text-right">${formatCurrency(item.quantity * item.unitPrice)}</td>
-              </tr>
-            `;
-          }).join('')}
-          <tr>
-            <td colspan="5" style="border: none;"></td>
-            <td class="bold text-center">SUBTOTAL</td>
-            <td class="bold text-right">${formatCurrency(subtotal)}</td>
-          </tr>
-          <tr>
-            <td colspan="5" style="border: none;"></td>
-            <td class="bold text-center">IVA</td>
-            <td class="bold text-right">${formatCurrency(iva)}</td>
-          </tr>
-          <tr>
-            <td colspan="5" style="border: none;"></td>
-            <td class="bold text-center">TOTAL</td>
-            <td class="bold text-right">${formatCurrency(total)}</td>
-          </tr>
-        </tbody>
-      </table>
+    <tr>
+      <td colspan="4" style="border: none;"></td>
+      <td style="border: 1px solid #5C6BC0; padding: 8px; font-weight: bold;">SUBTOTAL</td>
+      <td style="border: 1px solid #5C6BC0; padding: 8px; text-align: right; font-weight: bold;">${formatCurrency(subtotal)}</td>
+    </tr>
+    <tr>
+      <td colspan="4" style="border: none;"></td>
+      <td style="border: 1px solid #5C6BC0; padding: 8px; font-weight: bold;">IVA</td>
+      <td style="border: 1px solid #5C6BC0; padding: 8px; text-align: right; font-weight: bold;">${formatCurrency(iva)}</td>
+    </tr>
+    <tr>
+      <td colspan="4" style="border: none;"></td>
+      <td style="border: 1px solid #5C6BC0; padding: 8px; font-weight: bold;">TOTAL</td>
+      <td style="border: 1px solid #5C6BC0; padding: 8px; text-align: right; font-weight: bold;">${formatCurrency(total)}</td>
+    </tr>
+  </tbody>
+</table>
 
       <div class="bold text-center" style="margin-bottom: 25px; text-transform: uppercase;">
         ${totalEnTexto} IVA INCLUIDO.
@@ -226,29 +233,34 @@ export function generateAzalServiciosTemplate(provider: any, quote: any, items: 
 </ul>
           
         
-  <!-- 1. CONDICIONES DE ENTREGA -->
-<div style="margin-bottom: 5px;">Condiciones de entrega:</div>
-<ul style="list-style-type: circle; padding-left: 20px;">
-  ${(() => {
-    try {
-      const conditions = JSON.parse(quote.deliveryConditionsJson || "[]");
-      return conditions.map((c: string) => {
-        const isAzal = c.trim().startsWith("Azal Mechanical");
-        if (isAzal) {
-          const restOfText = c.substring("Azal Mechanical".length);
-          return `<li><span style="color: #63A6E1; font-weight: bold;">Azal Mechanical</span>${restOfText}</li>`;
-        }
-        return `<li>${c}</li>`;
-      }).join('');
-    } catch { return ''; }
-  })()}
-</ul>
+  <ul style="list-style-type: disc; padding-left: 20px; margin: 0 0 15px 0;">
+    <li style="margin-bottom: 8px; display: list-item;">
+      <span style="font-weight: normal;">Condiciones de entrega:</span>
+      <ul style="list-style-type: circle; margin: 6px 0 0 18px; padding-left: 18px;">
+        ${deliveryConditions.map((c: any) => {
+          const text = typeof c === 'string' ? c : (c?.text || c?.value || "");
+          const isAzal = String(text).trim().startsWith("Azal Mechanical");
+          
+          if (isAzal) {
+            const restOfText = String(text).substring("Azal Mechanical".length);
+            return `<li style="margin-bottom: 5px;"><span style="color: #63A6E1; font-weight: bold;">Azal Mechanical</span>${restOfText}</li>`;
+          }
+          
+          return `<li style="margin-bottom: 5px;">${text}</li>`;
+        }).join('')}
+      </ul>
+    </li>
 
-<!-- 2. LUGAR DE ENTREGA -->
-<div style="margin-bottom: 5px;">Lugar de entrega:</div>
-<ul style="list-style-type: circle; padding-left: 20px;">
-  <li>${quote.lugarEntrega || ''}</li>
-</ul>
+    <li style="margin-bottom: 8px; display: list-item;">
+      <span style="font-weight: normal;">Lugar de entrega:</span>
+      <ul style="list-style-type: circle; margin: 6px 0 0 18px; padding-left: 18px;">
+        <li style="margin-bottom: 5px;">${deliveryPlaceText}</li>
+      </ul>
+    </li>
+  </ul>
+
+
+
 
 ${tiempoFabricacionHtml}
 

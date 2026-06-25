@@ -799,6 +799,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           qualityGuarantees: safeParse(quote.qualityGuaranteesJson),
           selectedSocialObjects: safeParse(quote.selectedSocialObjectsJson),
           deliveryLocations: safeParse(quote.deliveryLocationsJson),
+          partidaDescriptionItems: safeParse((quote as any).partidaDescriptionItemsJson || (quote as any).partidaDescriptionItems),
           deliveryDates: safeParse(quote.deliveryDatesJson),
           deliveryConditions: safeParse(quote.deliveryConditionsJson),
           selectedDeliveryClauses: safeParse(quote.selectedDeliveryClausesJson),
@@ -880,6 +881,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         
         // 🚀 USAMOS LA VARIABLE quote as any PARA EVITAR EL ERROR DE PROPIEDAD
         deliveryLocations: safeParse((quote as any).deliveryLocationsJson),
+        partidaDescriptionItems: safeParse((quote as any).partidaDescriptionItemsJson || (quote as any).partidaDescriptionItems),
         selectedDeliveryClauses: safeParse((quote as any).selectedDeliveryClausesJson)
       };
 
@@ -961,6 +963,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const deliverySingleVal = req.body.deliverySingle !== false && req.body.deliverySingle !== "false";
       
       const deliveryLocationsJson = JSON.stringify(Array.isArray(req.body.deliveryLocations) ? req.body.deliveryLocations : []);
+      const partidaDescriptionItemsJson = JSON.stringify(Array.isArray(req.body.partidaDescriptionItems) ? req.body.partidaDescriptionItems : []);
       const qualityGuaranteesJson = JSON.stringify(Array.isArray(req.body.qualityGuarantees) ? req.body.qualityGuarantees : []);
       const selectedSocialObjectsJson = JSON.stringify(Array.isArray(req.body.selectedSocialObjects) ? req.body.selectedSocialObjects : []);
       
@@ -1038,6 +1041,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         hasManufacturingTime,
         deliverySingle: deliverySingleVal,
         deliveryLocationsJson,
+        partidaDescriptionItemsJson,
         qualityGuaranteesJson,
         selectedSocialObjectsJson,
         deliveryDatesJson,
@@ -1188,6 +1192,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const deliveryLocationsJson = Array.isArray(req.body.deliveryLocations)
         ? JSON.stringify(req.body.deliveryLocations)
         : (existing.deliveryLocationsJson ?? "[]");
+      const partidaDescriptionItemsJson = Array.isArray(req.body.partidaDescriptionItems)
+        ? JSON.stringify(req.body.partidaDescriptionItems)
+        : ((existing as any).partidaDescriptionItemsJson ?? "[]");
       const qualityGuaranteesJson = Array.isArray(req.body.qualityGuarantees)
         ? JSON.stringify(req.body.qualityGuarantees)
         : (existing.qualityGuaranteesJson ?? "[]");
@@ -1281,6 +1288,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         hasManufacturingTime,
         deliverySingle: deliverySingleVal,
         deliveryLocationsJson,
+        partidaDescriptionItemsJson,
         qualityGuaranteesJson,
         selectedSocialObjectsJson,
         deliveryDatesJson,
