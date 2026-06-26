@@ -77,28 +77,50 @@ export function generateHGWServiciosTemplate(quote: any, items: any[]) {
         <div class="bold underline">PROPUESTA ECONÓMICA</div>
         <div class="bold underline" style="margin-top: 5px;">${quote.attnNombreProcedimiento || ''}</div>
       </div>
+        <table class="data-table">
+                        <thead>
+                          <tr>
+                            <th style="width: 8%;">PTDA.</th>
+                            <th style="width: 42%;">DESCRIPCIÓN</th>
+                            <th style="width: 10%;">CANT.</th>
+                            <th style="width: 10%;">U.M.</th>
+                            <th style="width: 15%;">COSTO<br>UNITARIO</th>
+                            <th style="width: 15%;">IMPORTE</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${items.map((item, index) => `
+                            <tr>
+                              <td style="text-align: center;">${item.noPartida || index + 1}</td>
+                              <td style="text-align: left;">${item.description}</td>
+                              <td style="text-align: center;">${item.quantity}</td>
+                              <td style="text-align: center;">${item.unitMeasure || item.unit}</td>
+                              <td style="text-align: center;">${formatCurrency(item.unitPriceCents ? item.unitPriceCents / 100 : item.unitPrice)}</td>
+                              <td style="text-align: center;">${formatCurrency((item.quantity * (item.unitPriceCents ? item.unitPriceCents / 100 : item.unitPrice)))}</td>
+                            </tr>
+                          `).join('')}
+                          
+                          <tr>
+                            <td colspan="4" style="border: none !important;"></td>
+                            <td style="text-align: right; font-weight: bold; border: 1px solid black !important;">SUBTOTAL:</td>
+                            <td style="text-align: center; font-weight: bold; border: 1px solid black !important;">${formatCurrency(subtotal)}</td>
+                          </tr>
+                          <tr>
+                            <td colspan="4" style="border: none !important;"></td>
+                            <td style="text-align: right; font-weight: bold; border: 1px solid black !important;">IVA:</td>
+                            <td style="text-align: center; font-weight: bold; border: 1px solid black !important;">${formatCurrency(iva)}</td>
+                          </tr>
+                          <tr>
+                            <td colspan="4" style="border: none !important;"></td>
+                            <td style="text-align: right; font-weight: bold; border: 1px solid black !important;">TOTAL:</td>
+                            <td style="text-align: center; font-weight: bold; border: 1px solid black !important;">${formatCurrency(total)}</td>
+                          </tr>
+                        </tbody>
+                     </table>
 
-      <table>
-        <thead>
-          <tr><th>No.</th><th>DESCRIPCIÓN</th><th>CANT.</th><th>U.M.</th><th>COSTO UNITARIO</th><th>IMPORTE</th></tr>
-        </thead>
-        <tbody>
-          ${items.map((item, i) => `
-            <tr>
-              <td>${item.noPartida || i + 1}</td>
-              <td class="text-left">${item.description}</td>
-              <td>${item.quantity}</td>
-              <td>${item.unit}</td>
-              <td>${formatCurrency(item.unitPrice)}</td>
-              <td>${formatCurrency(item.quantity * item.unitPrice)}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-      
-      <div class="bold text-center" style="margin-bottom: 25px; text-transform: uppercase;">
-        ${totalEnTexto} M.N. IVA INCLUIDO.
-      </div>
+                     <div style="text-align: center; font-weight: bold; margin-bottom: 25px; font-size: 10pt; text-transform: uppercase;">
+                        ${totalEnTexto} IVA INCLUIDO.
+                     </div>
 
       <div class="bold underline" style="margin-top: 20px;">TÉRMINOS COMERCIALES:</div>
       

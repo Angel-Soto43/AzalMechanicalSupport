@@ -67,6 +67,7 @@ export interface AMSFormData {
   deliverySingle: boolean;
   deliveryLocation: string;
   deliveryLocations: Array<{ noPartida: string; regionMilitar?: string; address: string; contact: string }>;
+  partidaDescriptionItems?: Array<{ partida: string; descripcion: string }>;
   deliveryConditions: Array<string | { text: string; subItems: string[] }>;
   selectedDeliveryClauses: string[];
 

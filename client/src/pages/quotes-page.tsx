@@ -281,6 +281,7 @@ export default function QuotesPage() {
         deliverySingle: fullQuote.deliverySingle ?? true,
         deliveryLocation: fullQuote.deliveryPlace || "",
         deliveryLocations: Array.isArray(fullQuote.deliveryLocations) ? fullQuote.deliveryLocations : [],
+        partidaDescriptionItems: Array.isArray(fullQuote.partidaDescriptionItems) ? fullQuote.partidaDescriptionItems : [],
         deliveryDates: Array.isArray(fullQuote.deliveryDates) ? fullQuote.deliveryDates : [],
         deliveryConditions: Array.isArray(fullQuote.deliveryConditions) ? fullQuote.deliveryConditions : [],
         selectedDeliveryClauses: Array.isArray(fullQuote.selectedDeliveryClauses) ? fullQuote.selectedDeliveryClauses : [],
@@ -442,6 +443,7 @@ export default function QuotesPage() {
         hasManufacturingTime: amsFormData.hasManufacturingTime ?? false,
         deliverySingle: amsFormData.deliverySingle ?? true,
         deliveryLocations: amsFormData.deliveryLocations || [],
+        partidaDescriptionItems: (amsFormData as any).partidaDescriptionItems || [],
 
         // ─── Sección 2: Fechas y condiciones de entrega ────────────────────
         deliveryDates: (amsFormData as any).deliveryDates || [],
