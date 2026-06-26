@@ -70,7 +70,7 @@ async function generateQuotePdfBuffer(quote: any, provider: any, lineItems: any[
   const proposalType = (quote.proposalType || "").toLowerCase();
   const isAzal = !companyName.includes("DEMA") && !companyName.includes("HERMAL") && !companyName.includes("HGW") && !companyName.includes("HYH");
   const isHgw  = companyName.includes("HGW");
-  const isDema = companyName.includes("DEMA") && proposalType === "servicios";
+  const isDema = companyName.includes("DEMA");
 
   // Carga de Assets
   let headerBase64 = '', footerBase64 = '', hgwBgBase64 = '', headerHGWBase64 = '', footerHGWBase64 = '';
